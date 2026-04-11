@@ -1,0 +1,97 @@
+/* 主题变量：浅杏 × 蜜桃金 × 雾青绿 */
+
+$primary: #7db7ad !default;
+$primary-light: #9acdc4 !default;
+$primary-dark: #5f9d92 !default;
+
+$secondary: #e3bb7a !default;
+$secondary-light: #f0d5a7 !default;
+$secondary-dark: #c89a54 !default;
+
+$accent: #9ecfc2 !default;
+$accent-light: #bfe3d9 !default;
+$accent-dark: #7db7ad !default;
+
+$bg-main: #fffaf3 !default;
+$bg-card: rgba(255, 252, 247, 0.92) !default;
+$bg-hover: #fffdf9 !default;
+$bg-modal: rgba(244, 232, 214, 0.72) !default;
+$bg-deep: #f6ede1 !default;
+$bg-soft: #f9f1e6 !default;
+
+$text-primary: #6a5d52 !default;
+$text-secondary: #8b7d70 !default;
+$text-muted: #b1a395 !default;
+$text-inverse: #fffdf8 !default;
+
+$border-light: rgba(106, 93, 82, 0.08) !default;
+$border-medium: rgba(106, 93, 82, 0.16) !default;
+$border-dark: rgba(106, 93, 82, 0.28) !default;
+
+$success: #7bb990 !default;
+$warning: #e0a55f !default;
+$error: #d97c70 !default;
+$info: $primary !default;
+
+$shadow-sm: 0 10px 24px rgba(179, 153, 123, 0.08) !default;
+$shadow-md: 0 18px 40px rgba(179, 153, 123, 0.12) !default;
+$shadow-lg: 0 28px 60px rgba(179, 153, 123, 0.16) !default;
+$shadow-xl: 0 36px 80px rgba(179, 153, 123, 0.2) !default;
+
+$spacing-xs: 4px !default;
+$spacing-sm: 8px !default;
+$spacing-md: 16px !default;
+$spacing-lg: 24px !default;
+$spacing-xl: 32px !default;
+$spacing-xxl: 48px !default;
+
+$radius-sm: 8px !default;
+$radius-md: 14px !default;
+$radius-lg: 22px !default;
+$radius-xl: 30px !default;
+
+$font-xs: 12px !default;
+$font-sm: 14px !default;
+$font-base: 16px !default;
+$font-lg: 18px !default;
+$font-xl: 20px !default;
+$font-2xl: 24px !default;
+$font-3xl: 32px !default;
+$font-4xl: 40px !default;
+
+$line-tight: 1.2 !default;
+$line-normal: 1.5 !default;
+$line-relaxed: 1.75 !default;
+
+$transition-fast: 0.15s ease !default;
+$transition-normal: 0.28s cubic-bezier(0.22, 1, 0.36, 1) !default;
+$transition-slow: 0.5s ease !default;
+
+$breakpoint-xs: 360px !default;
+$breakpoint-sm: 480px !default;
+$breakpoint-md: 768px !default;
+$breakpoint-lg: 1024px !default;
+$breakpoint-xl: 1280px !default;
+$breakpoint-2xl: 1536px !default;
+
+$z-dropdown: 1000 !default;
+$z-sticky: 1020 !default;
+$z-fixed: 1030 !default;
+$z-modal-backdrop: 1040 !default;
+$z-modal: 1050 !default;
+$z-popover: 1060 !default;
+$z-tooltip: 1070 !default;
+$z-toast: 1080 !default;
+
+$btn-height-sm: 32px !default;
+$btn-height-base: 42px !default;
+$btn-height-lg: 50px !default;
+
+$input-height-sm: 32px !default;
+$input-height-base: 42px !default;
+$input-height-lg: 50px !default;
+
+$card-padding: 24px !default;
+$card-border: 1px solid rgba(255, 255, 255, 0.48) !default;
+$card-bg: $bg-card !default;
+$card-shadow: $shadow-sm !default;

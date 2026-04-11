@@ -1,0 +1,438 @@
+// 主样式文件
+// 导入所有样式依赖
+
+@use './variables.scss' as *;
+@use './mixins.scss' as *;
+@use './reset.scss';
+@use './mobile.scss';
+@use './inner-page.scss';
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+:root {
+  --el-color-primary: #{$primary};
+  --el-color-primary-light-3: #{$primary-light};
+  --el-color-primary-light-5: #d8c1a2;
+  --el-color-primary-light-7: #eadbc8;
+  --el-color-primary-light-8: #f3e9dc;
+  --el-color-primary-light-9: #fbf5ee;
+  --el-color-primary-dark-2: #{$primary-dark};
+
+  --el-color-success: #{$success};
+  --el-color-warning: #{$warning};
+  --el-color-danger: #{$error};
+  --el-color-info: #{$info};
+
+  --el-fill-color-light: #{$bg-hover};
+  --el-fill-color-blank: #{$bg-card};
+  --el-bg-color: #{$bg-main};
+  --el-bg-color-page: #{$bg-main};
+  --el-bg-color-overlay: #{$bg-hover};
+
+  --el-text-color-primary: #{$text-primary};
+  --el-text-color-regular: #{$text-primary};
+  --el-text-color-secondary: #{$text-secondary};
+  --el-text-color-placeholder: #{$text-muted};
+  --el-text-color-disabled: #{$text-muted};
+
+  --el-border-color: #{$border-medium};
+  --el-border-color-light: #{$border-light};
+  --el-border-color-lighter: rgba(106, 93, 82, 0.05);
+  --el-border-color-extra-light: rgba(106, 93, 82, 0.03);
+
+  --el-fill-color: #{$border-light};
+  --el-fill-color-light: rgba(255, 255, 255, 0.78);
+  --el-fill-color-blank: #{$bg-card};
+
+  --el-shadow-primary: #{$shadow-sm};
+  --el-shadow-regular: #{$shadow-md};
+  --el-shadow-light: #{$shadow-sm};
+  --el-shadow-lighter: 0 6px 18px rgba(187, 161, 130, 0.08);
+  --el-shadow-dark: #{$shadow-lg};
+
+  --el-button-default-bg-color: rgba(255, 250, 241, 0.86);
+  --el-button-default-border-color: #{$border-medium};
+  --el-input-border: #{$border-medium};
+  --el-input-hover-border: #{$secondary-dark};
+  --el-input-focus-border: #{$secondary-dark};
+  --el-table-header-bg-color: rgba(255, 250, 241, 0.92);
+  --el-table-row-hover-bg-color: rgba(227, 187, 122, 0.08);
+  --el-form-item-label-color: #{$text-primary};
+
+  --bg-soft: #{$bg-soft};
+  --bg-deep: #{$bg-deep};
+  --surface-glass: rgba(255, 250, 241, 0.78);
+  --surface-strong: rgba(250, 242, 232, 0.92);
+  --surface-line: rgba(255, 255, 255, 0.48);
+  --text-normal: #{$text-primary};
+  --text-soft: #{$text-secondary};
+  --accent-blue-deep: #d6b38a;
+  --accent-gold: #{$secondary};
+  --input-border: #{$border-light};
+  --input-bg: rgba(255, 250, 241, 0.9);
+  --primary: #{$primary};
+  --primary-dark: #{$primary-dark};
+  --secondary: #{$secondary};
+  --danger: #{$error};
+  --panel-bg: rgba(255, 250, 241, 0.82);
+  --panel-line: rgba(106, 93, 82, 0.08);
+  --card-bg: rgba(255, 250, 241, 0.86);
+  --border-color: rgba(106, 93, 82, 0.08);
+  --primary-soft: rgba(227, 187, 122, 0.12);
+  --accent-blue: #e6cfb2;
+}
+
+html,
+body {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(240, 222, 198, 0.16), transparent 26%),
+    radial-gradient(circle at 85% 10%, rgba(227, 187, 122, 0.18), transparent 28%),
+    linear-gradient(180deg, #fffaf3 0%, #f5ebde 100%);
+  color: $text-primary;
+  font-family: 'Outfit', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+body {
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.brand-title,
+.section-title,
+.page-title {
+  font-family: 'Noto Serif SC', 'PingFang SC', serif;
+  letter-spacing: 0.02em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba($secondary, 0.25);
+  color: $text-primary;
+}
+
+.el-card,
+.el-table,
+.el-dialog,
+.el-drawer,
+.el-select__wrapper,
+.el-input__wrapper,
+.el-textarea__inner,
+.el-date-editor,
+.el-range-editor,
+.el-cascader .el-input__wrapper {
+  border-radius: $radius-md;
+}
+
+.el-card {
+  background: $bg-card;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: $card-shadow;
+  backdrop-filter: blur(18px);
+}
+
+.el-table {
+  background: rgba(255, 250, 241, 0.78);
+  border: 1px solid rgba(28, 43, 51, 0.06);
+  border-radius: $radius-lg;
+  overflow: hidden;
+
+  th.el-table__cell {
+    background: rgba(255, 250, 241, 0.94);
+    color: $text-primary;
+    font-weight: 600;
+  }
+
+  td.el-table__cell {
+    border-color: rgba(28, 43, 51, 0.05);
+  }
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper,
+.el-date-editor.el-input__wrapper,
+.el-range-editor.el-input__wrapper {
+  background: rgba(255, 250, 241, 0.9) !important;
+  border: 1px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(106, 93, 82, 0.1) !important;
+  transition: box-shadow $transition-normal, transform $transition-fast;
+
+  &:hover {
+    box-shadow: inset 0 0 0 1px rgba(200, 154, 84, 0.3) !important;
+  }
+
+  &.is-focus,
+  &:focus-within {
+    box-shadow: 0 0 0 4px rgba(227, 187, 122, 0.16), inset 0 0 0 1px rgba(200, 154, 84, 0.58) !important;
+  }
+}
+
+.el-dialog {
+  background: rgba(255, 250, 241, 0.96);
+  border-radius: $radius-lg;
+  box-shadow: $shadow-xl;
+  overflow: hidden;
+
+  .el-dialog__header,
+  .el-dialog__body,
+  .el-dialog__footer {
+    background: transparent;
+  }
+
+  .el-dialog__header {
+    border-bottom: 1px solid rgba(28, 43, 51, 0.08);
+    padding: $spacing-lg $spacing-xl;
+  }
+
+  .el-dialog__body {
+    padding: $spacing-xl;
+  }
+
+  .el-dialog__footer {
+    border-top: 1px solid rgba(28, 43, 51, 0.08);
+    padding: $spacing-lg $spacing-xl;
+  }
+}
+
+.el-drawer {
+  background: rgba(255, 250, 241, 0.98);
+  box-shadow: $shadow-xl;
+}
+
+.el-button {
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform $transition-fast, box-shadow $transition-normal, background $transition-normal;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.el-button--primary {
+  background: linear-gradient(135deg, #f4e3ca 0%, #e7c797 100%);
+  border-color: transparent;
+  box-shadow: 0 12px 26px rgba(227, 187, 122, 0.24);
+
+  &:hover {
+    background: linear-gradient(135deg, #f8ebd9 0%, #edd4ab 100%);
+    border-color: transparent;
+  }
+
+  &:active {
+    background: linear-gradient(135deg, #ecd5b2 0%, #dfbc85 100%);
+    border-color: transparent;
+  }
+}
+
+.el-button--success {
+  background: linear-gradient(135deg, $success 0%, #46b78d 100%);
+  border-color: transparent;
+}
+
+.el-button--warning {
+  background: linear-gradient(135deg, $warning 0%, #f0ac4f 100%);
+  border-color: transparent;
+}
+
+.el-button--danger {
+  background: linear-gradient(135deg, $error 0%, #dd746a 100%);
+  border-color: transparent;
+}
+
+.el-button--default,
+.el-button.is-plain {
+  background: rgba(255, 250, 241, 0.85);
+  border-color: rgba(28, 43, 51, 0.1);
+  color: $text-primary;
+}
+
+.el-popper {
+  background: rgba(255, 250, 241, 0.98);
+  box-shadow: $shadow-lg;
+  border-color: rgba(28, 43, 51, 0.08);
+  color: $text-primary;
+}
+
+.el-tag {
+  background: rgba(213, 168, 94, 0.1);
+  border-color: rgba(213, 168, 94, 0.22);
+  color: $text-primary;
+
+  &.el-tag--success {
+    background: rgba($success, 0.12);
+    border-color: rgba($success, 0.24);
+    color: $success;
+  }
+
+  &.el-tag--warning {
+    background: rgba($warning, 0.12);
+    border-color: rgba($warning, 0.24);
+    color: $warning;
+  }
+
+  &.el-tag--danger {
+    background: rgba($error, 0.12);
+    border-color: rgba($error, 0.24);
+    color: $error;
+  }
+}
+
+.el-progress-bar__inner,
+.el-slider__bar,
+.el-switch.is-checked .el-switch__core {
+  background: linear-gradient(90deg, $primary 0%, $accent 100%);
+}
+
+.el-slider__runway {
+  background: rgba(28, 43, 51, 0.08);
+}
+
+.el-slider__button {
+  border-color: $primary;
+}
+
+#app {
+  min-height: 100vh;
+  width: 100%;
+  color: $text-primary;
+  font-family: inherit;
+  line-height: inherit;
+}
+
+.page-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: $spacing-lg;
+  min-height: calc(100vh - #{$card-padding * 2});
+
+  @include respond-to(md) {
+    padding: $spacing-md;
+  }
+
+  @include respond-to(sm) {
+    padding: $spacing-sm;
+  }
+}
+
+.card-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: $spacing-lg;
+
+  @include respond-to(md) {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: $spacing-md;
+  }
+
+  @include respond-to(sm) {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: $spacing-sm;
+  }
+}
+
+.form-container {
+  max-width: 600px;
+  margin: 0 auto;
+
+  .el-form-item {
+    margin-bottom: $spacing-md;
+
+    .el-form-item__label {
+      font-weight: 500;
+      color: $text-primary;
+    }
+  }
+
+  .el-form-item__content {
+    margin-left: 0 !important;
+  }
+}
+
+.page-header {
+  margin-bottom: $spacing-xl;
+  padding-bottom: $spacing-md;
+  border-bottom: 1px solid rgba(28, 43, 51, 0.08);
+
+  .page-title {
+    font-size: $font-2xl;
+    font-weight: 700;
+    color: $text-primary;
+    margin-bottom: $spacing-xs;
+
+    @include respond-to(md) {
+      font-size: $font-xl;
+    }
+  }
+
+  .page-subtitle {
+    font-size: $font-sm;
+    color: $text-secondary;
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  gap: $spacing-md;
+  color: $text-secondary;
+
+  .el-icon-loading {
+    font-size: 2rem;
+    color: $primary;
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  gap: $spacing-md;
+  padding: $spacing-xl;
+  text-align: center;
+  background: $bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-sm;
+  backdrop-filter: blur(16px);
+
+  .empty-icon {
+    font-size: 3rem;
+    color: $text-muted;
+  }
+
+  .empty-text {
+    font-size: $font-lg;
+    color: $text-secondary;
+  }
+
+  .empty-desc {
+    font-size: $font-sm;
+    color: $text-muted;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

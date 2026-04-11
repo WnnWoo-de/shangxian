@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/src/assets/logo.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2dc7b0">
+    <title>进出货结算系统 - v3.2</title>
+    <meta name="build-version" content="v3.2">
+    <meta name="build-time" content="2026-04-08">
+    <!-- Eruda 移动端控制台工具 - 开发环境 -->
+    <script>
+      // 使用URL参数或长按页面5秒来显示Eruda控制台
+      (function() {
+        function showEruda() {
+          if (window.eruda) return;
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/eruda@latest/eruda.min.js';
+          script.onload = function() {
+            if (window.eruda) {
+              window.eruda.init();
+              console.log('=== Eruda 控制台已启动 ===');
+            }
+          };
+          document.head.appendChild(script);
+        }
+
+        // 检查URL参数 ?debug=true
+        if (location.search.includes('debug=true')) {
+          showEruda();
+        }
+
+        // 长按页面5秒显示控制台
+        let touchStartTime = 0;
+        document.addEventListener('touchstart', function() {
+          touchStartTime = Date.now();
+        });
+        document.addEventListener('touchend', function() {
+          if (Date.now() - touchStartTime > 3000) {
+            showEruda();
+          }
+        });
+
+        // 键盘快捷键: Ctrl+Shift+D
+        document.addEventListener('keydown', function(e) {
+          if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+            e.preventDefault();
+            showEruda();
+          }
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
