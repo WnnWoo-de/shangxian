@@ -104,12 +104,17 @@ const parseWeightExpression = (input) => {
       if (multiplyParts.length === 2) {
         const left = Number(multiplyParts[0])
         const right = Number(multiplyParts[1])
-        value += left * right
+        if (!isNaN(left) && !isNaN(right)) {
+          value += left * right
+        }
       } else {
-        value += Number(part)
+        const num = Number(part)
+        if (!isNaN(num)) {
+          value += num
+        }
       }
     }
-    return value
+    return isNaN(value) ? 0 : value
   } catch (error) {
     console.error('解析重量表达式失败:', error)
     return 0
@@ -193,7 +198,6 @@ const rowViews = computed(() => {
         note: '',
         fabric: null,
         unit: '斤',
-        quantityInput: '',
         amount: 0
       }
     }
@@ -215,8 +219,19 @@ const rowViews = computed(() => {
   })
 })
 
-const totalWeight = computed(() => rowViews.value.reduce((sum, row) => sum + row.quantity, 0))
-const totalAmount = computed(() => addMoney(rowViews.value.map((row) => row.amount)))
+const totalWeight = computed(() => {
+  return rowViews.value.reduce((sum, row) => {
+    const safeQuantity = isNaN(row.quantity) ? 0 : row.quantity
+    return sum + safeQuantity
+  }, 0)
+})
+
+const totalAmount = computed(() => {
+  const safeAmounts = rowViews.value.map(row => {
+    return isNaN(row.amount) ? 0 : row.amount
+  })
+  return addMoney(safeAmounts)
+})
 // 未结金额计算 - 支持手动输入
 const unsettledAmount = computed({
   get() {

@@ -306,7 +306,7 @@ const exportImage = () => {
   const tableWidth = 1120
   const rowBaseHeight = 42
   const rowLineHeight = 22
-  const footerHeight = 90
+  const footerHeight = 120
 
   const ctx = canvas.getContext('2d')
   if (!ctx) {
@@ -467,13 +467,32 @@ const exportImage = () => {
   ctx.font = 'bold 18px "SimSun", serif'
   ctx.fillStyle = '#2f506d'
   ctx.textAlign = 'left'
-  ctx.fillText('总计', tableLeft + 40, currentY + 40)
+  ctx.fillText('总计', tableLeft + 40, currentY + 45)
+
+  ctx.font = 'bold 16px "SimSun", serif'
+  ctx.fillStyle = '#4e6b86'
   ctx.textAlign = 'right'
 
-  const summaryLeft = tableLeft + tableWidth - 360
+  const summaryRight = tableLeft + tableWidth - 40
   ctx.font = '16px "SimSun", serif'
-  ctx.fillText(`总重量：${totalWeight.value.toFixed(2)} 斤`, summaryLeft, currentY + 32)
-  ctx.fillText(`总金额：${formatMoney(totalAmount.value)}`, summaryLeft, currentY + 56)
+  ctx.fillStyle = '#2f506d'
+
+  // 总重量 - 左侧
+  ctx.textAlign = 'right'
+  ctx.fillText(`总重量：`, summaryRight - 200, currentY + 45)
+  ctx.font = 'bold 18px "SimSun", serif'
+  ctx.fillStyle = '#1f3852'
+  ctx.fillText(`${totalWeight.value.toFixed(2)} 斤`, summaryRight - 200, currentY + 45)
+
+  // 总金额 - 右侧
+  ctx.font = '16px "SimSun", serif'
+  ctx.fillStyle = '#2f506d'
+  ctx.fillText(`总金额：`, summaryRight, currentY + 45)
+  ctx.font = 'bold 20px "SimSun", serif'
+  ctx.fillStyle = '#c9485b'
+  ctx.fillText(`${formatMoney(totalAmount.value)}`, summaryRight, currentY + 45)
+
+  ctx.textAlign = 'left'
 
   const link = document.createElement('a')
   canvas.toBlob((blob) => {
