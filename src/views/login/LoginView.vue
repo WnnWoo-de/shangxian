@@ -19,23 +19,11 @@ const form = reactive({
   password: '',
 })
 
-// 获取演示账号列表
-const demoAccounts = ref([])
-
 onMounted(() => {
-  // 加载演示账号列表
-  demoAccounts.value = authStore.getDemoAccounts()
-  // 默认填充第一个账号
+  // 默认填充演示账号
   form.username = '皖盛布碎'
   form.password = '123456'
 })
-
-// 快速填充演示账号
-const fillDemoAccount = (index) => {
-  const account = demoAccounts.value[index]
-  form.username = account.username
-  form.password = account.password
-}
 
 const login = async () => {
   if (!form.username.trim() || !form.password) {
@@ -113,25 +101,8 @@ const login = async () => {
           </div>
 
           <div class="helper-row">
-            <span>默认演示账号已填充</span>
+            <span>默认演示账号已填充：皖盛布碎 / 123456</span>
             <span>安全连接</span>
-          </div>
-
-          <!-- 演示账号列表 -->
-          <div class="demo-accounts">
-            <p class="demo-label">快速选择演示账号：</p>
-            <div class="demo-list">
-              <button
-                v-for="(account, index) in demoAccounts"
-                :key="account.username"
-                type="button"
-                class="demo-account-btn"
-                @click="fillDemoAccount(index)"
-              >
-                <span class="demo-name">{{ account.name }}</span>
-                <span class="demo-username">账号：{{ account.username }} / 密码：123456</span>
-              </button>
-            </div>
           </div>
 
           <div v-if="loginError" class="error-message">{{ loginError }}</div>
@@ -156,9 +127,8 @@ const login = async () => {
 .brand-panels{display:grid;gap:14px;margin-top:34px}.brand-panel{padding:18px 20px;border-radius:22px;background:rgba(255,255,255,.34);border:1px solid rgba(255,255,255,.58);backdrop-filter:blur(8px)}.brand-panel.light{background:rgba(255,248,239,.48)}.brand-panel span{display:block;font-size:12px;color:$text-secondary;letter-spacing:.08em;text-transform:uppercase}.brand-panel strong{display:block;margin-top:8px;font-size:22px;color:$text-primary}
 .login-card{display:flex;flex-direction:column;justify-content:center;background:rgba(255,250,241,.92)}.form-header{margin-bottom:26px}.eyebrow{margin:0 0 10px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:$secondary-dark}.form-header h2{margin:0;font-size:34px;color:$text-primary}.form-desc{margin:12px 0 0;font-size:14px;color:$text-secondary;line-height:1.8}.login-form{display:flex;flex-direction:column;gap:16px}.field{display:flex;flex-direction:column;gap:8px}.field label{font-size:14px;font-weight:600;color:$text-primary}.field input{height:52px;padding:0 16px;border-radius:16px;border:1px solid rgba(106,93,82,.1);background:rgba(255,250,241,.92);font-size:15px;color:$text-primary;transition:border-color $transition-normal,box-shadow $transition-normal,transform $transition-fast;outline:none}.field input:focus{border-color:rgba(200,154,84,.48);box-shadow:0 0 0 4px rgba(227,187,122,.14);transform:translateY(-1px)}
 .helper-row{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:$text-muted}
-.demo-accounts{padding:14px;border-radius:16px;background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.6)}.demo-label{margin:0 0 10px;font-size:12px;font-weight:600;color:$text-secondary}.demo-list{display:flex;flex-direction:column;gap:8px}.demo-account-btn{width:100%;padding:10px 14px;border:1px solid rgba(200,154,84,.3);border-radius:12px;background:rgba(255,250,241,.9);text-align:left;cursor:pointer;transition:all $transition-fast}.demo-account-btn:hover{background:rgba(227,187,122,.15);border-color:rgba(200,154,84,.5);transform:translateY(-1px)}.demo-name{display:block;font-size:14px;font-weight:600;color:$text-primary}.demo-username{display:block;font-size:12px;color:$text-muted;margin-top:2px}
 .error-message{padding:12px 14px;border-radius:14px;background:rgba(201,79,67,.08);border:1px solid rgba(201,79,67,.2);color:$error;font-size:14px}.btn-login{width:100%;height:54px;border:none;border-radius:999px;background:linear-gradient(135deg,#f4e3ca 0%,#e7c797 100%);color:#7f6248;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 16px 28px rgba(227,187,122,.22);transition:transform $transition-fast,box-shadow $transition-normal}.btn-login:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 22px 34px rgba(227,187,122,.26)}.btn-login:disabled{opacity:.72;cursor:not-allowed}
 .login-footer{margin-top:20px;color:$text-muted;font-size:13px;text-align:center}
 @include respond-to(md){.login-shell{grid-template-columns:1fr}.login-brand,.login-card{padding:28px}.login-brand h1{font-size:30px}.form-header h2{font-size:28px}}
-@include respond-to(sm){.login-wrapper{padding:10px}.login-shell{border-radius:24px}.brand-logo{width:64px;height:64px;margin:18px 0}.login-brand h1{font-size:26px}.brand-panels{margin-top:22px}.login-card{padding:22px}.field input,.btn-login{height:50px}.helper-row{flex-direction:column;align-items:flex-start}.demo-accounts{padding:12px}.demo-label{font-size:11px}.demo-account-btn{padding:8px 12px}.demo-name{font-size:13px}.demo-username{font-size:11px}}
+@include respond-to(sm){.login-wrapper{padding:10px}.login-shell{border-radius:24px}.brand-logo{width:64px;height:64px;margin:18px 0}.login-brand h1{font-size:26px}.brand-panels{margin-top:22px}.login-card{padding:22px}.field input,.btn-login{height:50px}.helper-row{flex-direction:column;align-items:flex-start}}
 </style>

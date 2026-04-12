@@ -22,60 +22,6 @@ const MOCK_USERS = [
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z'
     }
-  },
-  {
-    username: '张三',
-    password: '123456',
-    userInfo: {
-      id: 'user-002',
-      username: '张三',
-      name: '张三（采购）',
-      phone: '',
-      avatar: '',
-      email: 'zhangsan@wsbs.com',
-      department: '采购部',
-      role: 'purchaser',
-      permissions: ['purchase', 'query'],
-      status: 'active',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z'
-    }
-  },
-  {
-    username: '李四',
-    password: '123456',
-    userInfo: {
-      id: 'user-003',
-      username: '李四',
-      name: '李四（销售）',
-      phone: '',
-      avatar: '',
-      email: 'lisi@wsbs.com',
-      department: '销售部',
-      role: 'sales',
-      permissions: ['sales', 'query'],
-      status: 'active',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z'
-    }
-  },
-  {
-    username: '王五',
-    password: '123456',
-    userInfo: {
-      id: 'user-004',
-      username: '王五',
-      name: '王五（仓管）',
-      phone: '',
-      avatar: '',
-      email: 'wangwu@wsbs.com',
-      department: '仓储部',
-      role: 'warehouse',
-      permissions: ['warehouse', 'query'],
-      status: 'active',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z'
-    }
   }
 ]
 
