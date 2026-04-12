@@ -822,8 +822,8 @@ const exportTable = async () => {
       })
 
       worksheet.getCell(`D${rowIndex}`).numFmt = '0.00'
-      worksheet.getCell(`E${rowIndex}`).numFmt = '"¥"#,##0.00'
-      worksheet.getCell(`F${rowIndex}`).numFmt = '"¥"#,##0.00'
+      worksheet.getCell(`E${rowIndex}`).numFmt = '"¥ "#,##0.00'
+      worksheet.getCell(`F${rowIndex}`).numFmt = '"¥ "#,##0.00'
     }
 
     worksheet.addRow(['合计', '', '', Number(totalWeight.value || 0), '', Number(totalAmount.value || 0)])
@@ -849,7 +849,7 @@ const exportTable = async () => {
       }
     })
     worksheet.getCell(`D${summaryRowIndex}`).numFmt = '0.00'
-    worksheet.getCell(`F${summaryRowIndex}`).numFmt = '"¥"#,##0.00'
+    worksheet.getCell(`F${summaryRowIndex}`).numFmt = '"¥ "#,##0.00'
 
     const buffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([buffer], {
@@ -1059,7 +1059,7 @@ const exportImage = async () => {
   ctx.fillStyle = '#1f3852'
   ctx.font = 'bold 22px "SimSun", serif'
   ctx.fillText(`总重量：${totalWeight.value.toFixed(2)} 斤`, 48, tableBottom + 52)
-  ctx.fillText(`总金额：¥ ${formatMoney(totalAmount.value)}`, 420, tableBottom + 52)
+  ctx.fillText(`总金额：${formatMoney(totalAmount.value)}`, 420, tableBottom + 52)
 
   const link = document.createElement('a')
   link.download = `${getExportFileBase()}.png`
