@@ -19,14 +19,14 @@ const form = reactive({
   password: '',
 })
 
-onMounted(() => {
-})
+// onMounted(() => {
+// })
 
 // //#endregion
-//  onMounted(() => {
-//        form.username = '皖盛布碎'                                                
-//        form.password = '123456'                                                  
-//       })
+ onMounted(() => {
+       form.username = '皖盛布碎'                                                
+       form.password = '123456'                                                  
+      })
 
 const login = async () => {
   if (!form.username.trim() || !form.password) {
