@@ -478,23 +478,31 @@ const exportImage = () => {
   ctx.textAlign = 'left'
   ctx.fillText('总计', tableLeft + 40, currentY + 27)
 
-  // 绘制总重量数值 - 在总重量列居中
+  // 绘制总重量标签和数值
   ctx.font = 'bold 18px "SimSun", serif'
   ctx.fillStyle = '#2f506d'
-  ctx.textAlign = 'center'
   const weightCol = columns.find(c => c.key === 'totalWeight')
   if (weightCol) {
-    const weightCenterX = weightCol.left + weightCol.width / 2
-    ctx.fillText(totalWeight.value.toFixed(2), weightCenterX, currentY + 27)
+    const weightLabel = '总重量'
+    const weightValue = totalWeight.value.toFixed(2)
+    ctx.textAlign = 'right'
+    ctx.fillText(weightLabel, weightCol.left + weightCol.width / 2 - 5, currentY + 27)
+    ctx.textAlign = 'left'
+    ctx.fillText(weightValue, weightCol.left + weightCol.width / 2 + 5, currentY + 27)
   }
 
-  // 绘制总金额数值 - 在金额列居中，使用红色突出显示
+  // 绘制总金额标签和数值
   ctx.font = 'bold 18px "SimSun", serif'
-  ctx.fillStyle = '#c9485b'
   const amountCol = columns.find(c => c.key === 'amount')
   if (amountCol) {
-    const amountCenterX = amountCol.left + amountCol.width / 2
-    ctx.fillText(formatMoney(totalAmount.value), amountCenterX, currentY + 27)
+    const amountLabel = '总金额'
+    const amountValue = formatMoney(totalAmount.value)
+    ctx.fillStyle = '#2f506d'
+    ctx.textAlign = 'right'
+    ctx.fillText(amountLabel, amountCol.left + amountCol.width / 2 - 5, currentY + 27)
+    ctx.fillStyle = '#c9485b'
+    ctx.textAlign = 'left'
+    ctx.fillText(amountValue, amountCol.left + amountCol.width / 2 + 5, currentY + 27)
   }
 
   ctx.textAlign = 'left'

@@ -674,7 +674,7 @@ const exportImage = () => {
           quantityText: '-',
           totalWeight: '0.00',
           unitPrice: '0.00',
-          amount: formatMoney(0)
+          amount: 0
         },
         wrappedFabricLines: ['-'],
         wrappedQuantityLines: ['-'],
@@ -687,7 +687,7 @@ const exportImage = () => {
       quantityText: item.quantityInput || '-',
       totalWeight: Number(item.quantity || 0).toFixed(2),
       unitPrice: Number(item.unitPrice || 0).toFixed(2),
-      amount: formatMoney(item.amount || 0),
+      amount: item.amount || 0,
     }
 
     const wrappedFabricLines = getWrappedLines(rowData.fabricName, columns[0].width - 20)
@@ -765,8 +765,10 @@ const exportImage = () => {
           ctx.fillText(line, col.left + 10, currentY + 14 + lineIndex * rowLineHeight)
         })
       } else {
-        ctx.textAlign = 'right'
-        ctx.fillText(textToDraw, col.left + col.width - 10, currentY + 27)
+        // 数值列居中显示
+        ctx.textAlign = 'center'
+        const centerX = col.left + col.width / 2
+        ctx.fillText(textToDraw, centerX, currentY + 27)
         ctx.textAlign = 'left'
       }
     })
@@ -774,19 +776,44 @@ const exportImage = () => {
     currentY += item.rowHeight
   })
 
+  // 总计行 - 使用与表头相同的背景色
   ctx.fillStyle = '#f2f7fc'
-  ctx.fillRect(tableLeft, currentY, tableWidth, footerHeight)
+  ctx.fillRect(tableLeft, currentY, tableWidth, rowBaseHeight)
 
+  // 绘制"总计"文字
   ctx.font = 'bold 18px "SimSun", serif'
   ctx.fillStyle = '#2f506d'
   ctx.textAlign = 'left'
-  ctx.fillText('总计', tableLeft + 40, currentY + 40)
-  ctx.textAlign = 'right'
+  ctx.fillText('总计', tableLeft + 40, currentY + 27)
 
-  const summaryLeft = tableLeft + tableWidth - 360
-  ctx.font = '16px "SimSun", serif'
-  ctx.fillText(`总重量：${totalWeight.value.toFixed(2)} 斤`, summaryLeft, currentY + 32)
-  ctx.fillText(`总金额：${formatMoney(totalAmount.value)}`, summaryLeft, currentY + 56)
+  // 绘制总重量标签和数值
+  ctx.font = 'bold 18px "SimSun", serif'
+  ctx.fillStyle = '#2f506d'
+  const weightCol = columns.find(c => c.key === 'totalWeight')
+  if (weightCol) {
+    const weightLabel = '总重量'
+    const weightValue = totalWeight.value.toFixed(2)
+    ctx.textAlign = 'right'
+    ctx.fillText(weightLabel, weightCol.left + weightCol.width / 2 - 5, currentY + 27)
+    ctx.textAlign = 'left'
+    ctx.fillText(weightValue, weightCol.left + weightCol.width / 2 + 5, currentY + 27)
+  }
+
+  // 绘制总金额标签和数值
+  ctx.font = 'bold 18px "SimSun", serif'
+  const amountCol = columns.find(c => c.key === 'amount')
+  if (amountCol) {
+    const amountLabel = '总金额'
+    const amountValue = formatMoney(totalAmount.value)
+    ctx.fillStyle = '#2f506d'
+    ctx.textAlign = 'right'
+    ctx.fillText(amountLabel, amountCol.left + amountCol.width / 2 - 5, currentY + 27)
+    ctx.fillStyle = '#c9485b'
+    ctx.textAlign = 'left'
+    ctx.fillText(amountValue, amountCol.left + amountCol.width / 2 + 5, currentY + 27)
+  }
+
+  ctx.textAlign = 'left'
 
   const link = document.createElement('a')
   canvas.toBlob((blob) => {
