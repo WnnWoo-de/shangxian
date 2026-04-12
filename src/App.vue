@@ -11,10 +11,8 @@ const route = useRoute()
 // 判断是否是登录页面
 const isLoginPage = computed(() => route.path === '/login')
 
-// 初始化认证状态
-onMounted(() => {
-  authStore.init()
-})
+// 先初始化认证状态，确保在组件挂载前就获取到用户信息
+authStore.init()
 
 // 监听路由变化，确保认证状态一致
 watch(
