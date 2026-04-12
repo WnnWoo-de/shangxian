@@ -192,7 +192,8 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .main-layout{min-height:100vh;display:flex;background:radial-gradient(circle at left top,rgba(158,207,194,.16),transparent 24%),radial-gradient(circle at right top,rgba(227,187,122,.18),transparent 28%),linear-gradient(180deg,#fffaf4 0%,#f8efe3 100%)}
 .mobile-overlay{position:fixed;inset:0;background:rgba(255,250,243,.66);backdrop-filter:blur(4px);z-index:40;@include respond-from(md){display:none}}
-.sidebar{width:318px;padding:18px;position:relative;z-index:50;@include respond-to(md){position:fixed;inset:0 auto 0 0;width:min(86vw,320px);transform:translateX(-110%);transition:transform $transition-normal}.mobile-open{@include respond-to(md){transform:translateX(0)}}}
+.sidebar{width:318px;padding:18px;position:relative;z-index:50;@include respond-to(md){position:fixed;inset:0 auto 0 0;width:min(86vw,320px);transform:translateX(-110%);transition:transform $transition-normal}}
+.sidebar.mobile-open{@include respond-to(md){transform:translateX(0)}}
 .sidebar-shell{height:calc(100vh - 36px);display:flex;flex-direction:column;gap:16px;padding:18px;border-radius:30px;background:linear-gradient(180deg,rgba(255,251,246,.98) 0%,rgba(250,242,232,.97) 56%,rgba(246,237,225,.96) 100%);box-shadow:0 32px 60px rgba(179,153,123,.18);border:1px solid rgba(255,255,255,.72);overflow:hidden;@include respond-to(md){height:100vh;border-radius:0 28px 28px 0;padding-top:calc(18px + var(--safe-area-inset-top));padding-bottom:calc(18px + var(--safe-area-inset-bottom))}}
 .sidebar-shell::before{content:'';position:absolute;top:32px;left:32px;width:180px;height:180px;background:radial-gradient(circle,rgba(227,187,122,.22),transparent 68%);pointer-events:none}
 .sidebar-header,.sidebar-panel,.sidebar-footer{position:relative;z-index:1}.sidebar-header{display:flex;gap:14px;align-items:center;padding:8px 6px 4px}
