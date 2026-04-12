@@ -177,15 +177,20 @@ const exportToExcel = async () => {
       worksheet.addRow({
         fabric: row.fabricName,
         quantity: Number(row.quantity),
-        unitPrice: formatMoney(row.unitPrice),
-        amount: formatMoney(total),
+        unitPrice: Number(row.unitPrice),
+        amount: total,
         note: row.note,
       })
     })
 
     // 添加总金额行
     const totalAmount = rows.value.reduce((sum, row) => sum + (Number(row.quantity) * Number(row.unitPrice)), 0)
-    worksheet.addRow({ fabric: '合计', amount: formatMoney(totalAmount) })
+    worksheet.addRow({ fabric: '合计', amount: totalAmount })
+
+    // 格式化列
+    worksheet.getColumn('C').numFmt = '¥#,##0.00'
+    worksheet.getColumn('D').numFmt = '¥#,##0.00'
+    worksheet.getRow(1).font = { bold: true, size: 12 }
 
     // 导出
     const buffer = await workbook.xlsx.writeBuffer()
@@ -374,7 +379,7 @@ const exportImage = () => {
       quantityText: item.quantityInput || '-',
       totalWeight: Number(item.quantity || 0).toFixed(2),
       unitPrice: Number(item.unitPrice || 0).toFixed(2),
-      amount: formatMoney(Number(item.quantity || 0) * Number(item.unitPrice || 0)),
+      amount: Number(item.quantity || 0) * Number(item.unitPrice || 0),
     }
 
     const wrappedFabricLines = getWrappedLines(rowData.fabricName, columns[0].width - 20)
@@ -405,7 +410,7 @@ const exportImage = () => {
   ctx.font = '22px "SimSun", serif'
   ctx.fillStyle = '#4e6b86'
   ctx.fillText(`日期：${form.createdAt || new Date().toISOString().slice(0, 10)}`, 48, 104)
-  ctx.fillText(`${partnerLabel}：${form.supplier.trim() || '-'}`, 48, 136)
+  ctx.fillText(`${isSale.value ? '客户' : '供应商'}：${form.supplier.trim() || '-'}`, 48, 136)
 
   noteLines.forEach((line, index) => {
     ctx.fillText(line, 48, noteTop + index * noteLineHeight)
@@ -452,8 +457,10 @@ const exportImage = () => {
           ctx.fillText(line, col.left + 10, currentY + 14 + lineIndex * rowLineHeight)
         })
       } else {
-        ctx.textAlign = 'right'
-        ctx.fillText(textToDraw, col.left + col.width - 10, currentY + 27)
+        // 数值列居中显示
+        ctx.textAlign = 'center'
+        const centerX = col.left + col.width / 2
+        ctx.fillText(textToDraw, centerX, currentY + 27)
         ctx.textAlign = 'left'
       }
     })
@@ -461,36 +468,34 @@ const exportImage = () => {
     currentY += item.rowHeight
   })
 
+  // 总计行 - 使用与表头相同的背景色
   ctx.fillStyle = '#f2f7fc'
-  ctx.fillRect(tableLeft, currentY, tableWidth, footerHeight)
+  ctx.fillRect(tableLeft, currentY, tableWidth, rowBaseHeight)
 
+  // 绘制"总计"文字
   ctx.font = 'bold 18px "SimSun", serif'
   ctx.fillStyle = '#2f506d'
   ctx.textAlign = 'left'
-  ctx.fillText('总计', tableLeft + 40, currentY + 45)
+  ctx.fillText('总计', tableLeft + 40, currentY + 27)
 
-  ctx.font = 'bold 16px "SimSun", serif'
-  ctx.fillStyle = '#4e6b86'
-  ctx.textAlign = 'right'
-
-  const summaryRight = tableLeft + tableWidth - 40
-  ctx.font = '16px "SimSun", serif'
-  ctx.fillStyle = '#2f506d'
-
-  // 总重量 - 左侧
-  ctx.textAlign = 'right'
-  ctx.fillText(`总重量：`, summaryRight - 200, currentY + 45)
+  // 绘制总重量数值 - 在总重量列居中
   ctx.font = 'bold 18px "SimSun", serif'
-  ctx.fillStyle = '#1f3852'
-  ctx.fillText(`${totalWeight.value.toFixed(2)} 斤`, summaryRight - 200, currentY + 45)
-
-  // 总金额 - 右侧
-  ctx.font = '16px "SimSun", serif'
   ctx.fillStyle = '#2f506d'
-  ctx.fillText(`总金额：`, summaryRight, currentY + 45)
-  ctx.font = 'bold 20px "SimSun", serif'
+  ctx.textAlign = 'center'
+  const weightCol = columns.find(c => c.key === 'totalWeight')
+  if (weightCol) {
+    const weightCenterX = weightCol.left + weightCol.width / 2
+    ctx.fillText(totalWeight.value.toFixed(2), weightCenterX, currentY + 27)
+  }
+
+  // 绘制总金额数值 - 在金额列居中，使用红色突出显示
+  ctx.font = 'bold 18px "SimSun", serif'
   ctx.fillStyle = '#c9485b'
-  ctx.fillText(`${formatMoney(totalAmount.value)}`, summaryRight, currentY + 45)
+  const amountCol = columns.find(c => c.key === 'amount')
+  if (amountCol) {
+    const amountCenterX = amountCol.left + amountCol.width / 2
+    ctx.fillText(formatMoney(totalAmount.value), amountCenterX, currentY + 27)
+  }
 
   ctx.textAlign = 'left'
 
