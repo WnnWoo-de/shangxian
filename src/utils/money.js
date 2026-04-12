@@ -26,16 +26,19 @@ export function formatMoney(amount, options = {}) {
   // 转换为数字
   const numAmount = Number(amount)
 
-  // 格式化
+  // 格式化 - 使用更简单可靠的方法
   try {
-    const formatter = new Intl.NumberFormat('zh-CN', {
-      style: showSymbol ? 'decimal' : 'decimal',
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-      useGrouping: grouping
-    })
+    // 先保留指定小数位
+    const fixedAmount = numAmount.toFixed(decimals)
 
-    const formatted = formatter.format(numAmount)
+    // 如果需要分组显示
+    let formatted = fixedAmount
+    if (grouping) {
+      const parts = fixedAmount.split('.')
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+      formatted = parts.join('.')
+    }
+
     return showSymbol ? `${symbol}${formatted}` : formatted
   } catch (error) {
     console.error('Money formatting error:', error)
@@ -64,12 +67,19 @@ export function yuanToCents(yuan) {
 }
 
 /**
- * 计算两个金额的和
- * @param {number|string} amount1 - 金额1
- * @param {number|string} amount2 - 金额2
+ * 计算金额的和（支持两个参数或数组）
+ * @param {number|string|Array} amount1 - 金额1或金额数组
+ * @param {number|string} amount2 - 金额2（可选）
  * @returns {number} 总和（元）
  */
 export function addMoney(amount1, amount2) {
+  if (Array.isArray(amount1)) {
+    return parseFloat(
+      amount1.reduce((sum, amount) => {
+        return sum + (Number(amount) || 0)
+      }, 0).toFixed(2)
+    )
+  }
   const num1 = Number(amount1) || 0
   const num2 = Number(amount2) || 0
   return parseFloat((num1 + num2).toFixed(2))
