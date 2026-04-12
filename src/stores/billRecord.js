@@ -10,6 +10,7 @@ const STORAGE_KEY = StorageTypes.BILLS
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
 const normalizeItem = (item = {}, index = 0) => {
+  // 处理数量：优先从 quantity，然后从 totalWeight
   const quantity = Number(item.quantity ?? item.totalWeight ?? item.total_weight ?? 0)
   const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
   const amount = Number(item.amount ?? quantity * unitPrice)
@@ -21,8 +22,11 @@ const normalizeItem = (item = {}, index = 0) => {
     fabricId: item.fabricId || item.fabric_id || '',
     fabricName: item.fabricName || item.fabric_name || '',
     quantity,
-    weightInput: String((item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.quantityInput ?? quantity) || ''),
+    // 保存原始输入文本
+    weightInput: String((item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.quantityInput ?? item.totalWeight ?? '') || ''),
     totalWeight: Number(item.totalWeight ?? item.total_weight ?? quantity),
+    packCount: Number(item.packCount ?? item.pack_count ?? 0),
+    packWeight: Number(item.packWeight ?? item.pack_weight ?? 0),
     unit: item.unit || '斤',
     unitPrice,
     amount,
@@ -91,53 +95,59 @@ export const useBillRecordStore = defineStore('billRecord', () => {
 
   const persist = () => {
     try {
-      console.log('准备保存到本地存储的记录:', records.value)
+      console.log('准备保存到本地存储的记录数量:', records.value.length)
 
-      // 创建安全副本，避免循环引用问题
-      const safeRecords = records.value.map(record => {
-        const safeRecord = { ...record }
-        // 确保没有循环引用，只保存纯数据
-        delete safeRecord.details
-        // 确保 items 是数组
-        if (!Array.isArray(safeRecord.items)) {
-          safeRecord.items = []
+      // 简化的持久化逻辑
+      const saveData = records.value.map(record => {
+        // 只保存必要字段，确保数据精简
+        return {
+          id: record.id,
+          type: record.type,
+          billNo: record.billNo,
+          billDate: record.billDate,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+          partnerId: record.partnerId,
+          partnerName: record.partnerName,
+          customerId: record.customerId,
+          customerName: record.customerName,
+          supplier: record.supplier,
+          note: record.note,
+          status: record.status,
+          items: record.items.map(item => ({
+            id: item.id,
+            categoryId: item.categoryId,
+            categoryName: item.categoryName,
+            fabricId: item.fabricId,
+            fabricName: item.fabricName,
+            quantity: item.quantity,
+            weightInput: item.weightInput,
+            totalWeight: item.totalWeight,
+            packCount: item.packCount,
+            packWeight: item.packWeight,
+            unit: item.unit,
+            unitPrice: item.unitPrice,
+            amount: item.amount,
+            note: item.note
+          })),
+          totalWeight: record.totalWeight,
+          totalAmount: record.totalAmount,
+          paidAmount: record.paidAmount,
+          receivedAmount: record.receivedAmount,
+          unsettledAmount: record.unsettledAmount,
+          firstWeight: record.firstWeight,
+          lastWeight: record.lastWeight,
+          netWeight: record.netWeight
         }
-        return safeRecord
       })
 
-      // 验证数据可以正常序列化
-      JSON.stringify(safeRecords)
-
-      storage.set(STORAGE_KEY, safeRecords)
-      console.log('本地存储保存成功')
+      // 保存
+      storage.set(STORAGE_KEY, saveData)
       emitBillDataChanged()
+      console.log('保存成功')
     } catch (error) {
-      console.error('保存到本地存储失败:', error)
-      console.error('错误详情:', error.message)
-      // 尝试清理并重新保存
-      try {
-        console.log('尝试清理数据后重新保存...')
-        const cleanRecords = records.value.map(record => {
-          const { id, type, billNo, billDate, partnerName, totalWeight, totalAmount, items } = record
-          return {
-            id, type, billNo, billDate, partnerName, totalWeight, totalAmount,
-            items: (items || []).map(item => ({
-              id: item.id,
-              categoryName: item.categoryName,
-              fabricName: item.fabricName,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              amount: item.amount
-            }))
-          }
-        })
-        storage.set(STORAGE_KEY, cleanRecords)
-        emitBillDataChanged()
-        console.log('清理后数据保存成功')
-      } catch (cleanError) {
-        console.error('清理后保存也失败:', cleanError)
-        throw new Error('本地存储操作失败')
-      }
+      console.error('保存失败:', error)
+      throw error // 重新抛出，以便上层捕获
     }
   }
 

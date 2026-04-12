@@ -23,10 +23,6 @@ const billRecordStore = useBillRecordStore()
 const customerStore = useCustomerStore()
 const categoryStore = useCategoryStore()
 const fabricStore = useFabricStore()
-billRecordStore.init()
-customerStore.init()
-categoryStore.init()
-fabricStore.init()
 
 const loadExcelJS = async () => {
   const module = await import('exceljs')
@@ -296,6 +292,10 @@ const addNewDetail = () => {
 onMounted(async () => {
   document.addEventListener('click', handleOutsideClick)
   window.addEventListener(MASTER_DATA_CHANGED_EVENT, handleMasterDataChanged)
+
+  // 确保 billRecordStore 数据已经加载
+  await billRecordStore.init()
+
   if (recordId.value && !currentRecord.value) {
     try {
       await billRecordStore.fetchRecordDetail(recordId.value)
@@ -307,17 +307,36 @@ onMounted(async () => {
 })
 
 // 监听记录 ID 变化并加载数据
-watch(recordId, (newId) => {
+watch(recordId, async (newId) => {
   if (newId) {
+    // 确保数据已经加载
+    await billRecordStore.init()
     loadRecordData()
   }
 })
 
+// 监听当前记录变化，当记录数据准备好时重新加载
+watch(currentRecord, (newRecord) => {
+  if (newRecord) {
+    console.log('监听到 currentRecord 变化，重新加载数据:', newRecord)
+    loadRecordData()
+  }
+}, { immediate: true })
+
 // 加载记录数据
 const loadRecordData = () => {
-  if (!hasRecord.value) return
+  console.log('loadRecordData 开始执行，recordId:', recordId.value)
+  console.log('hasRecord.value:', hasRecord.value)
+  console.log('currentRecord.value:', currentRecord.value)
+
+  if (!hasRecord.value) {
+    console.warn('未找到记录数据')
+    return
+  }
 
   const record = currentRecord.value
+  console.log('找到记录:', record)
+
   form.orderNo = record.billNo || ''
   form.createdAt = record.createdAt || record.billDate || ''
   form.supplier = record.partnerName || ''
@@ -332,6 +351,8 @@ const loadRecordData = () => {
     : Array.isArray(record.items) && record.items.length
       ? record.items
       : []
+
+  console.log('明细数据:', sourceDetails)
 
   if (sourceDetails.length) {
     rows.value = sourceDetails.map((detail, index) => {
@@ -353,6 +374,8 @@ const loadRecordData = () => {
   } else {
     rows.value = [makeRow()]
   }
+
+  console.log('最终 rows.value:', rows.value)
 }
 
 onUnmounted(() => {

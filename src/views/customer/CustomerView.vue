@@ -4,7 +4,6 @@ import { useCustomerStore } from '../../stores/customer'
 import { showToast } from '../../utils/toast'
 
 const customerStore = useCustomerStore()
-customerStore.init()
 const keyword = ref('')
 
 const showModal = ref(false)

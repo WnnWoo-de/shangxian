@@ -53,13 +53,7 @@ const insightCards = computed(() => [
 const navigateTo = (route) => router.push(route)
 const logout = async () => { await authStore.logout() }
 
-onMounted(async () => {
-  await Promise.allSettled([
-    customerStore.init(),
-    categoryStore.init(),
-    fabricStore.init(),
-    billRecordStore.init()
-  ])
+onMounted(() => {
   loading.value = false
 })
 </script>
