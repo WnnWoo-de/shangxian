@@ -20,8 +20,6 @@ const form = reactive({
 })
 
 onMounted(() => {
-  form.username = '皖盛布碎'
-  form.password = '123456'
 })
 
 const login = async () => {
