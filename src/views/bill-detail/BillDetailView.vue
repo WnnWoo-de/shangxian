@@ -279,6 +279,216 @@ const makeRow = () => ({
   note: '',
 })
 
+const buildExportRows = () => {
+  return rows.value.filter((item) => {
+    if (!item) return false
+    return item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) > 0
+  })
+}
+
+const getExportFileBase = () => {
+  const date = new Date().toISOString().slice(0, 10)
+  const partnerName = (form.supplier.trim() || '未命名对象').replace(/[\\/:*?"<>|\s]+/g, '_')
+  const typeText = isSale.value ? '出货单' : '进货单'
+  return `${typeText}_${date}_${partnerName}`
+}
+
+const exportImage = () => {
+  const exportRows = buildExportRows()
+  if (!exportRows.length) {
+    showToast('暂无可导出的明细数据', 'error')
+    return
+  }
+
+  const canvas = document.createElement('canvas')
+  const width = 1400
+  const tableLeft = 40
+  const tableWidth = 1120
+  const rowBaseHeight = 42
+  const rowLineHeight = 22
+  const footerHeight = 90
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    showToast('导出图片失败，请重试', 'error')
+    return
+  }
+
+  const getWrappedLines = (text, maxWidth) => {
+    const source = String(text || '-').trim() || '-'
+    const segments = source.split(/\r?\n/)
+    const lines = []
+
+    segments.forEach((segment) => {
+      let currentLine = ''
+      for (const char of segment) {
+        const testLine = currentLine + char
+        if (currentLine && ctx.measureText(testLine).width > maxWidth) {
+          lines.push(currentLine)
+          currentLine = char
+        } else {
+          currentLine = testLine
+        }
+      }
+      if (currentLine) lines.push(currentLine)
+    })
+
+    return lines.length ? lines : ['-']
+  }
+
+  const columns = [
+    { key: 'fabricName', label: '布料', left: 48, width: 180 },
+    { key: 'quantityText', label: '数量 / 重量', left: 228, width: 280 },
+    { key: 'totalWeight', label: '总重量(斤)', left: 688, width: 160 },
+    { key: 'unitPrice', label: '单价(元/斤)', left: 848, width: 160 },
+    { key: 'amount', label: '金额(元)', left: 1008, width: 180 },
+  ]
+
+  ctx.font = '22px "SimSun", serif'
+  const noteLines = getWrappedLines(`备注：${form.note.trim() || '-'}`, width - 96)
+  const noteLineHeight = 30
+  const noteTop = 200
+  const noteHeight = Math.max(noteLineHeight, noteLines.length * noteLineHeight)
+  const saleModeText = '出货方式：按重量出货'
+  const tableTop = noteTop + noteHeight + 40
+
+  ctx.font = '16px "SimSun", serif'
+  const preparedRows = exportRows.map((item) => {
+    if (!item) {
+      return {
+        rowData: {
+          fabricName: '-',
+          quantityText: '-',
+          totalWeight: '0.00',
+          unitPrice: '0.00',
+          amount: formatMoney(0)
+        },
+        wrappedFabricLines: ['-'],
+        wrappedQuantityLines: ['-'],
+        rowHeight: rowBaseHeight
+      }
+    }
+
+    const rowData = {
+      fabricName: item.fabricName || '-',
+      quantityText: item.quantityInput || '-',
+      totalWeight: Number(item.quantity || 0).toFixed(2),
+      unitPrice: Number(item.unitPrice || 0).toFixed(2),
+      amount: formatMoney(Number(item.quantity || 0) * Number(item.unitPrice || 0)),
+    }
+
+    const wrappedFabricLines = getWrappedLines(rowData.fabricName, columns[0].width - 20)
+    const wrappedQuantityLines = getWrappedLines(rowData.quantityText, columns[1].width - 20)
+    const rowHeight = Math.max(rowBaseHeight, 16 + Math.max(wrappedFabricLines.length, wrappedQuantityLines.length) * rowLineHeight)
+
+    return {
+      rowData,
+      wrappedFabricLines,
+      wrappedQuantityLines,
+      rowHeight,
+    }
+  })
+
+  const totalTableHeight = preparedRows.reduce((sum, item) => sum + item.rowHeight, 0) + rowBaseHeight
+  const canvasHeight = tableTop + totalTableHeight + footerHeight
+
+  canvas.width = width
+  canvas.height = canvasHeight
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, width, canvasHeight)
+
+  ctx.fillStyle = '#1f3852'
+  ctx.font = 'bold 34px "SimSun", serif'
+  ctx.fillText(exportTitle.value, 48, 62)
+
+  ctx.font = '22px "SimSun", serif'
+  ctx.fillStyle = '#4e6b86'
+  ctx.fillText(`日期：${form.createdAt || new Date().toISOString().slice(0, 10)}`, 48, 104)
+  ctx.fillText(`${partnerLabel}：${form.supplier.trim() || '-'}`, 48, 136)
+
+  noteLines.forEach((line, index) => {
+    ctx.fillText(line, 48, noteTop + index * noteLineHeight)
+  })
+
+  ctx.fillText(`出货方式：按重量出货`, 48, noteTop + noteHeight + 22)
+
+  ctx.fillStyle = '#f2f7fc'
+  ctx.fillRect(tableLeft, tableTop, tableWidth, rowBaseHeight)
+
+  ctx.font = 'bold 18px "SimSun", serif'
+  ctx.fillStyle = '#2f506d'
+  columns.forEach((col) => {
+    ctx.fillText(col.label, col.left + 10, tableTop + 27)
+  })
+
+  ctx.font = '16px "SimSun", serif'
+  let currentY = tableTop + rowBaseHeight
+  preparedRows.forEach((item, index) => {
+    if (index % 2 === 0) {
+      ctx.fillStyle = '#f8fbff'
+      ctx.fillRect(tableLeft, currentY, tableWidth, item.rowHeight)
+    } else {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(tableLeft, currentY, tableWidth, item.rowHeight)
+    }
+
+    ctx.fillStyle = '#234462'
+    columns.forEach((col) => {
+      let textToDraw = String(item.rowData[col.key] || '-')
+
+      if (col.key === 'totalWeight' || col.key === 'unitPrice') {
+        textToDraw = Number(textToDraw || 0).toFixed(2)
+      } else if (col.key === 'amount') {
+        textToDraw = formatMoney(Number(textToDraw || 0))
+      }
+
+      if (col.key === 'fabricName') {
+        item.wrappedFabricLines.forEach((line, lineIndex) => {
+          ctx.fillText(line, col.left + 10, currentY + 14 + lineIndex * rowLineHeight)
+        })
+      } else if (col.key === 'quantityText') {
+        item.wrappedQuantityLines.forEach((line, lineIndex) => {
+          ctx.fillText(line, col.left + 10, currentY + 14 + lineIndex * rowLineHeight)
+        })
+      } else {
+        ctx.textAlign = 'right'
+        ctx.fillText(textToDraw, col.left + col.width - 10, currentY + 27)
+        ctx.textAlign = 'left'
+      }
+    })
+
+    currentY += item.rowHeight
+  })
+
+  ctx.fillStyle = '#f2f7fc'
+  ctx.fillRect(tableLeft, currentY, tableWidth, footerHeight)
+
+  ctx.font = 'bold 18px "SimSun", serif'
+  ctx.fillStyle = '#2f506d'
+  ctx.textAlign = 'left'
+  ctx.fillText('总计', tableLeft + 40, currentY + 40)
+  ctx.textAlign = 'right'
+
+  const summaryLeft = tableLeft + tableWidth - 360
+  ctx.font = '16px "SimSun", serif'
+  ctx.fillText(`总重量：${totalWeight.value.toFixed(2)} 斤`, summaryLeft, currentY + 32)
+  ctx.fillText(`总金额：${formatMoney(totalAmount.value)}`, summaryLeft, currentY + 56)
+
+  const link = document.createElement('a')
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      showToast('导出图片失败，请重试', 'error')
+      return
+    }
+    link.href = URL.createObjectURL(blob)
+    link.download = `${getExportFileBase()}.png`
+    link.click()
+    URL.revokeObjectURL(link.href)
+    showToast('图片已开始下载', 'success')
+  }, 'image/png')
+}
+
 </script>
 
 <template>
@@ -497,6 +707,7 @@ const makeRow = () => ({
         </div>
         <div class="summary-actions">
           <button type="button" class="btn-ghost" @click.stop="exportToExcel">导出表格</button>
+          <button type="button" class="btn-ghost" @click.stop="exportImage">导出图片</button>
           <button v-if="recordId" type="button" class="btn-danger" :disabled="deleting" @click.stop="handleDelete">{{ deleting ? '删除中...' : '删除单据' }}</button>
           <button type="button" class="btn-ghost" @click.stop="addNewDetail">新增明细</button>
         </div>
