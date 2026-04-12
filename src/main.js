@@ -23,33 +23,21 @@ app.use(ElementPlus, {
   locale: zhCn
 })
 
-// 统一初始化所有 store，确保应用启动时数据已经准备好
-const initStores = async () => {
-  try {
-    const authStore = useAuthStore()
-    const customerStore = useCustomerStore()
-    const categoryStore = useCategoryStore()
-    const fabricStore = useFabricStore()
-    const billRecordStore = useBillRecordStore()
+// 初始化所有 stores
+const authStore = useAuthStore()
+authStore.init()
 
-    // 初始化所有 store
-    await Promise.allSettled([
-      authStore.init(),
-      customerStore.init(),
-      categoryStore.init(),
-      fabricStore.init(),
-      billRecordStore.init()
-    ])
+const customerStore = useCustomerStore()
+customerStore.init()
 
-    console.log('所有 store 初始化完成')
-  } catch (error) {
-    console.error('初始化 store 时出错:', error)
-  }
-}
+const categoryStore = useCategoryStore()
+categoryStore.init()
 
-// 确保路由准备好后再初始化 store
-router.isReady().then(async () => {
-  await initStores()
-  // 所有 store 初始化完成后再挂载应用
-  app.mount('#app')
-})
+const fabricStore = useFabricStore()
+fabricStore.init()
+
+const billRecordStore = useBillRecordStore()
+billRecordStore.init()
+
+// 挂载应用
+app.mount('#app')

@@ -521,14 +521,10 @@ const getFabricMeta = (rowId, keyword) => {
 }
 
 const getFabricBadgeText = (row) => {
-  const idx = rows.value.findIndex((r) => r.id === row.id)
-  if (idx === -1) return '请选择布料'
-
-  const meta = getFabricMeta(row.id, rows[idx].fabricName)
+  const meta = getFabricMeta(row.id, row.fabricName)
   if (meta.exact?.defaultPrice) return `默认 ¥${Number(meta.exact.defaultPrice).toFixed(2)}/斤`
-  if (!String(rows[idx].fabricName || '').trim()) {
-    const categoryId = rows[idx].categoryId
-    const fabricsCount = categoryId ? fabricStore.getByCategory(categoryId).length : 0
+  if (!String(row.fabricName || '').trim()) {
+    const fabricsCount = row.categoryId ? fabricStore.getByCategory(row.categoryId).length : 0
     return `可选 ${fabricsCount} 种布料`
   }
   if (meta.total > 0) return `匹配 ${meta.total} 种布料`
@@ -536,12 +532,9 @@ const getFabricBadgeText = (row) => {
 }
 
 const getFabricHintText = (row) => {
-  const idx = rows.value.findIndex((r) => r.id === row.id)
-  if (idx === -1) return '请先选择品类'
-
-  const meta = getFabricMeta(row.id, rows[idx].fabricName)
+  const meta = getFabricMeta(row.id, row.fabricName)
   if (meta.exact) return '已匹配布料档案，点击下方卡片可快速替换。'
-  if (!String(rows[idx].fabricName || '').trim()) return '可直接输入，也可从下方布料卡片中选择。'
+  if (!String(row.fabricName || '').trim()) return '可直接输入，也可从下方布料卡片中选择。'
   if (meta.total > 0) return '继续输入可缩小范围，或直接点击候选卡片。'
   return '当前名称不在布料档案中，将按自定义布料保存。'
 }
@@ -1285,11 +1278,11 @@ const removeBill = async () => {
                     <span
                       class="category-badge"
                       :class="{
-                        matched: !!getCategoryMeta(rows[idx].categoryName).exact,
+                        matched: !!getCategoryMeta(item.categoryName).exact,
                         active: focusedCategoryRowId === item.id,
                       }"
                     >
-                      {{ getCategoryBadgeText(rows[idx]) }}
+                      {{ getCategoryBadgeText(item) }}
                     </span>
                   </div>
 
@@ -1297,25 +1290,25 @@ const removeBill = async () => {
                     class="category-picker"
                     :class="{
                       active: showCategoryOptions[item.id],
-                      matched: !!getCategoryMeta(rows[idx].categoryName).exact,
+                      matched: !!getCategoryMeta(item.categoryName).exact,
                     }"
                   >
                     <div class="custom-select category-select" :class="{ active: showCategoryOptions[item.id] }">
                       <input
-                        v-model="rows[idx].categoryName"
+                        v-model="item.categoryName"
                         type="text"
                         placeholder="输入品类名称"
                         class="cell-input"
                         @mousedown.stop="toggleCategoryOptions(item.id); focusedCategoryRowId = item.id"
-                        @input="updateCategoryId(item.id, rows[idx].categoryName)"
+                        @input="updateCategoryId(item.id, item.categoryName)"
                       />
                       <div class="arrow" @mousedown.stop="toggleCategoryOptions(item.id); focusedCategoryRowId = item.id">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                       </div>
                       <Transition name="fade-pop">
-                        <ul v-if="showCategoryOptions[item.id] && getFilteredCategories(rows[idx].categoryName).length" class="dropdown-list">
+                        <ul v-if="showCategoryOptions[item.id] && getFilteredCategories(item.categoryName).length" class="dropdown-list">
                           <li
-                            v-for="option in getFilteredCategories(rows[idx].categoryName)"
+                            v-for="option in getFilteredCategories(item.categoryName)"
                             :key="option.id"
                             @mousedown.stop="selectCategory(item.id, option)"
                           >
@@ -1323,7 +1316,7 @@ const removeBill = async () => {
                             <small v-if="Number(option.defaultPrice || 0) > 0">默认 ¥{{ Number(option.defaultPrice).toFixed(2) }}/斤</small>
                           </li>
                         </ul>
-                        <div v-else-if="showCategoryOptions[item.id] && rows[idx].categoryName" class="dropdown-list no-res">
+                        <div v-else-if="showCategoryOptions[item.id] && item.categoryName" class="dropdown-list no-res">
                           未找到该品类
                         </div>
                       </Transition>
@@ -1341,17 +1334,17 @@ const removeBill = async () => {
                     </div>
                   </div>
 
-                  <small class="category-hint" v-if="rows[idx].categoryName || showCategoryOptions[item.id]">{{ getCategoryHintText(rows[idx]) }}</small>
+                  <small class="category-hint" v-if="item.categoryName || showCategoryOptions[item.id]">{{ getCategoryHintText(item) }}</small>
                 </div>
               </td>
 
               <td>
                 <div class="cell-stack">
-                  <div v-if="rows[idx].categoryId" class="category-heading">
+                  <div v-if="item.categoryId" class="category-heading">
                     <span
                       class="category-badge"
                       :class="{
-                        matched: !!getFabricMeta(item.id, rows[idx].fabricName).exact,
+                        matched: !!getFabricMeta(item.id, item.fabricName).exact,
                         active: focusedFabricRowId === item.id,
                       }"
                     >
@@ -1363,15 +1356,15 @@ const removeBill = async () => {
                     class="category-picker"
                     :class="{
                       active: showFabricOptionsForRow[item.id],
-                      matched: !!getFabricMeta(item.id, rows[idx].fabricName).exact,
+                      matched: !!getFabricMeta(item.id, item.fabricName).exact,
                     }"
                   >
                     <div class="custom-select category-select" :class="{ active: showFabricOptionsForRow[item.id] }">
                       <input
-                        v-model="rows[idx].fabricName"
+                        v-model="item.fabricName"
                         type="text"
-                        :placeholder="rows[idx].categoryId ? '输入或选择布料' : '请先选择品类'"
-                        :disabled="!rows[idx].categoryId"
+                        :placeholder="item.categoryId ? '输入或选择布料' : '请先选择品类'"
+                        :disabled="!item.categoryId"
                         class="cell-input"
                         @mousedown.stop="handleFabricClick(item.id, idx)"
                       />
@@ -1379,9 +1372,9 @@ const removeBill = async () => {
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                       </div>
                       <Transition name="fade-pop">
-                        <ul v-if="showFabricOptionsForRow[item.id] && getFilteredFabrics(item.id, rows[idx].fabricName).length" class="dropdown-list">
+                        <ul v-if="showFabricOptionsForRow[item.id] && getFilteredFabrics(item.id, item.fabricName).length" class="dropdown-list">
                           <li
-                            v-for="option in getFilteredFabrics(item.id, rows[idx].fabricName)"
+                            v-for="option in getFilteredFabrics(item.id, item.fabricName)"
                             :key="option.id"
                             @mousedown.stop="selectFabric(item.id, option)"
                           >
@@ -1389,14 +1382,14 @@ const removeBill = async () => {
                             <small v-if="Number(option.defaultPrice || 0) > 0">默认 ¥{{ Number(option.defaultPrice).toFixed(2) }}/斤</small>
                           </li>
                         </ul>
-                        <div v-else-if="showFabricOptionsForRow[item.id] && rows[idx].fabricName" class="dropdown-list no-res">
+                        <div v-else-if="showFabricOptionsForRow[item.id] && item.fabricName" class="dropdown-list no-res">
                           未找到该布料
                         </div>
                       </Transition>
                     </div>
                   </div>
 
-                  <div v-if="rows[idx].categoryId && showFabricOptionsForRow[item.id]" class="suggestions">
+                  <div v-if="item.categoryId && showFabricOptionsForRow[item.id]" class="suggestions">
                     <div class="suggestion-item" @mousedown.stop="selectFabric(item.id, { id: '', name: '', defaultPrice: 0 })">
                       <div class="suggestion-name">手动录入</div>
                       <span class="suggestion-badge">新建</span>
@@ -1407,14 +1400,14 @@ const removeBill = async () => {
                     </div>
                   </div>
 
-                  <small class="category-hint" v-if="(rows[idx].categoryId && rows[idx].fabricName) || showFabricOptionsForRow[item.id]">{{ getFabricHintText(item) }}</small>
-                  <small class="category-hint" v-else-if="rows[idx].categoryId && !rows[idx].fabricName">请选择布料（可选），支持快速搜索</small>
+                  <small class="category-hint" v-if="(item.categoryId && item.fabricName) || showFabricOptionsForRow[item.id]">{{ getFabricHintText(item) }}</small>
+                  <small class="category-hint" v-else-if="item.categoryId && !item.fabricName">请选择布料（可选），支持快速搜索</small>
                 </div>
               </td>
 
               <td>
                 <input
-                  v-model="rows[idx].weightInput"
+                  v-model="item.weightInput"
                   type="text"
                   placeholder="10+10+10 / 10 10 10 / 10.10.10"
                   class="cell-input"
@@ -1429,7 +1422,7 @@ const removeBill = async () => {
 
               <td>
                 <div class="cell-stack align-with-category">
-                  <input v-model.number="rows[idx].unitPrice" type="number" step="0.01" class="cell-input" />
+                  <input v-model.number="item.unitPrice" type="number" step="0.01" class="cell-input" />
                 </div>
               </td>
 

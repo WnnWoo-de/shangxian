@@ -65,7 +65,7 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   // 登录
-  async function login(username, password, remember = false) {
+  async function login(username, password, remember = true) {
     isLoading.value = true
 
     try {
@@ -84,10 +84,9 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = mockToken
       isAuthenticated.value = true
 
-      if (remember) {
-        storage.setToken(mockToken)
-        storage.setUser(mockUser.userInfo)
-      }
+      // 始终保存到 localStorage，确保刷新后不会丢失登录状态
+      storage.setToken(mockToken)
+      storage.setUser(mockUser.userInfo)
 
       return true
     } catch (error) {

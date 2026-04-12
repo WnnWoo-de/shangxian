@@ -1,26 +1,19 @@
 <script setup>
-import { RouterView, useRouter, useRoute } from 'vue-router'
-import { watch, computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
+import { computed, onMounted } from 'vue'
 import { useAuthStore } from './stores/auth'
 import MainLayout from './layouts/MainLayout.vue'
 
 const authStore = useAuthStore()
-const router = useRouter()
 const route = useRoute()
 
 // 判断是否是登录页面
 const isLoginPage = computed(() => route.path === '/login')
 
-// 监听路由变化，确保认证状态一致
-watch(
-  () => route.path,
-  (newPath) => {
-    if (newPath !== '/login' && !authStore.isLoggedIn) {
-      router.push('/login')
-    }
-  },
-  { immediate: true }
-)
+onMounted(() => {
+  // 确保在应用挂载时重新初始化 auth store
+  authStore.init()
+})
 </script>
 
 <template>
