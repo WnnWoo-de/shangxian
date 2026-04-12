@@ -64,6 +64,7 @@ const form = reactive({
 const rows = ref([])
 const saving = ref(false)
 const deleting = ref(false)
+const isEditing = computed(() => Boolean(recordId.value))
 
 const supplierSearch = ref('')
 const fabricSearch = ref('')
@@ -204,14 +205,722 @@ const exportToExcel = async () => {
 }
 
 const handleDelete = async () => {
-  if (!isEditing.value) return
+  if (!hasRecord.value) return
   try {
     await billRecordStore.deleteRecord(currentRecord.value.id)
     showToast('删除成功')
-    router.push('/purchase/list')
+    router.push(returnRoute.value)
   } catch (error) {
     console.error('删除失败:', error)
     showToast(error.message || '删除失败，请重试')
   }
 }
+const totalWeight = computed(() => {
+  return rows.value.reduce((sum, row) => sum + Number(row.quantity || 0), 0)
+})
+
+const totalAmount = computed(() => {
+  return rows.value.reduce((sum, row) => sum + (Number(row.quantity || 0) * Number(row.unitPrice || 0)), 0)
+})
+
+const selectSupplier = (item) => {
+  form.supplier = item.name
+  supplierSearch.value = item.name
+  showSupplierOptions.value = false
+}
+
+const selectFabricForForm = (item) => {
+  form.fabricId = item.id
+  fabricSearch.value = item.name
+  showFabricOptions.value = false
+}
+
+const toggleFabricOptions = (rowId) => {
+  showFabricOptionsForRow.value[rowId] = !showFabricOptionsForRow.value[rowId]
+  focusedFabricRowId.value = rowId
+}
+
+const selectFabric = (rowId, option) => {
+  const row = rows.value.find(r => r.id === rowId)
+  if (row) {
+    row.fabricId = option.id
+    row.fabricName = option.name
+    row.unitPrice = isSale.value ? option.defaultSalePrice : option.defaultPurchasePrice
+  }
+  showFabricOptionsForRow.value[rowId] = false
+}
+
+const removeRow = (rowId) => {
+  const index = rows.value.findIndex(r => r.id === rowId)
+  if (index > -1) {
+    rows.value.splice(index, 1)
+  }
+}
+
+const addNewDetail = () => {
+  rows.value.push({
+    id: `${Date.now()}-${Math.random()}`,
+    fabricId: '',
+    fabricName: '',
+    quantityInput: '',
+    quantity: 0,
+    unitPrice: 0,
+    note: '',
+  })
+}
+
+const makeRow = () => ({
+  id: `${Date.now()}-${Math.random()}`,
+  fabricId: '',
+  fabricName: '',
+  quantityInput: '',
+  quantity: 0,
+  unitPrice: 0,
+  note: '',
+})
+
 </script>
+
+<template>
+  <section class="weight-page slide-up-enter-active">
+    <header class="topbar panel">
+      <div class="title-wrap">
+        <h2>{{ pageTitle }}</h2>
+        <p>单号：{{ form.orderNo || '-' }}</p>
+      </div>
+
+      <div class="top-actions">
+        <button type="button" class="btn-ghost" @click="router.push(returnRoute)">返回列表</button>
+        <button v-if="hasRecord" type="button" class="btn-danger" @click="handleDelete">删除</button>
+      </div>
+    </header>
+
+    <div v-if="!hasRecord" class="panel empty-state">没有找到该单据的详细信息。</div>
+
+    <div v-else class="panel workbench">
+      <div class="meta-grid">
+        <label>
+          <span>{{ partnerLabel }}</span>
+          <div class="custom-select" :class="{ active: showSupplierOptions }">
+            <input
+              v-model="supplierSearch"
+              type="text"
+              placeholder="输入或选择客户"
+              @mousedown.stop="showSupplierOptions = !showSupplierOptions"
+              @input="form.supplier = supplierSearch"
+            />
+            <div class="arrow" @mousedown.stop="showSupplierOptions = !showSupplierOptions">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <Transition name="fade-pop">
+              <ul v-if="showSupplierOptions && filteredSuppliers.length" class="dropdown-list">
+                <li v-for="item in filteredSuppliers" :key="item.id" @mousedown.stop="selectSupplier(item)">
+                  {{ item.name }}
+                </li>
+              </ul>
+              <div v-else-if="showSupplierOptions && supplierSearch" class="dropdown-list no-res">
+                未找到该客户
+              </div>
+            </Transition>
+          </div>
+        </label>
+        <label>
+          <span>布料</span>
+          <div class="custom-select" :class="{ active: showFabricOptions }">
+            <input
+              v-model="fabricSearch"
+              type="text"
+              placeholder="输入或选择布料"
+              @mousedown.stop="showFabricOptions = !showFabricOptions"
+            />
+            <div class="arrow" @mousedown.stop="showFabricOptions = !showFabricOptions">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <Transition name="fade-pop">
+              <ul v-if="showFabricOptions && fabrics.length" class="dropdown-list">
+                <li v-for="item in fabrics" :key="item.id" @mousedown.stop="selectFabricForForm(item)">
+                  {{ item.name }}
+                </li>
+              </ul>
+              <div v-else-if="showFabricOptions && fabricSearch" class="dropdown-list no-res">
+                未找到该布料
+              </div>
+            </Transition>
+          </div>
+        </label>
+        <label>
+          <span>开单时间</span>
+          <input v-model="form.createdAt" type="text" placeholder="YYYY-MM-DD HH:mm:ss" />
+        </label>
+        <label class="note-col">
+          <span>备注</span>
+          <input v-model="form.note" type="text" placeholder="可选备注信息" />
+        </label>
+      </div>
+
+      <section class="overview-grid">
+        <article class="overview-card accent-teal">
+          <span class="overview-label">{{ currentPartnerLabel }}</span>
+          <strong>{{ form.supplier || '待填写客户' }}</strong>
+          <small>已录入 {{ rows.length }} 条有效明细</small>
+        </article>
+        <article class="overview-card accent-blue">
+          <span class="overview-label">累计重量</span>
+          <strong>{{ totalWeight.toFixed(2) }} 斤</strong>
+          <small>支持 `10+10+10`、`10 10 10`、`10.10.10`、`10×3` 快速计算</small>
+        </article>
+        <article class="overview-card accent-gold">
+          <span class="overview-label">总金额</span>
+          <strong>{{ formatMoney(totalAmount) }}</strong>
+          <small>累计金额 {{ formatMoney(totalAmount) }}</small>
+        </article>
+      </section>
+
+      <div v-if="form.firstWeight > 0 || form.lastWeight > 0" class="weight-panel">
+        <div class="weight-inputs">
+          <label class="field">
+            <span>初磅 (斤)</span>
+            <input :value="form.firstWeight.toFixed(2)" type="text" readonly />
+          </label>
+          <label class="field">
+            <span>次磅 (斤)</span>
+            <input :value="form.lastWeight.toFixed(2)" type="text" readonly />
+          </label>
+          <label class="field">
+            <span>净重 (斤)</span>
+            <input :value="form.netWeight.toFixed(2)" type="text" readonly />
+          </label>
+        </div>
+      </div>
+
+      <div class="page-tipbar">
+        <div>
+          <strong>单据信息</strong>
+          <span>重量支持输入 `10+10+10`、`10 10 10`、`10.10.10`、`10×3`，系统会自动计算结果。</span>
+        </div>
+        <span class="tip-tag">单据编号 {{ form.orderNo || '-' }}</span>
+      </div>
+
+      <div class="table-box">
+        <table>
+          <thead>
+            <tr>
+              <th>布料</th>
+              <th>数量输入</th>
+              <th>总重量(斤)</th>
+              <th>单价(元/斤)</th>
+              <th>金额(元)</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, idx) in rows" :key="item.id">
+              <td>
+                <div class="cell-stack">
+                  <div class="category-heading">
+                    <span class="row-index">#{{ idx + 1 }}</span>
+                  </div>
+                  <div
+                    class="category-picker"
+                  >
+                    <div class="custom-select category-select">
+                      <input
+                        v-model="item.fabricName"
+                        type="text"
+                        placeholder="输入或选择布料"
+                        class="cell-input"
+                      />
+                      <div class="arrow" @mousedown.stop="toggleFabricOptions(item.id)">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </div>
+                      <Transition name="fade-pop">
+                        <ul v-if="showFabricOptionsForRow[item.id] && getFilteredFabrics(item.fabricName).length" class="dropdown-list">
+                          <li
+                            v-for="option in getFilteredFabrics(item.fabricName)"
+                            :key="option.id"
+                            @mousedown.stop="selectFabric(item.id, option)"
+                          >
+                            <div class="dropdown-main">{{ option.name }}</div>
+                          </li>
+                        </ul>
+                        <div v-else-if="showFabricOptionsForRow[item.id] && item.fabricName" class="dropdown-list no-res">
+                          未找到该布料
+                        </div>
+                      </Transition>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <input
+                  v-model="item.quantityInput"
+                  type="text"
+                  placeholder="10+10+10 / 10 10 10 / 10.10.10"
+                  class="cell-input"
+                />
+              </td>
+              <td>
+                <div class="cell-stack align-with-category">
+                  <span class="num">{{ Number(item.quantity || 0).toFixed(2) }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="cell-stack align-with-category">
+                  <input v-model.number="item.unitPrice" type="number" step="0.01" class="cell-input" />
+                </div>
+              </td>
+              <td>
+                <div class="cell-stack align-with-category">
+                  <span class="num amount">{{ formatMoney(Number(item.quantity || 0) * Number(item.unitPrice || 0)) }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="cell-stack align-with-category">
+                  <button type="button" class="btn-delete" @click="removeRow(item.id)">删除</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="summary">
+        <div class="summary-metrics">
+          <div class="sum-block emphasis framed-metric">
+            <span>总重量</span>
+            <strong>{{ totalWeight.toFixed(2) }} 斤</strong>
+          </div>
+          <div class="sum-block">
+            <span>总金额</span>
+            <strong>{{ formatMoney(totalAmount) }}</strong>
+          </div>
+        </div>
+        <div class="summary-actions">
+          <button type="button" class="btn-ghost" @click.stop="exportToExcel">导出表格</button>
+          <button v-if="recordId" type="button" class="btn-danger" :disabled="deleting" @click.stop="handleDelete">{{ deleting ? '删除中...' : '删除单据' }}</button>
+          <button type="button" class="btn-ghost" @click.stop="addNewDetail">新增明细</button>
+        </div>
+      </footer>
+    </div>
+  </section>
+</template>
+
+<style scoped>
+.weight-page {
+  background: var(--bg-gradient);
+  min-height: calc(100vh - 20px);
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 16px;
+}
+
+.topbar {
+  background: #fff;
+  padding: 14px 20px;
+  border-radius: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title-wrap h2 {
+  margin: 0;
+  font-size: 26px;
+  color: #223951;
+}
+
+.title-wrap p {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.top-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-danger {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #c9485b, #e06b78);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-danger:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.workbench {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 12px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.overview-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(140, 184, 218, 0.22);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 247, 252, 0.92));
+  box-shadow: 0 16px 36px rgba(44, 83, 120, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overview-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -36px -36px auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  opacity: 0.16;
+}
+
+.overview-label {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: #6d89a4;
+}
+
+.overview-card strong {
+  font-size: 28px;
+  line-height: 1.2;
+  color: #234462;
+}
+
+.overview-card small {
+  font-size: 13px;
+  color: #62809e;
+}
+
+.accent-teal::after {
+  background: #26b3a3;
+}
+
+.accent-blue::after {
+  background: #4d8fe8;
+}
+
+.accent-gold::after {
+  background: #e5ab38;
+}
+
+.page-tipbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(77, 143, 232, 0.26);
+  background: linear-gradient(90deg, rgba(236, 245, 255, 0.9), rgba(255, 250, 240, 0.78));
+}
+
+.page-tipbar strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #2f5477;
+}
+
+.page-tipbar span {
+  color: #5f7892;
+  font-size: 14px;
+}
+
+.tip-tag {
+  white-space: nowrap;
+}
+
+.table-box {
+  overflow-x: auto;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(44, 83, 120, 0.08);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  background: #f2f6fa;
+  color: #2c3e50;
+  font-weight: 700;
+  font-size: 13px;
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e1ebf4;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f4f8;
+}
+
+tbody tr:hover {
+  background: #f8fafc;
+}
+
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-heading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row-index {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.category-picker {
+  position: relative;
+}
+
+.custom-select {
+  position: relative;
+}
+
+.custom-select input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.custom-select input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.custom-select .arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dropdown-list li {
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.dropdown-list li:hover {
+  background: #f8fafc;
+}
+
+.dropdown-list.no-res {
+  padding: 10px 14px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.cell-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 14px;
+}
+
+.btn-delete {
+  padding: 6px 12px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+}
+
+.summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+}
+
+.summary-metrics {
+  display: flex;
+  gap: 24px;
+}
+
+.sum-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sum-block span {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.sum-block strong {
+  font-size: 20px;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.sum-block.emphasis {
+  background: #fff;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.summary-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-ghost {
+  padding: 10px 18px;
+  background: transparent;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-ghost:hover {
+  background: #eff6ff;
+}
+
+.btn-primary {
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.weight-panel {
+  background: linear-gradient(135deg, rgba(240, 248, 255, 0.9), rgba(255, 255, 255, 0.9));
+  border: 1px solid rgba(144, 202, 249, 0.3);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 14px 0;
+}
+
+.weight-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: end;
+}
+
+.weight-inputs .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weight-inputs label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a6fa5;
+}
+
+.weight-inputs input {
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid #9ec1e6;
+  background: #fff;
+  padding: 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.weight-inputs input:read-only {
+  background: linear-gradient(135deg, rgba(102, 187, 106, 0.1), rgba(144, 238, 144, 0.1));
+  border-color: #81c784;
+  color: #2e7d32;
+}
+
+@media (max-width: 1024px) {
+  .meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .summary-actions {
+    justify-content: center;
+  }
+}
+</style>
