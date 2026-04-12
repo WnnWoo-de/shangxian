@@ -3,7 +3,6 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useCustomerStore } from '../../stores/customer'
-import { useCategoryStore } from '../../stores/category'
 import { useFabricStore } from '../../stores/fabric'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { showToast } from '../../utils/toast'
@@ -44,7 +43,6 @@ const login = async () => {
 
     await Promise.allSettled([
       useCustomerStore().init(),
-      useCategoryStore().init(),
       useFabricStore().init(),
       useBillRecordStore().init(),
     ])

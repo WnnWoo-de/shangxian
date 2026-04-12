@@ -7,13 +7,11 @@ export const fetchStatisticsOverviewApi = async () => {
   await new Promise(resolve => setTimeout(resolve, 200))
   const bills = storage.get(StorageTypes.BILLS, [])
   const customers = storage.get(StorageTypes.CUSTOMERS, [])
-  const categories = storage.get(StorageTypes.CATEGORIES, [])
   const fabrics = storage.get(StorageTypes.FABRICS, [])
 
   return {
     billCount: bills.length,
     customerCount: customers.length,
-    categoryCount: categories.length,
     fabricCount: fabrics.length
   }
 }
@@ -41,7 +39,7 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
 
   const dailyMap = {}
   const customerMap = {}
-  const categoryMap = {}
+  const fabricMap = {}
 
   bills.forEach(bill => {
     const amount = Number(bill.totalAmount || 0)
@@ -80,14 +78,14 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
       customerMap[bill.customerName].totalWeight += weight
     }
 
-    // 品类统计
+    // 布料统计
     bill.items?.forEach(item => {
-      const categoryName = item.categoryName || '其他'
-      if (!categoryMap[categoryName]) {
-        categoryMap[categoryName] = { categoryName, totalWeight: 0, totalAmount: 0 }
+      const fabricName = item.fabricName || '其他'
+      if (!fabricMap[fabricName]) {
+        fabricMap[fabricName] = { fabricName, totalWeight: 0, totalAmount: 0 }
       }
-      categoryMap[categoryName].totalWeight += Number(item.totalWeight ?? item.weight ?? item.quantity ?? 0)
-      categoryMap[categoryName].totalAmount += Number(item.amount || 0)
+      fabricMap[fabricName].totalWeight += Number(item.totalWeight ?? item.weight ?? item.quantity ?? 0)
+      fabricMap[fabricName].totalAmount += Number(item.amount || 0)
     })
   })
 
@@ -105,7 +103,7 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
     overview,
     daily: Object.values(dailyMap),
     customerRanking: Object.values(customerMap).sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 10),
-    categoryDistribution: Object.values(categoryMap),
+    fabricDistribution: Object.values(fabricMap),
     months,
     selectedMonth: params.month || months[0]
   }

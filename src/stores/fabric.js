@@ -11,7 +11,6 @@ export const useFabricStore = defineStore('fabric', () => {
   const fabrics = ref([])
   const loading = ref(false)
   const searchKeyword = ref('')
-  const filterCategory = ref('')
   const filterStatus = ref('all') // all, active, inactive
 
   // 初始化
@@ -43,29 +42,15 @@ export const useFabricStore = defineStore('fabric', () => {
         fabric.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
         fabric.code.toLowerCase().includes(searchKeyword.value.toLowerCase())
 
-      // 品类过滤
-      const matchCategory = !filterCategory.value || fabric.categoryId === filterCategory.value
-
       // 状态过滤
       const matchStatus = filterStatus.value === 'all' || fabric.status === filterStatus.value
 
-      return matchKeyword && matchCategory && matchStatus
+      return matchKeyword && matchStatus
     })
   })
 
   const activeFabrics = computed(() => {
     return fabrics.value.filter(f => f.status === 'active')
-  })
-
-  const fabricsByCategory = computed(() => {
-    const result = {}
-    activeFabrics.value.forEach(fabric => {
-      if (!result[fabric.categoryId]) {
-        result[fabric.categoryId] = []
-      }
-      result[fabric.categoryId].push(fabric)
-    })
-    return result
   })
 
   const fabricCount = computed(() => fabrics.value.length)
@@ -106,10 +91,6 @@ export const useFabricStore = defineStore('fabric', () => {
     return fabric ? fabric.defaultSalePrice : 0
   }
 
-  // 根据品类获取布料列表
-  function getFabricsByCategoryId(categoryId) {
-    return activeFabrics.value.filter(fabric => fabric.categoryId === categoryId)
-  }
 
   // 添加布料
   async function addFabric(data) {
@@ -190,11 +171,6 @@ export const useFabricStore = defineStore('fabric', () => {
     searchKeyword.value = keyword
   }
 
-  // 按品类筛选
-  function filterByCategory(categoryId) {
-    filterCategory.value = categoryId
-  }
-
   // 按状态筛选
   function filterByStatus(status) {
     filterStatus.value = status
@@ -203,7 +179,6 @@ export const useFabricStore = defineStore('fabric', () => {
   // 重置筛选条件
   function resetFilters() {
     searchKeyword.value = ''
-    filterCategory.value = ''
     filterStatus.value = 'all'
   }
 
@@ -224,22 +199,16 @@ export const useFabricStore = defineStore('fabric', () => {
     await init()
   }
 
-  function getByCategory(categoryId) {
-    return getFabricsByCategoryId(categoryId)
-  }
-
   return {
     // 状态
     fabrics,
     loading,
     searchKeyword,
-    filterCategory,
     filterStatus,
 
     // 计算属性
     filteredFabrics,
     activeFabrics,
-    fabricsByCategory,
     fabricCount,
     activeCount,
 
@@ -252,14 +221,11 @@ export const useFabricStore = defineStore('fabric', () => {
     getFabricUnit,
     getDefaultPurchasePrice,
     getDefaultSalePrice,
-    getFabricsByCategoryId,
-    getByCategory,
     addFabric,
     updateFabric,
     deleteFabric,
     toggleFabricStatus,
     searchFabrics,
-    filterByCategory,
     filterByStatus,
     resetFilters,
     updatePrice

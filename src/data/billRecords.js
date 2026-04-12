@@ -9,8 +9,8 @@ export const billRecords = [
     note: '上午进货，含牛仔与纯棉混装',
     status: 'confirmed',
     items: [
-      { categoryId: 'k001', categoryName: '牛仔布碎', quantity: 280, unit: '斤', unitPrice: 1.66, amount: 464.8 },
-      { categoryId: 'k002', categoryName: '纯棉布碎', quantity: 120, unit: '斤', unitPrice: 2.18, amount: 261.6 },
+      { fabricId: 'fab-001', fabricName: '布条类-90×115', quantity: 280, unit: '斤', unitPrice: 1.66, amount: 464.8 },
+      { fabricId: 'fab-002', fabricName: '布条类-双条', quantity: 120, unit: '斤', unitPrice: 2.18, amount: 261.6 },
     ],
     totalWeight: 400,
     totalAmount: 726.4,
@@ -26,7 +26,7 @@ export const billRecords = [
     note: '下午出货一车',
     status: 'confirmed',
     items: [
-      { categoryId: 'k001', categoryName: '牛仔布碎', quantity: 200, unit: '斤', unitPrice: 2.28, amount: 456 },
+      { fabricId: 'fab-001', fabricName: '布条类-90×115', quantity: 200, unit: '斤', unitPrice: 2.28, amount: 456 },
     ],
     totalWeight: 200,
     totalAmount: 456,
@@ -42,7 +42,7 @@ export const billRecords = [
     note: '',
     status: 'confirmed',
     items: [
-      { categoryId: 'k003', categoryName: '混纺边角料', quantity: 330, unit: '斤', unitPrice: 1.34, amount: 442.2 },
+      { fabricId: 'fab-003', fabricName: '布条类-粗杂条', quantity: 330, unit: '斤', unitPrice: 1.34, amount: 442.2 },
     ],
     totalWeight: 330,
     totalAmount: 442.2,
@@ -58,7 +58,7 @@ export const billRecords = [
     note: '送至仓口',
     status: 'confirmed',
     items: [
-      { categoryId: 'k003', categoryName: '混纺边角料', quantity: 180, unit: '斤', unitPrice: 1.92, amount: 345.6 },
+      { fabricId: 'fab-003', fabricName: '布条类-粗杂条', quantity: 180, unit: '斤', unitPrice: 1.92, amount: 345.6 },
     ],
     totalWeight: 180,
     totalAmount: 345.6,
@@ -74,8 +74,8 @@ export const billRecords = [
     note: '',
     status: 'settled',
     items: [
-      { categoryId: 'k002', categoryName: '纯棉布碎', quantity: 250, unit: '斤', unitPrice: 2.2, amount: 550 },
-      { categoryId: 'k003', categoryName: '混纺边角料', quantity: 80, unit: '斤', unitPrice: 1.36, amount: 108.8 },
+      { fabricId: 'fab-002', fabricName: '布条类-双条', quantity: 250, unit: '斤', unitPrice: 2.2, amount: 550 },
+      { fabricId: 'fab-003', fabricName: '布条类-粗杂条', quantity: 80, unit: '斤', unitPrice: 1.36, amount: 108.8 },
     ],
     totalWeight: 330,
     totalAmount: 658.8,
@@ -91,7 +91,7 @@ export const billRecords = [
     note: '',
     status: 'confirmed',
     items: [
-      { categoryId: 'k002', categoryName: '纯棉布碎', quantity: 360, unit: '斤', unitPrice: 2.86, amount: 1029.6 },
+      { fabricId: 'fab-002', fabricName: '布条类-双条', quantity: 360, unit: '斤', unitPrice: 2.86, amount: 1029.6 },
     ],
     totalWeight: 360,
     totalAmount: 1029.6,

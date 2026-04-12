@@ -1,5 +1,5 @@
 // 主数据事件工具
-// 用于在组件间传递主数据（客户、品类、布料）变化事件
+// 用于在组件间传递主数据（客户、布料）变化事件
 
 // 事件类型常量
 export const MASTER_DATA_CHANGED_EVENT = 'master-data-changed'

@@ -14,7 +14,7 @@ export function formatMoney(amount, options = {}) {
   const {
     decimals = 2,
     showSymbol = true,
-    symbol = '¥ ',
+    symbol = '¥',
     grouping = true
   } = options
 

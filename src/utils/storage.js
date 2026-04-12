@@ -18,7 +18,6 @@ const StorageTypes = {
 
   // 业务数据
   CUSTOMERS: 'customers',
-  CATEGORIES: 'categories',
   FABRICS: 'fabrics',
   BILLS: 'bills',
 
@@ -293,11 +292,6 @@ const storage = {
   setCustomers: (customers) => set(StorageTypes.CUSTOMERS, customers),
   getCustomers: () => get(StorageTypes.CUSTOMERS, []),
   removeCustomers: () => remove(StorageTypes.CUSTOMERS),
-
-  // 业务数据 - 品类
-  setCategories: (categories) => set(StorageTypes.CATEGORIES, categories),
-  getCategories: () => get(StorageTypes.CATEGORIES, []),
-  removeCategories: () => remove(StorageTypes.CATEGORIES),
 
   // 业务数据 - 布料
   setFabrics: (fabrics) => set(StorageTypes.FABRICS, fabrics),

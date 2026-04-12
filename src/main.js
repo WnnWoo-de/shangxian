@@ -10,7 +10,6 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from '@/stores/auth'
 import { useCustomerStore } from '@/stores/customer'
-import { useCategoryStore } from '@/stores/category'
 import { useFabricStore } from '@/stores/fabric'
 import { useBillRecordStore } from '@/stores/billRecord'
 
@@ -29,9 +28,6 @@ authStore.init()
 
 const customerStore = useCustomerStore()
 customerStore.init()
-
-const categoryStore = useCategoryStore()
-categoryStore.init()
 
 const fabricStore = useFabricStore()
 fabricStore.init()

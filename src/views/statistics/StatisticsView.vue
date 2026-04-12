@@ -23,7 +23,7 @@ const summaryData = ref({
   },
   daily: [],
   customerRanking: [],
-  categoryDistribution: [],
+  fabricDistribution: [],
 })
 
 const loadStatistics = async (month = '') => {
@@ -51,7 +51,7 @@ const loadStatistics = async (month = '') => {
       },
       daily: Array.isArray(data.daily) ? data.daily : [],
       customerRanking: Array.isArray(data.customerRanking) ? data.customerRanking : [],
-      categoryDistribution: Array.isArray(data.categoryDistribution) ? data.categoryDistribution : [],
+      fabricDistribution: Array.isArray(data.fabricDistribution) ? data.fabricDistribution : [],
     }
   } finally {
     loading.value = false
@@ -76,8 +76,8 @@ const animatedPagedLedger = computed(() => pagedLedger.value.map((item) => ({
 })))
 
 const expenseByCustomer = computed(() => summaryData.value.customerRanking || [])
-const expenseByCategory = computed(() => {
-  const list = summaryData.value.categoryDistribution || []
+const expenseByFabric = computed(() => {
+  const list = summaryData.value.fabricDistribution || []
   const top = list[0]?.totalAmount || 1
   return list.map((item) => ({
     ...item,
@@ -124,7 +124,7 @@ watch(dailyLedger, () => {
 })
 
 watch(
-  [pagedLedger, expenseByCategory],
+  [pagedLedger, expenseByFabric],
   async () => {
     barMotionReady.value = false
     await nextTick()
@@ -258,14 +258,14 @@ onUnmounted(() => {
 
       <article class="panel">
         <div class="panel-head">
-          <h2>品类金额分布</h2>
-          <span class="panel-tip">Category Distribution</span>
+          <h2>布料金额分布</h2>
+          <span class="panel-tip">Fabric Distribution</span>
         </div>
         <div class="category-list">
           <div v-if="loading" class="empty">统计数据加载中...</div>
-          <div v-else-if="expenseByCategory.length === 0" class="empty">暂无品类统计数据</div>
-          <div v-for="item in expenseByCategory" :key="item.categoryName" class="category-row">
-            <div class="category-meta"><span class="name">{{ item.categoryName }}</span><span class="weight">{{ Number(item.weight || 0).toFixed(2) }} 斤</span></div>
+          <div v-else-if="expenseByFabric.length === 0" class="empty">暂无布料统计数据</div>
+          <div v-for="item in expenseByFabric" :key="item.fabricName" class="category-row">
+            <div class="category-meta"><span class="name">{{ item.fabricName }}</span><span class="weight">{{ Number(item.weight || 0).toFixed(2) }} 斤</span></div>
             <div class="bar-track"><div class="bar-fill category-fill" :class="{ ready: barMotionReady }" :style="{ width: `${barMotionReady ? item.ratio : 0}%` }"></div></div>
             <div class="category-amount">{{ formatMoney(item.amount) }}</div>
           </div>

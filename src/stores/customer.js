@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
 import { storage, StorageTypes } from '@/utils'
-import { categories, fabrics } from '@/data/initData'
+import { fabrics } from '@/data/initData'
 
 // 本地存储键名
 const STORAGE_KEY = StorageTypes.CUSTOMERS

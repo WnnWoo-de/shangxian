@@ -30,7 +30,6 @@ const menuItems = [
     label: '资料库',
     children: [
       { label: '客户管理', route: '/customer', note: '客户档案' },
-      { label: '品类管理', route: '/category', note: '价格与分类' },
       { label: '布料管理', route: '/fabric', note: '库存基础信息' }
     ]
   },

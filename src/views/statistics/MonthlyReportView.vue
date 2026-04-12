@@ -21,7 +21,7 @@ const summaryData = ref({
   },
   daily: [],
   customerRanking: [],
-  categoryDistribution: [],
+  fabricDistribution: [],
 })
 
 const loadStatistics = async (month = '') => {
@@ -49,7 +49,7 @@ const loadStatistics = async (month = '') => {
       },
       daily: Array.isArray(data.daily) ? data.daily : [],
       customerRanking: Array.isArray(data.customerRanking) ? data.customerRanking : [],
-      categoryDistribution: Array.isArray(data.categoryDistribution) ? data.categoryDistribution : [],
+      fabricDistribution: Array.isArray(data.fabricDistribution) ? data.fabricDistribution : [],
     }
   } finally {
     loading.value = false
@@ -82,12 +82,12 @@ const animatedDailyTrend = computed(() => dailyTrend.value.map((item) => ({
 
 const byCustomer = computed(() => summaryData.value.customerRanking || [])
 
-const byCategory = computed(() => {
-  const list = summaryData.value.categoryDistribution || []
+const byFabric = computed(() => {
+  const list = summaryData.value.fabricDistribution || []
   const topAmount = list[0]?.totalAmount || 1
 
   return list.map((item) => ({
-    categoryName: item.categoryName,
+    fabricName: item.fabricName,
     totalWeight: Number(item.totalWeight || 0),
     totalAmount: Number(item.totalAmount || 0),
     ratio: Math.max(5, Math.round((Number(item.totalAmount || 0) / topAmount) * 100)),
@@ -226,16 +226,16 @@ onUnmounted(() => {
       </article>
 
       <article class="panel stat-panel">
-        <h2>品类构成分析 <span class="badge">Distribution</span></h2>
+        <h2>布料构成分析 <span class="badge">Distribution</span></h2>
         <div class="bar-chart">
-          <div v-for="item in byCategory" :key="item.categoryName" class="bar-row">
-            <span class="label">{{ item.categoryName }}</span>
+          <div v-for="item in byFabric" :key="item.fabricName" class="bar-row">
+            <span class="label">{{ item.fabricName }}</span>
             <div class="bar-track">
               <div class="bar-fill" :style="{ width: `${item.ratio}%` }"></div>
             </div>
             <span class="value">{{ formatMoney(item.totalAmount) }}</span>
           </div>
-          <div v-if="!loading && byCategory.length === 0" class="empty">暂无报表数据</div>
+          <div v-if="!loading && byFabric.length === 0" class="empty">暂无报表数据</div>
           <div v-if="loading" class="empty">月报数据加载中...</div>
         </div>
       </article>

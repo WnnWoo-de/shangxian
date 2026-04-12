@@ -17,8 +17,6 @@ const normalizeItem = (item = {}, index = 0) => {
 
   return {
     id: item.id || `item-${Date.now()}-${index}`,
-    categoryId: item.categoryId || item.category_id || '',
-    categoryName: item.categoryName || item.category_name || item.category_name_snapshot || '',
     fabricId: item.fabricId || item.fabric_id || '',
     fabricName: item.fabricName || item.fabric_name || '',
     quantity,

@@ -4,7 +4,6 @@ import request from '../../utils/request'
 import { fetchStatisticsOverviewApi } from '../../api/statistics'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { useCustomerStore } from '../../stores/customer'
-import { useCategoryStore } from '../../stores/category'
 import { useFabricStore } from '../../stores/fabric'
 import { incrementalSync, forceRefreshAll, getSyncStatus, startAutoSync, stopAutoSync } from '../../utils/sync'
 import { getCache } from '../../utils/cache'
@@ -19,7 +18,6 @@ const lastSyncTime = ref('')
 
 const billRecordStore = useBillRecordStore()
 const customerStore = useCustomerStore()
-const categoryStore = useCategoryStore()
 const fabricStore = useFabricStore()
 
 const setStatus = (message, type = 'info') => {
@@ -45,7 +43,6 @@ const loadStats = async () => {
   stats.value = {
     records: Number(data.billCount || 0),
     customers: Number(data.customerCount || 0),
-    categories: Number(data.categoryCount || 0),
     fabrics: Number(data.fabricCount || 0),
   }
 }
@@ -57,7 +54,6 @@ const refreshAllData = async () => {
     await Promise.all([
       billRecordStore.refresh(),
       customerStore.refresh(),
-      categoryStore.refresh(),
       fabricStore.refresh(),
     ])
     await loadStats()
@@ -208,10 +204,6 @@ onUnmounted(() => {
           <span class="stat-label">客户</span>
         </div>
         <div class="stat-item">
-          <span class="stat-value">{{ stats.categories }}</span>
-          <span class="stat-label">品类</span>
-        </div>
-        <div class="stat-item">
           <span class="stat-value">{{ stats.fabrics }}</span>
           <span class="stat-label">布料</span>
         </div>
@@ -230,7 +222,7 @@ onUnmounted(() => {
           <li>在另一台设备上，点击「立即同步」按钮，即可获取最新数据</li>
           <li>或开启「自动同步」，系统每30秒自动获取最新数据</li>
         </ol>
-        <p><strong>支持同步的数据：</strong>单据、客户、品类、布料</p>
+        <p><strong>支持同步的数据：</strong>单据、客户、布料</p>
       </div>
     </section>
   </div>
@@ -357,7 +349,7 @@ onUnmounted(() => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 

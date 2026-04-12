@@ -4,7 +4,6 @@ import storage from '@/utils/storage'
 const LoginView = () => import('@/views/login/LoginView.vue')
 const DashboardView = () => import('@/views/dashboard/DashboardView.vue')
 const CustomerView = () => import('@/views/customer/CustomerView.vue')
-const CategoryView = () => import('@/views/category/CategoryView.vue')
 const FabricView = () => import('@/views/fabric/FabricView.vue')
 const PurchaseView = () => import('@/views/billing/PurchaseView.vue')
 const SaleView = () => import('@/views/billing/SaleView.vue')
@@ -22,7 +21,6 @@ export const ROUTES = {
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
   CUSTOMER: '/customer',
-  CATEGORY: '/category',
   FABRIC: '/fabric',
   PURCHASE_CREATE: '/purchase/create',
   PURCHASE_VIEW: '/purchase/view/:id',
@@ -74,16 +72,6 @@ const router = createRouter({
         requiresAuth: true,
         title: '客户管理 - 皖盛布碎资源结算系统',
         icon: 'customer'
-      }
-    },
-    {
-      path: ROUTES.CATEGORY,
-      name: 'category',
-      component: CategoryView,
-      meta: {
-        requiresAuth: true,
-        title: '品类管理 - 皖盛布碎资源结算系统',
-        icon: 'category'
       }
     },
     {
