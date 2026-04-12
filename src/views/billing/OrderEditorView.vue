@@ -760,7 +760,20 @@ const submit = async () => {
 
   saving.value = true
   try {
-    const payload = buildPayload('confirmed')
+    // 测试是否有序列化问题
+    const testPayload = buildPayload('confirmed')
+    console.log('准备保存的单据数据:', testPayload)
+
+    // 预检查: 确保数据可以正常序列化
+    try {
+      JSON.stringify(testPayload)
+      console.log('数据序列化检查通过')
+    } catch (jsonError) {
+      console.error('数据序列化失败:', jsonError)
+      throw new Error('数据格式错误，无法保存')
+    }
+
+    const payload = testPayload
     let targetId = payload.id
 
     if (isEditing.value && typeof billRecordStore.updateRecord === 'function') {
@@ -776,7 +789,9 @@ const submit = async () => {
     router.push(isPurchase.value ? `/purchase/view/${targetId}` : `/sale/view/${targetId}`)
   } catch (error) {
     console.error('保存单据失败:', error)
-    showToast('保存失败，请重试', 'error')
+    console.error('错误详情:', error.message)
+    const errorMsg = error.message || '请重试'
+    showToast(`保存失败: ${errorMsg}`, 'error')
   } finally {
     saving.value = false
   }

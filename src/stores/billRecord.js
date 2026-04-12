@@ -90,8 +90,55 @@ export const useBillRecordStore = defineStore('billRecord', () => {
   const initialized = ref(false)
 
   const persist = () => {
-    storage.set(STORAGE_KEY, records.value)
-    emitBillDataChanged()
+    try {
+      console.log('准备保存到本地存储的记录:', records.value)
+
+      // 创建安全副本，避免循环引用问题
+      const safeRecords = records.value.map(record => {
+        const safeRecord = { ...record }
+        // 确保没有循环引用，只保存纯数据
+        delete safeRecord.details
+        // 确保 items 是数组
+        if (!Array.isArray(safeRecord.items)) {
+          safeRecord.items = []
+        }
+        return safeRecord
+      })
+
+      // 验证数据可以正常序列化
+      JSON.stringify(safeRecords)
+
+      storage.set(STORAGE_KEY, safeRecords)
+      console.log('本地存储保存成功')
+      emitBillDataChanged()
+    } catch (error) {
+      console.error('保存到本地存储失败:', error)
+      console.error('错误详情:', error.message)
+      // 尝试清理并重新保存
+      try {
+        console.log('尝试清理数据后重新保存...')
+        const cleanRecords = records.value.map(record => {
+          const { id, type, billNo, billDate, partnerName, totalWeight, totalAmount, items } = record
+          return {
+            id, type, billNo, billDate, partnerName, totalWeight, totalAmount,
+            items: (items || []).map(item => ({
+              id: item.id,
+              categoryName: item.categoryName,
+              fabricName: item.fabricName,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              amount: item.amount
+            }))
+          }
+        })
+        storage.set(STORAGE_KEY, cleanRecords)
+        emitBillDataChanged()
+        console.log('清理后数据保存成功')
+      } catch (cleanError) {
+        console.error('清理后保存也失败:', cleanError)
+        throw new Error('本地存储操作失败')
+      }
+    }
   }
 
   const ensureLoaded = async () => {
