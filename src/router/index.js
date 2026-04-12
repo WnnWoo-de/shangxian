@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import storage from '@/utils/storage'
 
 const LoginView = () => import('@/views/login/LoginView.vue')
 const DashboardView = () => import('@/views/dashboard/DashboardView.vue')
@@ -238,8 +239,8 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('wsbs_token')
-    const user = localStorage.getItem('wsbs_user')
+    const token = storage.getToken()
+    const user = storage.getUser()
     const isAuthenticated = !!(token && user)
 
     if (!isAuthenticated) {
