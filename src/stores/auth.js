@@ -4,27 +4,78 @@ import { storage, StorageTypes } from '@/utils'
 import { useRouter } from 'vue-router'
 
 // 模拟用户数据
-const MOCK_USER = {
-  id: 'user-001',
-  username: '皖盛布碎',
-  name: '管理员',
-  phone: '',
-  avatar: '',
-  email: 'admin@wsbs.com',
-  department: '财务部',
-  role: 'admin',
-  permissions: ['all'],
-  status: 'active',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z'
-}
-
-// 模拟用户列表（用于开发调试）
 const MOCK_USERS = [
   {
     username: '皖盛布碎',
     password: '123456',
-    userInfo: MOCK_USER
+    userInfo: {
+      id: 'user-001',
+      username: '皖盛布碎',
+      name: '系统管理员',
+      phone: '',
+      avatar: '',
+      email: 'admin@wsbs.com',
+      department: '财务部',
+      role: 'admin',
+      permissions: ['all'],
+      status: 'active',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z'
+    }
+  },
+  {
+    username: '张三',
+    password: '123456',
+    userInfo: {
+      id: 'user-002',
+      username: '张三',
+      name: '张三（采购）',
+      phone: '',
+      avatar: '',
+      email: 'zhangsan@wsbs.com',
+      department: '采购部',
+      role: 'purchaser',
+      permissions: ['purchase', 'query'],
+      status: 'active',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z'
+    }
+  },
+  {
+    username: '李四',
+    password: '123456',
+    userInfo: {
+      id: 'user-003',
+      username: '李四',
+      name: '李四（销售）',
+      phone: '',
+      avatar: '',
+      email: 'lisi@wsbs.com',
+      department: '销售部',
+      role: 'sales',
+      permissions: ['sales', 'query'],
+      status: 'active',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z'
+    }
+  },
+  {
+    username: '王五',
+    password: '123456',
+    userInfo: {
+      id: 'user-004',
+      username: '王五',
+      name: '王五（仓管）',
+      phone: '',
+      avatar: '',
+      email: 'wangwu@wsbs.com',
+      department: '仓储部',
+      role: 'warehouse',
+      permissions: ['warehouse', 'query'],
+      status: 'active',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z'
+    }
   }
 ]
 
@@ -176,6 +227,16 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value?.role === 'admin'
   }
 
+  // 获取演示账号列表（用于登录页提示）
+  function getDemoAccounts() {
+    return MOCK_USERS.map(u => ({
+      username: u.username,
+      password: u.password,
+      name: u.userInfo.name,
+      role: u.userInfo.role
+    }))
+  }
+
   return {
     // 状态
     user,
@@ -196,6 +257,7 @@ export const useAuthStore = defineStore('auth', () => {
     updateUserInfo,
     checkSession,
     getPermissions,
-    isAdmin
+    isAdmin,
+    getDemoAccounts
   }
 })
