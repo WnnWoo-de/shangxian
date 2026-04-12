@@ -22,6 +22,12 @@ const form = reactive({
 onMounted(() => {
 })
 
+// //#endregion
+//  onMounted(() => {
+//        form.username = '皖盛布碎'                                                
+//        form.password = '123456'                                                  
+//       })
+
 const login = async () => {
   if (!form.username.trim() || !form.password) {
     return showToast('请填写完整账号和密码', 'warning')
