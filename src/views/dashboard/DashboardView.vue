@@ -6,6 +6,14 @@ import { useCustomerStore } from '@/stores/customer'
 import { useFabricStore } from '@/stores/fabric'
 import { useBillRecordStore } from '@/stores/billRecord'
 import logoUrl from '@/assets/logo.svg'
+import { ElMessageBox } from 'element-plus'
+import IconPurchase from '@/components/icons/IconPurchase.vue'
+import IconSale from '@/components/icons/IconSale.vue'
+import IconList from '@/components/icons/IconList.vue'
+import IconCustomer from '@/components/icons/IconCustomer.vue'
+import IconFabric from '@/components/icons/IconFabric.vue'
+import IconReport from '@/components/icons/IconReport.vue'
+import IconStatistics from '@/components/icons/IconStatistics.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -13,115 +21,234 @@ const customerStore = useCustomerStore()
 const fabricStore = useFabricStore()
 const billRecordStore = useBillRecordStore()
 const loading = ref(true)
+const timeRange = ref('today') // today, week, month
 
+// 快捷操作 - 简化为核心功能
 const shortcuts = [
-  { label: '进货开单', route: '/purchase/create', tag: 'Procurement', accent: 'teal' },
-  { label: '进货列表', route: '/purchase/list', tag: 'Archive', accent: 'gold' },
-  { label: '出货开单', route: '/sale/create', tag: 'Sales', accent: 'ink' },
-  { label: '出货列表', route: '/sale/list', tag: 'Tracking', accent: 'mint' },
-  { label: '月度报表', route: '/statistics/monthly', tag: 'Review', accent: 'sun' }
+  { label: '进货开单', route: '/purchase/create', icon: IconPurchase, color: '#1a915c' },
+  { label: '出货开单', route: '/sale/create', icon: IconSale, color: '#2c3e50' },
+  { label: '进货记录', route: '/purchase/list', icon: IconList, color: '#d4a76a' },
+  { label: '出货记录', route: '/sale/list', icon: IconReport, color: '#62c29a' },
+  { label: '客户管理', route: '/customer', icon: IconCustomer, color: '#9ecfc2' },
+  { label: '布料管理', route: '/fabric', icon: IconFabric, color: '#e67e22' },
 ]
 
-const today = new Date().toISOString().slice(0, 10)
-const todayBills = computed(() => billRecordStore.records.filter((item) => item.billDate === today))
-const todayBillCount = computed(() => todayBills.value.length)
-const todayTotalAmount = computed(() => todayBills.value.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0))
+// 获取日期范围
+const getDateRange = () => {
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
 
-const stats = computed(() => [
-  { label: '今日开单', value: todayBillCount.value, suffix: '单', accent: 'teal' },
-  { label: '今日金额', value: Number(todayTotalAmount.value || 0).toFixed(2), prefix: '¥ ', accent: 'gold' },
-  { label: '活跃客户', value: customerStore.activeCount, suffix: '位', accent: 'mint' },
-  { label: '布料种类', value: fabricStore.activeCount, suffix: '类', accent: 'ink' }
-])
-
-const insightCards = computed(() => [
-  {
-    title: '基础数据',
-    desc: `客户 ${customerStore.activeCount} · 布料 ${fabricStore.activeCount}`,
-    route: '/customer'
-  },
-  {
-    title: '经营节奏',
-    desc: todayBillCount.value > 0 ? '今天已有业务流转，继续保持录入完整度。' : '今天尚未开单，可以从进货或出货开始。',
-    route: '/dashboard'
+  if (timeRange.value === 'today') {
+    return { start: today, end: today }
+  } else if (timeRange.value === 'week') {
+    const weekStart = new Date(now)
+    weekStart.setDate(now.getDate() - now.getDay())
+    return {
+      start: weekStart.toISOString().slice(0, 10),
+      end: today
+    }
+  } else {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    return {
+      start: monthStart.toISOString().slice(0, 10),
+      end: today
+    }
   }
-])
+}
+
+// 筛选指定日期范围内的单据
+const filteredBills = computed(() => {
+  const { start, end } = getDateRange()
+  return billRecordStore.records.filter(item => {
+    const billDate = item.billDate || item.createdAt?.slice?.(0, 10)
+    return billDate >= start && billDate <= end
+  })
+})
+
+const purchaseBills = computed(() => filteredBills.value.filter(item => item.type === 'purchase'))
+const saleBills = computed(() => filteredBills.value.filter(item => item.type === 'sale'))
+
+// 计算统计数据
+const stats = computed(() => {
+  const purchaseCount = purchaseBills.value.length
+  const saleCount = saleBills.value.length
+  const purchaseAmount = purchaseBills.value.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0)
+  const saleAmount = saleBills.value.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0)
+  const profit = saleAmount - purchaseAmount
+
+  return [
+    { label: '进货单数', value: purchaseCount, suffix: '单', color: '#1a915c', icon: IconPurchase },
+    { label: '出货单数', value: saleCount, suffix: '单', color: '#2c3e50', icon: IconSale },
+    { label: '进货金额', value: Number(purchaseAmount).toFixed(2), prefix: '¥ ', color: '#d4a76a', icon: IconList },
+    { label: '出货金额', value: Number(saleAmount).toFixed(2), prefix: '¥ ', color: '#62c29a', icon: IconReport },
+    { label: '经营利润', value: Number(profit).toFixed(2), prefix: '¥ ', color: profit >= 0 ? '#1a915c' : '#e74c3c', icon: IconStatistics },
+    { label: '活跃客户', value: customerStore.activeCount, suffix: '位', color: '#9ecfc2', icon: IconCustomer },
+  ]
+})
+
+// 最近单据
+const recentBills = computed(() => {
+  return [...billRecordStore.records]
+    .sort((a, b) => new Date(b.createdAt || b.billDate) - new Date(a.createdAt || a.billDate))
+    .slice(0, 5)
+})
+
+// 快捷提示
+const getQuickTip = () => {
+  if (recentBills.value.length === 0) {
+    return '欢迎使用！点击上方按钮开始创建第一张单据。'
+  }
+  const todayCount = filteredBills.value.length
+  if (todayCount === 0) {
+    return '今天还没有开单，从进货或出货开始吧！'
+  }
+  return `今天已开 ${todayCount} 单，继续保持！`
+}
 
 const navigateTo = (route) => router.push(route)
-const logout = async () => { await authStore.logout() }
+const viewBill = (bill) => {
+  const type = bill.type === 'purchase' ? 'purchase' : 'sale'
+  router.push(`/${type}/view/${bill.id}`)
+}
+const logout = async () => {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await authStore.logout()
+  } catch {
+    // 用户取消
+  }
+}
 
-onMounted(() => {
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return `${date.getMonth() + 1}月${date.getDate()}日`
+}
+
+const getBillTypeLabel = (type) => type === 'purchase' ? '进货' : '出货'
+const getBillTypeColor = (type) => type === 'purchase' ? '#1a915c' : '#2c3e50'
+
+onMounted(async () => {
+  await Promise.all([
+    customerStore.init?.(),
+    fabricStore.init?.(),
+    billRecordStore.init?.()
+  ])
   loading.value = false
 })
 </script>
 
 <template>
   <div class="dashboard-page">
-    <section class="hero-panel">
-      <div class="hero-copy">
-        <div class="hero-badge">
-          <img :src="logoUrl" alt="logo" class="hero-logo" />
-          <span>皖盛布碎 · 移动端经营中枢</span>
+    <!-- 欢迎区域 -->
+    <section class="welcome-section">
+      <div class="welcome-content">
+        <div class="welcome-header">
+          <div class="logo-badge">
+            <img :src="logoUrl" alt="logo" class="logo-img" />
+            <span>皖盛布碎</span>
+          </div>
+          <button class="logout-btn" @click="logout">退出</button>
         </div>
-        <h1>欢迎回来，{{ authStore.user?.name || '用户' }}</h1>
-        <p>
-          让进货、出货、客户与结算像翻一页账本一样顺手，
-          在同一块面板里完成今天的经营动作。
-        </p>
-        <div class="hero-actions">
-          <button class="primary-action" @click="navigateTo('/purchase/create')">开始开单</button>
-          <button class="ghost-action" @click="logout">退出登录</button>
-        </div>
-      </div>
-
-      <div class="hero-metrics">
-        <div class="metric-orb">
-          <span class="metric-label">今日金额</span>
-          <strong>¥ {{ Number(todayTotalAmount || 0).toFixed(2) }}</strong>
-          <small>实时同步业务流转</small>
-        </div>
-        <div class="metric-mini-card">
-          <span>今日开单</span>
-          <strong>{{ todayBillCount }}</strong>
-        </div>
+        <h1>你好，{{ authStore.user?.name || '用户' }}</h1>
+        <p class="welcome-tip">{{ getQuickTip() }}</p>
       </div>
     </section>
 
-    <section class="stats-grid" v-if="!loading">
-      <article v-for="item in stats" :key="item.label" class="stat-card" :data-accent="item.accent">
-        <span class="stat-label">{{ item.label }}</span>
-        <div class="stat-value">{{ item.prefix || '' }}{{ item.value }}{{ item.suffix || '' }}</div>
-      </article>
-    </section>
-
-    <section class="quick-section">
-      <h2>快速访问</h2>
-      <div class="quick-grid">
+    <!-- 时间范围选择 -->
+    <section class="time-range-section">
+      <div class="time-range-tabs">
         <button
-          v-for="item in shortcuts"
-          :key="item.label"
-          class="quick-card"
-          @click="navigateTo(item.route)"
+          v-for="range in [
+            { key: 'today', label: '今日' },
+            { key: 'week', label: '本周' },
+            { key: 'month', label: '本月' }
+          ]"
+          :key="range.key"
+          :class="['time-tab', { active: timeRange === range.key }]"
+          @click="timeRange = range.key"
         >
-          <span class="quick-label">{{ item.label }}</span>
-          <span class="quick-tag">{{ item.tag }}</span>
+          {{ range.label }}
         </button>
       </div>
     </section>
 
-    <section class="insights-section" v-if="!loading">
-      <h2>经营洞察</h2>
-      <div class="insights-grid">
-        <article
-          v-for="item in insightCards"
-          :key="item.title"
-          class="insight-card"
+    <!-- 统计卡片 -->
+    <section class="stats-section" v-if="!loading">
+      <div class="stats-grid">
+        <article v-for="item in stats" :key="item.label" class="stat-card" :style="{ borderTopColor: item.color }">
+          <div class="stat-icon" :style="{ background: item.color + '15' }">
+            <component :is="item.icon" style="width: 24px; height: 24px;" />
+          </div>
+          <div class="stat-content">
+            <span class="stat-label">{{ item.label }}</span>
+            <div class="stat-value">{{ item.prefix || '' }}{{ item.value }}{{ item.suffix || '' }}</div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 快捷操作 -->
+    <section class="shortcuts-section">
+      <h2 class="section-title">快速开始</h2>
+      <div class="shortcuts-grid">
+        <button
+          v-for="item in shortcuts"
+          :key="item.label"
+          class="shortcut-card"
           @click="navigateTo(item.route)"
         >
-          <h3>{{ item.title }}</h3>
-          <p>{{ item.desc }}</p>
-          <span class="insight-arrow">→</span>
+          <span class="shortcut-icon" :style="{ background: item.color + '15', color: item.color }">
+            <component :is="item.icon" style="width: 24px; height: 24px;" />
+          </span>
+          <span class="shortcut-label">{{ item.label }}</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 最近单据 -->
+    <section class="recent-section" v-if="!loading && recentBills.length > 0">
+      <div class="section-header">
+        <h2 class="section-title">最近单据</h2>
+        <button class="see-more-btn" @click="navigateTo('/purchase/list')">查看全部 →</button>
+      </div>
+      <div class="recent-list">
+        <article
+          v-for="bill in recentBills"
+          :key="bill.id"
+          class="recent-item"
+          @click="viewBill(bill)"
+        >
+          <div class="recent-type" :style="{ background: getBillTypeColor(bill.type) + '15', color: getBillTypeColor(bill.type) }">
+            {{ getBillTypeLabel(bill.type) }}
+          </div>
+          <div class="recent-info">
+            <div class="recent-partner">{{ bill.partnerName || '未命名' }}</div>
+            <div class="recent-meta">
+              <span>{{ formatDate(bill.billDate || bill.createdAt) }}</span>
+              <span>·</span>
+              <span>{{ bill.billNo || '-' }}</span>
+            </div>
+          </div>
+          <div class="recent-amount">
+            ¥ {{ Number(bill.totalAmount || 0).toFixed(2) }}
+          </div>
         </article>
+      </div>
+    </section>
+
+    <!-- 空状态提示 -->
+    <section class="empty-section" v-if="!loading && recentBills.length === 0">
+      <div class="empty-card">
+        <div class="empty-icon">
+          <IconList style="width: 48px; height: 48px; color: #d4a76a;" />
+        </div>
+        <h3>还没有单据</h3>
+        <p>点击上方的"进货开单"或"出货开单"开始创建你的第一张单据</p>
       </div>
     </section>
   </div>
@@ -130,56 +257,36 @@ onMounted(() => {
 <style scoped lang="scss">
 .dashboard-page {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 20% 10%, rgba(227, 187, 122, 0.12), transparent 26%),
-    radial-gradient(circle at 80% 20%, rgba(181, 158, 122, 0.12), transparent 28%),
-    linear-gradient(180deg, #fffaf3 0%, #f5ebde 100%);
-  padding: 18px 16px 24px;
+  background: linear-gradient(180deg, #fffaf3 0%, #f5ebde 100%);
+  padding: 16px;
+  padding-bottom: 32px;
 }
 
-.hero-panel {
-  display: grid;
-  grid-template-columns: 1fr minmax(0, 480px);
-  gap: 28px;
-  align-items: center;
-  padding: 28px;
-  background: rgba(255, 250, 241, 0.92);
-  border-radius: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow:
-    0 24px 60px rgba(187, 161, 130, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(22px);
-
-  @include respond-to(md) {
-    grid-template-columns: 1fr;
-    padding: 22px;
-    gap: 20px;
-  }
-
-  @include respond-to(sm) {
-    padding: 18px;
-  }
+/* 欢迎区域 */
+.welcome-section {
+  margin-bottom: 20px;
 }
 
-.hero-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.welcome-content {
+  .welcome-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
 
-  .hero-badge {
+  .logo-badge {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
+    gap: 8px;
+    padding: 8px 14px;
     background: rgba(227, 187, 122, 0.16);
     border-radius: 999px;
-    width: fit-content;
     border: 1px solid rgba(227, 187, 122, 0.35);
 
-    .hero-logo {
-      width: 28px;
-      height: 28px;
+    .logo-img {
+      width: 24px;
+      height: 24px;
       object-fit: contain;
     }
 
@@ -192,283 +299,181 @@ onMounted(() => {
     }
   }
 
+  .logout-btn {
+    padding: 8px 16px;
+    background: rgba(255, 250, 241, 0.7);
+    border: 1px solid rgba(28, 43, 51, 0.1);
+    border-radius: 999px;
+    color: #4a4137;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(217, 124, 112, 0.14);
+      border-color: rgba(217, 124, 112, 0.28);
+    }
+  }
+
   h1 {
-    font-size: 32px;
-    font-weight: 700;
-    color: #231f1c;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-
-    @include respond-to(md) {
-      font-size: 28px;
-    }
-  }
-
-  p {
-    font-size: 16px;
-    color: #645a4e;
-    line-height: 1.6;
-    max-width: 560px;
-  }
-
-  .hero-actions {
-    display: flex;
-    gap: 14px;
-    margin-top: 8px;
-
-    @include respond-to(sm) {
-      flex-direction: column;
-    }
-  }
-}
-
-.primary-action {
-  padding: 14px 26px;
-  background: linear-gradient(135deg, #e3bb7a 0%, #d6a85e 100%);
-  border: none;
-  border-radius: 999px;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  box-shadow: 0 18px 40px rgba(227, 187, 122, 0.36);
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 22px 50px rgba(227, 187, 122, 0.4);
-    background: linear-gradient(135deg, #e7c797 0%, #dbae6c 100%);
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 12px 30px rgba(227, 187, 122, 0.32);
-  }
-}
-
-.ghost-action {
-  padding: 14px 22px;
-  background: rgba(255, 250, 241, 0.7);
-  border: 1px solid rgba(28, 43, 51, 0.1);
-  border-radius: 999px;
-  color: #4a4137;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
-
-  &:hover {
-    background: rgba(255, 248, 235, 0.9);
-    border-color: rgba(28, 43, 51, 0.16);
-    transform: translateY(-1px);
-  }
-}
-
-.hero-metrics {
-  display: flex;
-  gap: 18px;
-  align-items: stretch;
-
-  @include respond-to(md) {
-    flex-direction: column;
-  }
-}
-
-.metric-orb {
-  flex: 1;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.95), transparent 60%),
-    linear-gradient(135deg, #fffaf3 0%, #f3e9dc 100%);
-  border-radius: 28px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow:
-    0 18px 42px rgba(187, 161, 130, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-
-  .metric-label {
-    font-size: 13px;
-    color: #6a5d52;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-
-  strong {
-    font-size: 32px;
-    font-weight: 700;
-    color: #231f1c;
-    line-height: 1.1;
-  }
-
-  small {
-    font-size: 13px;
-    color: #8b7d70;
-    margin-top: 6px;
-  }
-}
-
-.metric-mini-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 140px;
-  padding: 18px;
-  background: rgba(250, 242, 232, 0.92);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow:
-    0 14px 36px rgba(187, 161, 130, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-
-  span {
-    font-size: 13px;
-    color: #6a5d52;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  strong {
     font-size: 28px;
     font-weight: 700;
     color: #231f1c;
-    margin-top: 6px;
+    line-height: 1.1;
+    margin: 0 0 8px;
   }
+
+  .welcome-tip {
+    font-size: 15px;
+    color: #645a4e;
+    line-height: 1.5;
+    margin: 0;
+  }
+}
+
+/* 时间范围选择 */
+.time-range-section {
+  margin-bottom: 20px;
+}
+
+.time-range-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 250, 241, 0.8);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.time-tab {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6a5d52;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &.active {
+    background: linear-gradient(135deg, #e3bb7a 0%, #d6a85e 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(227, 187, 122, 0.3);
+  }
+
+  &:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* 统计卡片 */
+.stats-section {
+  margin-bottom: 24px;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-  margin-top: 24px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 
-  @include respond-to(md) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-
-  @include respond-to(sm) {
-    grid-template-columns: 1fr;
-    gap: 14px;
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
 .stat-card {
-  padding: 20px;
-  background: rgba(255, 250, 241, 0.85);
-  border-radius: 24px;
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 250, 241, 0.9);
+  border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow:
-    0 16px 40px rgba(187, 161, 130, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(18px);
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  border-top: 3px solid;
+  box-shadow: 0 12px 30px rgba(187, 161, 130, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 20px 50px rgba(187, 161, 130, 0.12);
-    border-color: rgba(227, 187, 122, 0.4);
   }
+}
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--accent-gradient);
-  }
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
 
-  &[data-accent="teal"] {
-    --accent-gradient: linear-gradient(90deg, #1a915c, #23ac6f);
-  }
-
-  &[data-accent="gold"] {
-    --accent-gradient: linear-gradient(90deg, #d4a76a, #e3bb7a);
-  }
-
-  &[data-accent="mint"] {
-    --accent-gradient: linear-gradient(90deg, #62c29a, #7ec9a3);
-  }
-
-  &[data-accent="ink"] {
-    --accent-gradient: linear-gradient(90deg, #2c3e50, #34495e);
-  }
-
-  &[data-accent="sun"] {
-    --accent-gradient: linear-gradient(90deg, #e67e22, #f39c12);
-  }
+.stat-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .stat-label {
-  font-size: 13px;
-  color: #6a5d52;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  color: #8b7d70;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
   color: #231f1c;
-  margin-top: 10px;
-  line-height: 1.1;
+  line-height: 1.2;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.quick-section {
-  margin-top: 28px;
-
-  h2 {
-    font-size: 20px;
-    font-weight: 700;
-    color: #231f1c;
-    margin-bottom: 18px;
-    letter-spacing: 0.02em;
-  }
+/* 快捷操作 */
+.shortcuts-section {
+  margin-bottom: 24px;
 }
 
-.quick-grid {
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #231f1c;
+  margin: 0 0 14px;
+}
+
+.shortcuts-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 
-  @include respond-to(md) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  @include respond-to(sm) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(6, 1fr);
   }
 }
 
-.quick-card {
-  padding: 20px;
-  background: rgba(255, 250, 241, 0.88);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow:
-    0 12px 30px rgba(187, 161, 130, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  cursor: pointer;
-  transition: all 0.2s ease;
+.shortcut-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px;
+  background: rgba(255, 250, 241, 0.9);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 30px rgba(187, 161, 130, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 18px 40px rgba(187, 161, 130, 0.12);
+    box-shadow: 0 16px 40px rgba(187, 161, 130, 0.12);
     background: rgba(255, 248, 235, 0.96);
-    border-color: rgba(227, 187, 122, 0.35);
   }
 
   &:active {
@@ -476,110 +481,145 @@ onMounted(() => {
   }
 }
 
-.quick-label {
-  font-size: 16px;
+.shortcut-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+
+.shortcut-label {
+  font-size: 13px;
   font-weight: 600;
   color: #231f1c;
+  text-align: center;
   line-height: 1.3;
 }
 
-.quick-tag {
-  font-size: 12px;
-  color: #8b7d70;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+/* 最近单据 */
+.recent-section {
+  margin-bottom: 24px;
 }
 
-.insights-section {
-  margin-top: 28px;
-
-  h2 {
-    font-size: 20px;
-    font-weight: 700;
-    color: #231f1c;
-    margin-bottom: 18px;
-    letter-spacing: 0.02em;
-  }
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
 }
 
-.insights-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-
-  @include respond-to(md) {
-    grid-template-columns: 1fr;
-  }
-}
-
-.insight-card {
-  padding: 24px;
-  background: rgba(250, 242, 232, 0.9);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow:
-    0 16px 40px rgba(187, 161, 130, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(18px);
+.see-more-btn {
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  color: #9b7e5c;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #d4a76a, #e3bb7a);
-  }
+  border-radius: 999px;
+  transition: background 0.2s ease;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 20px 50px rgba(187, 161, 130, 0.12);
-    border-color: rgba(227, 187, 122, 0.35);
-  }
-
-  h3 {
-    font-size: 18px;
-    font-weight: 700;
-    color: #231f1c;
-    margin-bottom: 10px;
-    letter-spacing: 0.01em;
-  }
-
-  p {
-    font-size: 14px;
-    color: #6a5d52;
-    line-height: 1.6;
-    margin-bottom: 12px;
-  }
-
-  .insight-arrow {
-    position: absolute;
-    right: 24px;
-    bottom: 24px;
-    width: 32px;
-    height: 32px;
-    display: grid;
-    place-items: center;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 50%;
-    border: 1px solid rgba(28, 43, 51, 0.08);
-    font-size: 16px;
-    font-weight: 700;
-    color: #231f1c;
+    background: rgba(227, 187, 122, 0.15);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 250, 241, 0.9);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 24px rgba(187, 161, 130, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateX(2px);
+    background: rgba(255, 248, 235, 0.96);
+    border-color: rgba(227, 187, 122, 0.35);
   }
+}
+
+.recent-type {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.recent-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-partner {
+  font-size: 15px;
+  font-weight: 600;
+  color: #231f1c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-meta {
+  font-size: 12px;
+  color: #8b7d70;
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+}
+
+.recent-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #231f1c;
+  flex-shrink: 0;
+}
+
+/* 空状态 */
+.empty-section {
+  margin-top: 20px;
+}
+
+.empty-card {
+  padding: 32px 24px;
+  background: rgba(255, 250, 241, 0.8);
+  border-radius: 24px;
+  border: 1px dashed rgba(227, 187, 122, 0.4);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.empty-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #231f1c;
+  margin: 0 0 8px;
+}
+
+.empty-card p {
+  font-size: 14px;
+  color: #6a5d52;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
 }
 </style>
