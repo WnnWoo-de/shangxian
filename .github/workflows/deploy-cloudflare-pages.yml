@@ -9,10 +9,6 @@ on:
 permissions:
   contents: read
 
-env:
-  NODE_VERSION: 20
-  CLOUDFLARE_PAGES_PROJECT: ws-wnnw
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -21,14 +17,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          node-version: 20.19.0
+          cache: "npm"
 
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps
+      - name: Clean install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
 
       - name: Build project
         run: npm run build
@@ -38,7 +36,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: >-
-            pages deploy dist
-            --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }}
-            --branch=main
+          command: pages deploy dist --project-name=ws-wnnw
