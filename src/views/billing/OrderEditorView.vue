@@ -328,8 +328,8 @@ const loadDraft = () => {
 
 const saveBill = async () => {
   // 验证必填项
-  if (!form.partnerId) {
-    showToast('请选择客户')
+  if (!form.partnerName.trim()) {
+    showToast('请输入客户名称')
     return
   }
 
