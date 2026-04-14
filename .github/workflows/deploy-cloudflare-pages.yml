@@ -4,36 +4,36 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 permissions:
   contents: read
+  deployments: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    name: Deploy to Cloudflare Pages
+    environment: production
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20.19.0
-          cache: "npm"
 
-      - name: Clean install
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
 
       - name: Build project
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=ws-wnnw
+          projectName: ws-wnnw
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
