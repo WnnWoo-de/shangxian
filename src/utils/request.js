@@ -3,9 +3,13 @@ import axios from 'axios'
 import storage from './storage'
 import { showErrorToast } from './toast'
 
-const DEFAULT_API_BASE = '/api'
+const PROD_WORKER_API_BASE = 'https://my-cloudflare-backend.wnnwwnnw0705.workers.dev/api'
+const DEFAULT_API_BASE = import.meta.env.DEV ? '/api' : PROD_WORKER_API_BASE
 const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
-const FALLBACK_API_BASE = (import.meta.env.VITE_FALLBACK_API_BASE_URL || '').trim()
+const FALLBACK_API_BASE = (
+  import.meta.env.VITE_FALLBACK_API_BASE_URL
+  || (PRIMARY_API_BASE === '/api' ? PROD_WORKER_API_BASE : '')
+).trim()
 
 const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
