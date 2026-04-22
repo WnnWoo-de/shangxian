@@ -5,5 +5,5 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "ws-wnnw-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "e3c6d78d-0edd-4a47-b9b5-d48bc07d25c2"
 migrations_dir = "migrations"
