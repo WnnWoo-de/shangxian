@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCustomerStore } from '@/stores/customer'
@@ -14,6 +14,7 @@ import IconCustomer from '@/components/icons/IconCustomer.vue'
 import IconFabric from '@/components/icons/IconFabric.vue'
 import IconReport from '@/components/icons/IconReport.vue'
 import IconStatistics from '@/components/icons/IconStatistics.vue'
+import { onBillDataChanged } from '@/utils/bill-events'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -22,6 +23,8 @@ const fabricStore = useFabricStore()
 const billRecordStore = useBillRecordStore()
 const loading = ref(true)
 const timeRange = ref('today') // today, week, month
+let disposeBillChangedListener = null
+let syncingRecentBills = false
 
 // 快捷操作 - 简化为核心功能
 const shortcuts = [
@@ -132,13 +135,42 @@ const formatDate = (dateStr) => {
 const getBillTypeLabel = (type) => type === 'purchase' ? '进货' : '出货'
 const getBillTypeColor = (type) => type === 'purchase' ? '#1a915c' : '#2c3e50'
 
+const syncBillsFromCloud = async () => {
+  if (syncingRecentBills) return
+  syncingRecentBills = true
+  try {
+    await billRecordStore.refresh?.()
+  } catch (error) {
+    console.warn('Dashboard sync bills failed:', error)
+  } finally {
+    syncingRecentBills = false
+  }
+}
+
+const handlePageVisible = () => {
+  if (document.visibilityState === 'visible') {
+    void syncBillsFromCloud()
+  }
+}
+
 onMounted(async () => {
   await Promise.all([
     customerStore.init?.(),
     fabricStore.init?.(),
-    billRecordStore.init?.()
+    syncBillsFromCloud()
   ])
+
+  disposeBillChangedListener = onBillDataChanged(() => {
+    void syncBillsFromCloud()
+  })
+  document.addEventListener('visibilitychange', handlePageVisible)
   loading.value = false
+})
+
+onUnmounted(() => {
+  disposeBillChangedListener?.()
+  disposeBillChangedListener = null
+  document.removeEventListener('visibilitychange', handlePageVisible)
 })
 </script>
 
