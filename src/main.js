@@ -1,6 +1,6 @@
 import './assets/styles/main.scss'
 
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useCustomerStore } from '@/stores/customer'
 import { useFabricStore } from '@/stores/fabric'
 import { useBillRecordStore } from '@/stores/billRecord'
+import { incrementalSync, startAutoSync, stopAutoSync } from '@/utils/sync'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -34,6 +35,19 @@ fabricStore.init()
 
 const billRecordStore = useBillRecordStore()
 billRecordStore.init()
+
+watch(
+  () => authStore.isLoggedIn,
+  async (loggedIn) => {
+    if (loggedIn) {
+      startAutoSync(30000)
+      await incrementalSync()
+      return
+    }
+    stopAutoSync()
+  },
+  { immediate: true }
+)
 
 // 挂载应用
 app.mount('#app')

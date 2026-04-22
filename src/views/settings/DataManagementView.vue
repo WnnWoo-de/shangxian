@@ -1,12 +1,11 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import request from '../../utils/request'
 import { fetchStatisticsOverviewApi } from '../../api/statistics'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { useCustomerStore } from '../../stores/customer'
 import { useFabricStore } from '../../stores/fabric'
 import { incrementalSync, forceRefreshAll, getSyncStatus, startAutoSync, stopAutoSync } from '../../utils/sync'
-import { getCache } from '../../utils/cache'
 
 const loading = ref(false)
 const status = ref('')
@@ -69,11 +68,16 @@ const refreshAllData = async () => {
 const syncData = async () => {
   syncing.value = true
   try {
-    const result = await incrementalSync(true)
+    const result = await incrementalSync()
     if (result.success) {
       await loadStats()
       updateLastSyncTime()
+      setStatus(result.msg || '同步成功', 'success')
+    } else {
+      setStatus(result.msg || '同步失败，请稍后重试', 'error')
     }
+  } catch (error) {
+    setStatus('同步失败，请稍后重试', 'error')
   } finally {
     syncing.value = false
   }
@@ -86,7 +90,12 @@ const forceSyncData = async () => {
     if (result.success) {
       await loadStats()
       updateLastSyncTime()
+      setStatus(result.msg || '强制同步成功', 'success')
+    } else {
+      setStatus(result.msg || '强制同步失败', 'error')
     }
+  } catch (error) {
+    setStatus('强制同步失败', 'error')
   } finally {
     syncing.value = false
   }
@@ -108,13 +117,7 @@ const updateLastSyncTime = () => {
   if (syncStatus.lastSyncTime) {
     lastSyncTime.value = new Date(syncStatus.lastSyncTime).toLocaleString('zh-CN')
   }
-}
-
-const checkLastSyncTime = () => {
-  const cached = getCache('last_sync_time')
-  if (cached) {
-    lastSyncTime.value = new Date(cached).toLocaleString('zh-CN')
-  }
+  autoSyncEnabled.value = syncStatus.status === 'running' || syncStatus.status === 'syncing'
 }
 
 onMounted(async () => {
@@ -122,18 +125,12 @@ onMounted(async () => {
   try {
     await checkServer()
     await loadStats()
-    checkLastSyncTime()
+    updateLastSyncTime()
   } catch (error) {
     console.error('加载数据管理页失败:', error)
     setStatus('服务器连接失败，请检查登录状态或网络', 'error')
   } finally {
     loading.value = false
-  }
-})
-
-onUnmounted(() => {
-  if (autoSyncEnabled.value) {
-    stopAutoSync()
   }
 })
 </script>
