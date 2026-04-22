@@ -40,7 +40,6 @@ const isSale = computed(() => {
   return props.type === 'sale'
 })
 const pageTitle = computed(() => (isSale.value ? '出货单据' : '进货单据'))
-const partnerLabel = computed(() => (isSale.value ? '客户' : '供应商'))
 const currentPartnerLabel = computed(() => (isSale.value ? '当前客户' : '当前供应商'))
 const returnRoute = computed(() => (isSale.value ? '/sale/list' : '/purchase/list'))
 const exportTitle = computed(() => (isSale.value ? '出货单据明细' : '进货单据明细'))
@@ -58,7 +57,6 @@ const form = reactive({
   firstWeight: 0,
   lastWeight: 0,
   netWeight: 0,
-  fabricId: '', // 新增：布料ID
 })
 
 const rows = ref([])
@@ -66,21 +64,9 @@ const saving = ref(false)
 const deleting = ref(false)
 const isEditing = computed(() => Boolean(recordId.value))
 
-const supplierSearch = ref('')
-const fabricSearch = ref('')
-const showSupplierOptions = ref(false)
-const showFabricOptions = ref(false)
 const showFabricOptionsForRow = ref({})
-const focusedFabricRowId = ref('')
 
-const suppliers = computed(() => customerStore.activeCustomers)
 const fabrics = computed(() => fabricStore.activeFabrics)
-
-const filteredSuppliers = computed(() => {
-  const keyword = supplierSearch.value.trim().toLowerCase()
-  if (!keyword) return suppliers.value
-  return suppliers.value.filter((item) => String(item.name || '').toLowerCase().includes(keyword) || String(item.contact || item.contactPerson || '').toLowerCase().includes(keyword) || String(item.phone || '').includes(keyword))
-})
 
 const getFilteredFabrics = (keyword) => {
   const query = String(keyword || '').trim().toLowerCase()
@@ -324,21 +310,8 @@ const totalAmount = computed(() => {
   return rows.value.reduce((sum, row) => sum + (Number(row.quantity || 0) * Number(row.unitPrice || 0)), 0)
 })
 
-const selectSupplier = (item) => {
-  form.supplier = item.name
-  supplierSearch.value = item.name
-  showSupplierOptions.value = false
-}
-
-const selectFabricForForm = (item) => {
-  form.fabricId = item.id
-  fabricSearch.value = item.name
-  showFabricOptions.value = false
-}
-
 const toggleFabricOptions = (rowId) => {
   showFabricOptionsForRow.value[rowId] = !showFabricOptionsForRow.value[rowId]
-  focusedFabricRowId.value = rowId
 }
 
 const selectFabric = (rowId, option) => {
@@ -621,55 +594,6 @@ const exportImage = () => {
 
     <div v-else class="panel workbench">
       <div class="meta-grid">
-        <label>
-          <span>{{ partnerLabel }}</span>
-          <div class="custom-select" :class="{ active: showSupplierOptions }">
-            <input
-              v-model="supplierSearch"
-              type="text"
-              placeholder="输入或选择客户"
-              @mousedown.stop="showSupplierOptions = !showSupplierOptions"
-              @input="form.supplier = supplierSearch"
-            />
-            <div class="arrow" @mousedown.stop="showSupplierOptions = !showSupplierOptions">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </div>
-            <Transition name="fade-pop">
-              <ul v-if="showSupplierOptions && filteredSuppliers.length" class="dropdown-list">
-                <li v-for="item in filteredSuppliers" :key="item.id" @mousedown.stop="selectSupplier(item)">
-                  {{ item.name }}
-                </li>
-              </ul>
-              <div v-else-if="showSupplierOptions && supplierSearch" class="dropdown-list no-res">
-                未找到该客户
-              </div>
-            </Transition>
-          </div>
-        </label>
-        <label>
-          <span>布料</span>
-          <div class="custom-select" :class="{ active: showFabricOptions }">
-            <input
-              v-model="fabricSearch"
-              type="text"
-              placeholder="输入或选择布料"
-              @mousedown.stop="showFabricOptions = !showFabricOptions"
-            />
-            <div class="arrow" @mousedown.stop="showFabricOptions = !showFabricOptions">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </div>
-            <Transition name="fade-pop">
-              <ul v-if="showFabricOptions && fabrics.length" class="dropdown-list">
-                <li v-for="item in fabrics" :key="item.id" @mousedown.stop="selectFabricForForm(item)">
-                  {{ item.name }}
-                </li>
-              </ul>
-              <div v-else-if="showFabricOptions && fabricSearch" class="dropdown-list no-res">
-                未找到该布料
-              </div>
-            </Transition>
-          </div>
-        </label>
         <label>
           <span>开单时间</span>
           <input v-model="form.createdAt" type="text" placeholder="YYYY-MM-DD HH:mm:ss" />
