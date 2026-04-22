@@ -4,6 +4,6 @@ pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "ws-wnnw-db"
-database_id = "e3c6d78d-0edd-4a47-b9b5-d48bc07d25c2"
+database_name = "my-cloudflare-backend-v2-db"
+database_id = "2955aaee-5e1d-4663-a5ee-d8ea9c5dc018"
 migrations_dir = "migrations"
