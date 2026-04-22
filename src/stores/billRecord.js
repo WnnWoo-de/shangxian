@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { billRecords as seedBillRecords } from '@/data/billRecords'
+import { createBillApi, deleteBillApi, fetchBillsApi, updateBillApi } from '@/api/cloud'
 import { storage, StorageTypes } from '@/utils'
 import { emitBillDataChanged } from '@/utils/bill-events'
 
@@ -10,7 +11,6 @@ const STORAGE_KEY = StorageTypes.BILLS
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
 const normalizeItem = (item = {}, index = 0) => {
-  // 处理数量：优先从 quantity，然后从 totalWeight
   const quantity = Number(item.quantity ?? item.totalWeight ?? item.total_weight ?? 0)
   const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
   const amount = Number(item.amount ?? quantity * unitPrice)
@@ -20,7 +20,6 @@ const normalizeItem = (item = {}, index = 0) => {
     fabricId: item.fabricId || item.fabric_id || '',
     fabricName: item.fabricName || item.fabric_name || '',
     quantity,
-    // 保存原始输入文本
     weightInput: String((item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.quantityInput ?? item.totalWeight ?? '') || ''),
     totalWeight: Number(item.totalWeight ?? item.total_weight ?? quantity),
     packCount: Number(item.packCount ?? item.pack_count ?? 0),
@@ -86,68 +85,15 @@ const normalizeRecord = (record = {}) => {
   }
 }
 
+const persistLocal = (records) => {
+  storage.set(STORAGE_KEY, records)
+  emitBillDataChanged()
+}
+
 export const useBillRecordStore = defineStore('billRecord', () => {
   const records = ref([])
   const loading = ref(false)
   const initialized = ref(false)
-
-  const persist = () => {
-    try {
-      console.log('准备保存到本地存储的记录数量:', records.value.length)
-
-      // 简化的持久化逻辑
-      const saveData = records.value.map(record => {
-        // 只保存必要字段，确保数据精简
-        return {
-          id: record.id,
-          type: record.type,
-          billNo: record.billNo,
-          billDate: record.billDate,
-          createdAt: record.createdAt,
-          updatedAt: record.updatedAt,
-          partnerId: record.partnerId,
-          partnerName: record.partnerName,
-          customerId: record.customerId,
-          customerName: record.customerName,
-          supplier: record.supplier,
-          note: record.note,
-          status: record.status,
-          items: record.items.map(item => ({
-            id: item.id,
-            categoryId: item.categoryId,
-            categoryName: item.categoryName,
-            fabricId: item.fabricId,
-            fabricName: item.fabricName,
-            quantity: item.quantity,
-            weightInput: item.weightInput,
-            totalWeight: item.totalWeight,
-            packCount: item.packCount,
-            packWeight: item.packWeight,
-            unit: item.unit,
-            unitPrice: item.unitPrice,
-            amount: item.amount,
-            note: item.note
-          })),
-          totalWeight: record.totalWeight,
-          totalAmount: record.totalAmount,
-          paidAmount: record.paidAmount,
-          receivedAmount: record.receivedAmount,
-          unsettledAmount: record.unsettledAmount,
-          firstWeight: record.firstWeight,
-          lastWeight: record.lastWeight,
-          netWeight: record.netWeight
-        }
-      })
-
-      // 保存
-      storage.set(STORAGE_KEY, saveData)
-      emitBillDataChanged()
-      console.log('保存成功')
-    } catch (error) {
-      console.error('保存失败:', error)
-      throw error // 重新抛出，以便上层捕获
-    }
-  }
 
   const ensureLoaded = async () => {
     if (!initialized.value) {
@@ -155,19 +101,40 @@ export const useBillRecordStore = defineStore('billRecord', () => {
     }
   }
 
+  async function seedCloudIfEmpty() {
+    const seeds = seedBillRecords.map((item) => normalizeRecord(item))
+    const created = await Promise.all(
+      seeds.map(async (item) => {
+        try {
+          return normalizeRecord(await createBillApi(item))
+        } catch {
+          return item
+        }
+      })
+    )
+    return created
+  }
+
   async function init() {
     if (initialized.value && records.value.length) return
 
     loading.value = true
     try {
+      const cloudRecords = await fetchBillsApi()
+      if (Array.isArray(cloudRecords) && cloudRecords.length > 0) {
+        records.value = cloudRecords.map((item) => normalizeRecord(item))
+      } else {
+        records.value = await seedCloudIfEmpty()
+      }
+
+      persistLocal(records.value)
+      initialized.value = true
+    } catch (error) {
+      console.error('Load bills from cloud failed:', error)
       const saved = storage.get(STORAGE_KEY, [])
       const source = Array.isArray(saved) && saved.length ? saved : seedBillRecords
       records.value = source.map((item) => normalizeRecord(item))
-
-      if (!saved || !saved.length) {
-        storage.set(STORAGE_KEY, records.value)
-      }
-
+      persistLocal(records.value)
       initialized.value = true
     } finally {
       loading.value = false
@@ -198,10 +165,18 @@ export const useBillRecordStore = defineStore('billRecord', () => {
 
   async function createRecord(payload) {
     await ensureLoaded()
-    const record = normalizeRecord(payload)
-    records.value.unshift(record)
-    persist()
-    return clone(record)
+    const normalized = normalizeRecord(payload)
+
+    let next = normalized
+    try {
+      next = normalizeRecord(await createBillApi(normalized))
+    } catch (error) {
+      console.warn('云端创建单据失败，已回退本地:', error)
+    }
+
+    records.value.unshift(next)
+    persistLocal(records.value)
+    return clone(next)
   }
 
   async function updateRecord(id, payload) {
@@ -211,24 +186,37 @@ export const useBillRecordStore = defineStore('billRecord', () => {
       throw new Error('单据不存在')
     }
 
-    const record = normalizeRecord({
+    const normalized = normalizeRecord({
       ...records.value[index],
       ...payload,
       id: String(id),
       updatedAt: new Date().toLocaleString('sv-SE').replace(' ', ' '),
     })
 
-    records.value[index] = record
-    persist()
-    return clone(record)
+    try {
+      records.value[index] = normalizeRecord(await updateBillApi(String(id), normalized))
+    } catch (error) {
+      console.warn('云端更新单据失败，已回退本地:', error)
+      records.value[index] = normalized
+    }
+
+    persistLocal(records.value)
+    return clone(records.value[index])
   }
 
   async function deleteRecord(id) {
     await ensureLoaded()
     const index = records.value.findIndex((item) => String(item.id) === String(id))
     if (index === -1) return false
+
+    try {
+      await deleteBillApi(String(id))
+    } catch (error) {
+      console.warn('云端删除单据失败，已回退本地:', error)
+    }
+
     records.value.splice(index, 1)
-    persist()
+    persistLocal(records.value)
     return true
   }
 

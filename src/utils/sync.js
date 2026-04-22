@@ -1,31 +1,50 @@
-// 数据同步工具（纯前端模拟）
-export const incrementalSync = async (force = false) => {
-  console.log('开始增量同步')
-  await new Promise(resolve => setTimeout(resolve, 800))
-  return { success: true, syncedCount: 0, msg: '同步成功' }
+import request from './request'
+import { getCache, setCache } from './cache'
+
+let syncTimer = null
+
+const markSynced = () => {
+  const now = new Date().toISOString()
+  setCache('last_sync_time', now, 7 * 24 * 60 * 60 * 1000)
+  return now
+}
+
+export const incrementalSync = async () => {
+  await request.get('/health')
+  const lastSyncTime = markSynced()
+  return { success: true, syncedCount: 0, msg: '同步成功', lastSyncTime }
 }
 
 export const forceRefreshAll = async () => {
-  console.log('开始强制刷新')
-  await new Promise(resolve => setTimeout(resolve, 1200))
-  return { success: true, msg: '强制刷新成功' }
+  await request.get('/health')
+  const lastSyncTime = markSynced()
+  return { success: true, msg: '强制刷新成功', lastSyncTime }
 }
 
 export const getSyncStatus = () => {
+  const lastSyncTime = getCache('last_sync_time') || null
   return {
-    lastSyncTime: '2025-01-15 10:30:00',
-    status: 'idle',
-    pendingCount: 0
+    lastSyncTime,
+    status: syncTimer ? 'running' : 'idle',
+    pendingCount: 0,
   }
 }
 
-export const startAutoSync = () => {
-  console.log('自动同步已启用')
+export const startAutoSync = (interval = 30000) => {
+  if (syncTimer) clearInterval(syncTimer)
+  syncTimer = setInterval(() => {
+    incrementalSync().catch((error) => {
+      console.error('自动同步失败:', error)
+    })
+  }, interval)
   return true
 }
 
 export const stopAutoSync = () => {
-  console.log('自动同步已停用')
+  if (syncTimer) {
+    clearInterval(syncTimer)
+    syncTimer = null
+  }
   return true
 }
 
@@ -34,5 +53,5 @@ export default {
   forceRefreshAll,
   getSyncStatus,
   startAutoSync,
-  stopAutoSync
+  stopAutoSync,
 }

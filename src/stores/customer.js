@@ -1,13 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useAuthStore } from './auth'
 import { storage, StorageTypes } from '@/utils'
-import { fabrics } from '@/data/initData'
+import { fetchCustomersApi, createCustomerApi, updateCustomerApi } from '@/api/cloud'
 
-// 本地存储键名
 const STORAGE_KEY = StorageTypes.CUSTOMERS
 
-// 模拟客户数据
 const MOCK_CUSTOMERS = [
   {
     id: 'cust-001',
@@ -67,90 +64,81 @@ const MOCK_CUSTOMERS = [
   }
 ]
 
+const saveLocal = (list) => storage.set(STORAGE_KEY, list)
+
 export const useCustomerStore = defineStore('customer', () => {
-  // 状态
   const customers = ref([])
   const loading = ref(false)
   const searchKeyword = ref('')
-  const filterType = ref('all') // all, supplier, customer, both
-  const filterStatus = ref('all') // all, active, inactive
+  const filterType = ref('all')
+  const filterStatus = ref('all')
 
-  // 初始化
+  async function seedCloudIfEmpty() {
+    const seeds = [...MOCK_CUSTOMERS]
+    await Promise.all(seeds.map(item => createCustomerApi(item)))
+    return seeds
+  }
+
   async function init() {
     loading.value = true
 
     try {
-      // 从本地存储获取数据，或使用默认数据
+      const cloudCustomers = await fetchCustomersApi()
+      if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
+        customers.value = cloudCustomers
+      } else {
+        customers.value = await seedCloudIfEmpty()
+      }
+      saveLocal(customers.value)
+    } catch (error) {
+      console.error('Load customers from cloud failed:', error)
       const saved = storage.get(STORAGE_KEY)
       if (saved && saved.length > 0) {
         customers.value = saved
       } else {
         customers.value = [...MOCK_CUSTOMERS]
-        storage.set(STORAGE_KEY, customers.value)
+        saveLocal(customers.value)
       }
-    } catch (error) {
-      console.error('Load customers error:', error)
-      customers.value = [...MOCK_CUSTOMERS]
     } finally {
       loading.value = false
     }
   }
 
-  // 计算属性
   const filteredCustomers = computed(() => {
     return customers.value.filter(customer => {
-      // 搜索过滤
       const matchKeyword = !searchKeyword.value ||
         customer.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
         customer.phone.includes(searchKeyword.value) ||
         customer.address.toLowerCase().includes(searchKeyword.value.toLowerCase())
 
-      // 类型过滤
       const matchType = filterType.value === 'all' || customer.type === filterType.value
-
-      // 状态过滤
       const matchStatus = filterStatus.value === 'all' || customer.status === filterStatus.value
 
       return matchKeyword && matchType && matchStatus
     })
   })
 
-  const activeCustomers = computed(() => {
-    return customers.value.filter(c => c.status === 'active')
-  })
-
-  const supplierCustomers = computed(() => {
-    return customers.value.filter(c => c.type === 'supplier' && c.status === 'active')
-  })
-
-  const customerCustomers = computed(() => {
-    return customers.value.filter(c => c.type === 'customer' && c.status === 'active')
-  })
-
-  const bothCustomers = computed(() => {
-    return customers.value.filter(c => c.type === 'both' && c.status === 'active')
-  })
-
+  const activeCustomers = computed(() => customers.value.filter(c => c.status === 'active'))
+  const supplierCustomers = computed(() => customers.value.filter(c => c.type === 'supplier' && c.status === 'active'))
+  const customerCustomers = computed(() => customers.value.filter(c => c.type === 'customer' && c.status === 'active'))
+  const bothCustomers = computed(() => customers.value.filter(c => c.type === 'both' && c.status === 'active'))
   const customerCount = computed(() => customers.value.length)
   const activeCount = computed(() => activeCustomers.value.length)
 
-  // 获取客户详细信息
   function getCustomerById(id) {
     return customers.value.find(customer => customer.id === id)
   }
 
-  // 获取客户名称
   function getCustomerName(id) {
     const customer = getCustomerById(id)
     return customer ? customer.name : ''
   }
 
-  // 添加客户
   async function addCustomer(data) {
     loading.value = true
 
     try {
-      const newCustomer = {
+      const draft = {
         id: `cust-${Date.now().toString().slice(-6)}`,
         status: 'active',
         createdAt: new Date().toISOString(),
@@ -158,10 +146,16 @@ export const useCustomerStore = defineStore('customer', () => {
         ...data
       }
 
-      customers.value.push(newCustomer)
-      storage.set(STORAGE_KEY, customers.value)
+      let created = draft
+      try {
+        created = await createCustomerApi(draft)
+      } catch (error) {
+        console.warn('云端新增客户失败，已回退本地:', error)
+      }
 
-      return newCustomer
+      customers.value.push(created)
+      saveLocal(customers.value)
+      return created
     } catch (error) {
       console.error('Add customer error:', error)
       throw error
@@ -170,7 +164,6 @@ export const useCustomerStore = defineStore('customer', () => {
     }
   }
 
-  // 更新客户
   async function updateCustomer(id, data) {
     loading.value = true
 
@@ -180,13 +173,20 @@ export const useCustomerStore = defineStore('customer', () => {
         throw new Error('客户不存在')
       }
 
-      customers.value[index] = {
+      const next = {
         ...customers.value[index],
         ...data,
         updatedAt: new Date().toISOString()
       }
 
-      storage.set(STORAGE_KEY, customers.value)
+      try {
+        customers.value[index] = await updateCustomerApi(id, next)
+      } catch (error) {
+        console.warn('云端更新客户失败，已回退本地:', error)
+        customers.value[index] = next
+      }
+
+      saveLocal(customers.value)
       return customers.value[index]
     } catch (error) {
       console.error('Update customer error:', error)
@@ -196,18 +196,15 @@ export const useCustomerStore = defineStore('customer', () => {
     }
   }
 
-  // 删除客户（标记为停用）
   async function deleteCustomer(id) {
     const customer = getCustomerById(id)
     if (!customer) {
       throw new Error('客户不存在')
     }
 
-    // 停用客户而不是真正删除
     return await updateCustomer(id, { status: 'inactive' })
   }
 
-  // 启用/停用客户
   async function toggleCustomerStatus(id) {
     const customer = getCustomerById(id)
     if (!customer) {
@@ -218,22 +215,18 @@ export const useCustomerStore = defineStore('customer', () => {
     return await updateCustomer(id, { status: newStatus })
   }
 
-  // 搜索客户
   function searchCustomers(keyword) {
     searchKeyword.value = keyword
   }
 
-  // 过滤客户类型
   function filterByType(type) {
     filterType.value = type
   }
 
-  // 过滤客户状态
   function filterByStatus(status) {
     filterStatus.value = status
   }
 
-  // 重置筛选条件
   function resetFilters() {
     searchKeyword.value = ''
     filterType.value = 'all'
@@ -244,9 +237,8 @@ export const useCustomerStore = defineStore('customer', () => {
     await init()
   }
 
-  // 导出客户数据
   function exportData() {
-    const data = filteredCustomers.value.map(customer => ({
+    return filteredCustomers.value.map(customer => ({
       '客户名称': customer.name,
       '联系方式': customer.phone,
       '联系地址': customer.address,
@@ -258,11 +250,8 @@ export const useCustomerStore = defineStore('customer', () => {
       '状态': customer.status === 'active' ? '正常' : '暂停',
       '备注': customer.note
     }))
-
-    return data
   }
 
-  // 导入客户数据
   async function importData(data) {
     loading.value = true
 
@@ -283,8 +272,9 @@ export const useCustomerStore = defineStore('customer', () => {
         updatedAt: new Date().toISOString()
       }))
 
+      await Promise.all(newCustomers.map(item => createCustomerApi(item).catch(() => item)))
       customers.value.push(...newCustomers)
-      storage.set(STORAGE_KEY, customers.value)
+      saveLocal(customers.value)
 
       return {
         total: validData.length,
@@ -298,7 +288,6 @@ export const useCustomerStore = defineStore('customer', () => {
     }
   }
 
-  // 辅助函数：将导入的类型转换为枚举值
   function convertTypeToEnum(typeStr) {
     const typeMap = {
       '供应商': 'supplier',
@@ -309,14 +298,11 @@ export const useCustomerStore = defineStore('customer', () => {
   }
 
   return {
-    // 状态
     customers,
     loading,
     searchKeyword,
     filterType,
     filterStatus,
-
-    // 计算属性
     filteredCustomers,
     activeCustomers,
     supplierCustomers,
@@ -324,8 +310,6 @@ export const useCustomerStore = defineStore('customer', () => {
     bothCustomers,
     customerCount,
     activeCount,
-
-    // 方法
     init,
     refresh,
     getCustomerById,

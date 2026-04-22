@@ -1,31 +1,75 @@
-// HTTP 请求工具（纯前端模拟）
-// 由于是纯前端项目，这里提供模拟请求功能
+import axios from 'axios'
 
+import storage from './storage'
 import { showErrorToast } from './toast'
 
-// 创建请求实例
+const DEFAULT_API_BASE = '/api'
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
+
+const normalizeUrl = (url = '') => {
+  if (!url) return '/'
+
+  // 如果 baseURL 已以 /api 结尾，则传入 /api/* 时去重
+  if (API_BASE.endsWith('/api') && url.startsWith('/api/')) {
+    return url.slice(4)
+  }
+
+  return url
+}
+
+const client = axios.create({
+  baseURL: API_BASE,
+  timeout: 10000,
+})
+
+client.interceptors.request.use((config) => {
+  const token = storage.getToken()
+  if (token) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+const handleError = (error) => {
+  const message = error?.response?.data?.message || error?.message || '请求失败'
+  showErrorToast(message)
+  throw error
+}
+
 const request = {
   get: async (url, params = {}) => {
-    console.log('GET request:', url, params)
-    // 模拟请求延迟
-    await new Promise(resolve => setTimeout(resolve, 300))
-    return { data: {}, msg: 'success' }
+    try {
+      const response = await client.get(normalizeUrl(url), { params })
+      return response.data
+    } catch (error) {
+      return handleError(error)
+    }
   },
   post: async (url, data = {}) => {
-    console.log('POST request:', url, data)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    return { data: {}, msg: 'success' }
+    try {
+      const response = await client.post(normalizeUrl(url), data)
+      return response.data
+    } catch (error) {
+      return handleError(error)
+    }
   },
   put: async (url, data = {}) => {
-    console.log('PUT request:', url, data)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    return { data: {}, msg: 'success' }
+    try {
+      const response = await client.put(normalizeUrl(url), data)
+      return response.data
+    } catch (error) {
+      return handleError(error)
+    }
   },
   delete: async (url) => {
-    console.log('DELETE request:', url)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    return { data: {}, msg: 'success' }
-  }
+    try {
+      const response = await client.delete(normalizeUrl(url))
+      return response.data
+    } catch (error) {
+      return handleError(error)
+    }
+  },
 }
 
 export default request

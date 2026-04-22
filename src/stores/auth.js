@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { storage, StorageTypes } from '@/utils'
+import { storage } from '@/utils'
 import { useRouter } from 'vue-router'
+import { loginApi } from '@/api/cloud'
 
-// 模拟用户数据
 const MOCK_USERS = [
   {
     username: '皖盛布碎',
@@ -26,14 +26,12 @@ const MOCK_USERS = [
 ]
 
 export const useAuthStore = defineStore('auth', () => {
-  // 状态
   const router = useRouter()
   const user = ref(null)
   const token = ref(null)
   const isLoading = ref(false)
   const isAuthenticated = ref(false)
 
-  // 初始化
   function init() {
     const savedToken = storage.getToken()
     const savedUser = storage.getUser()
@@ -45,7 +43,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 计算属性
   const currentUser = computed(() => user.value)
   const isLoggedIn = computed(() => isAuthenticated.value)
   const hasPermission = computed(() => {
@@ -61,29 +58,34 @@ export const useAuthStore = defineStore('auth', () => {
     }
   })
 
-  // 登录
-  async function login(username, password, remember = true) {
+  async function login(username, password) {
     isLoading.value = true
 
     try {
-      // 模拟登录请求
-      const mockUser = MOCK_USERS.find(u => u.username === username && u.password === password)
+      let authUser = null
+      let authToken = null
 
-      if (!mockUser) {
-        return false
+      try {
+        const cloudAuth = await loginApi(username, password)
+        authUser = cloudAuth?.user || null
+        authToken = cloudAuth?.token || null
+      } catch (error) {
+        console.warn('云端登录失败，回退本地登录:', error)
       }
 
-      // 模拟 token 生成
-      const mockToken = `token_${Date.now()}`
+      if (!authUser || !authToken) {
+        const mockUser = MOCK_USERS.find(u => u.username === username && u.password === password)
+        if (!mockUser) return false
+        authUser = mockUser.userInfo
+        authToken = `token_${Date.now()}`
+      }
 
-      // 保存用户信息和token
-      user.value = mockUser.userInfo
-      token.value = mockToken
+      user.value = authUser
+      token.value = authToken
       isAuthenticated.value = true
 
-      // 始终保存到 localStorage，确保刷新后不会丢失登录状态
-      storage.setToken(mockToken)
-      storage.setUser(mockUser.userInfo)
+      storage.setToken(authToken)
+      storage.setUser(authUser)
 
       return true
     } catch (error) {
@@ -94,24 +96,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 登出
   async function logout() {
     isLoading.value = true
 
     try {
-      // 模拟登出请求
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 120))
 
-      // 清除状态
       user.value = null
       token.value = null
       isAuthenticated.value = false
 
-      // 清除本地存储
       storage.removeToken()
       storage.removeUser()
 
-      // 跳转到登录页
       router.push('/login')
     } catch (error) {
       console.error('Logout error:', error)
@@ -120,36 +117,29 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 修改密码（模拟）
   async function changePassword(oldPassword, newPassword, confirmPassword) {
     if (newPassword !== confirmPassword) {
       throw new Error('新密码与确认密码不一致')
     }
 
-    // 模拟API请求
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // 更新密码（仅用于演示）
+    await new Promise(resolve => setTimeout(resolve, 300))
     MOCK_USERS[0].password = newPassword
     return true
   }
 
-  // 更新用户信息
   async function updateUserInfo(data) {
     if (!user.value) {
       throw new Error('用户未登录')
     }
 
     try {
-      // 模拟API请求
-      await new Promise(resolve => setTimeout(resolve, 800))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       user.value = {
         ...user.value,
         ...data
       }
 
-      // 更新本地存储
       storage.setUser(user.value)
       return true
     } catch (error) {
@@ -158,22 +148,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 检查会话是否过期
   function checkSession() {
     return !!token.value && isAuthenticated.value
   }
 
-  // 获取权限列表
   function getPermissions() {
     return user.value?.permissions || []
   }
 
-  // 检查是否是管理员
   function isAdmin() {
     return user.value?.role === 'admin'
   }
 
-  // 获取演示账号列表（用于登录页提示）
   function getDemoAccounts() {
     return MOCK_USERS.map(u => ({
       username: u.username,
@@ -184,18 +170,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    // 状态
     user,
     token,
     isLoading,
     isAuthenticated,
-
-    // 计算属性
     currentUser,
     isLoggedIn,
     hasPermission,
-
-    // 方法
     init,
     login,
     logout,

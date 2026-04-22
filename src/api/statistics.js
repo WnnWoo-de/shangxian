@@ -1,24 +1,24 @@
-// 统计 API（纯前端模拟）
 import { storage, StorageTypes } from '../utils'
 import { useBillRecordStore } from '../stores/billRecord'
+import { fetchStatsOverviewApi } from './cloud'
 
-// 获取统计概览
 export const fetchStatisticsOverviewApi = async () => {
-  await new Promise(resolve => setTimeout(resolve, 200))
-  const bills = storage.get(StorageTypes.BILLS, [])
-  const customers = storage.get(StorageTypes.CUSTOMERS, [])
-  const fabrics = storage.get(StorageTypes.FABRICS, [])
+  try {
+    return await fetchStatsOverviewApi()
+  } catch (error) {
+    const bills = storage.get(StorageTypes.BILLS, [])
+    const customers = storage.get(StorageTypes.CUSTOMERS, [])
+    const fabrics = storage.get(StorageTypes.FABRICS, [])
 
-  return {
-    billCount: bills.length,
-    customerCount: customers.length,
-    fabricCount: fabrics.length
+    return {
+      billCount: bills.length,
+      customerCount: customers.length,
+      fabricCount: fabrics.length
+    }
   }
 }
 
-// 获取统计摘要
 export const fetchStatisticsSummaryApi = async (params = {}) => {
-  await new Promise(resolve => setTimeout(resolve, 200))
   const billRecordStore = useBillRecordStore()
   await billRecordStore.init()
 
@@ -27,7 +27,6 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
     ? sourceBills.filter((bill) => String(bill.billDate || '').startsWith(params.month))
     : sourceBills
 
-  // 计算统计数据
   const overview = {
     totalIncome: 0,
     totalExpense: 0,
@@ -55,7 +54,6 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
     overview.totalWeight += weight
     overview.totalTransactionAmount += amount
 
-    // 每日统计
     if (!dailyMap[day]) {
       dailyMap[day] = { day, income: 0, expense: 0, net: 0, totalAmount: 0, totalWeight: 0 }
     }
@@ -68,7 +66,6 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
     }
     dailyMap[day].net = dailyMap[day].income - dailyMap[day].expense
 
-    // 客户统计
     if (bill.customerName) {
       if (!customerMap[bill.customerName]) {
         customerMap[bill.customerName] = { customerName: bill.customerName, billCount: 0, totalAmount: 0, totalWeight: 0 }
@@ -78,7 +75,6 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
       customerMap[bill.customerName].totalWeight += weight
     }
 
-    // 布料统计
     bill.items?.forEach(item => {
       const fabricName = item.fabricName || '其他'
       if (!fabricMap[fabricName]) {
@@ -91,7 +87,6 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
 
   overview.netAmount = overview.totalIncome - overview.totalExpense
 
-  // 生成月份列表
   const months = []
   const now = new Date()
   for (let i = 0; i < 12; i++) {
