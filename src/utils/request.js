@@ -4,72 +4,99 @@ import storage from './storage'
 import { showErrorToast } from './toast'
 
 const DEFAULT_API_BASE = '/api'
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
+const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
+const FALLBACK_API_BASE = (import.meta.env.VITE_FALLBACK_API_BASE_URL || '').trim()
 
-const normalizeUrl = (url = '') => {
+const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
-
-  // 如果 baseURL 已以 /api 结尾，则传入 /api/* 时去重
-  if (API_BASE.endsWith('/api') && url.startsWith('/api/')) {
+  if (base.endsWith('/api') && url.startsWith('/api/')) {
     return url.slice(4)
   }
-
   return url
 }
 
-const client = axios.create({
-  baseURL: API_BASE,
-  timeout: 10000,
-})
+const createClient = (baseURL) => axios.create({ baseURL, timeout: 10000 })
 
-client.interceptors.request.use((config) => {
+const primaryClient = createClient(PRIMARY_API_BASE)
+const fallbackClient = FALLBACK_API_BASE ? createClient(FALLBACK_API_BASE) : null
+
+const addAuthHeader = (config) => {
   const token = storage.getToken()
   if (token) {
     config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
-})
+}
 
-const handleError = (error) => {
-  const message = error?.response?.data?.message || error?.message || '请求失败'
-  showErrorToast(message)
-  throw error
+primaryClient.interceptors.request.use(addAuthHeader)
+if (fallbackClient) {
+  fallbackClient.interceptors.request.use(addAuthHeader)
+}
+
+const shouldRetryWithFallback = (error) => {
+  if (!fallbackClient) return false
+  if (PRIMARY_API_BASE === FALLBACK_API_BASE) return false
+  const status = Number(error?.response?.status || 0)
+  const noResponse = !error?.response
+  return noResponse || status >= 500
+}
+
+const buildErrorMessage = (error) => {
+  const status = error?.response?.status
+  const apiMessage = error?.response?.data?.message
+  if (apiMessage) return apiMessage
+  if (status === 500) return '服务器内部错误（500），请稍后重试或联系管理员'
+  if (status) return `请求失败（${status}）`
+  return error?.message || '请求失败'
+}
+
+const execute = async (method, url, payload) => {
+  const endpoint = normalizeUrl(PRIMARY_API_BASE, url)
+
+  try {
+    if (method === 'get') {
+      const response = await primaryClient.get(endpoint, { params: payload || {} })
+      return response.data
+    }
+    if (method === 'delete') {
+      const response = await primaryClient.delete(endpoint)
+      return response.data
+    }
+    const response = await primaryClient[method](endpoint, payload || {})
+    return response.data
+  } catch (error) {
+    if (shouldRetryWithFallback(error)) {
+      try {
+        const fallbackEndpoint = normalizeUrl(FALLBACK_API_BASE, url)
+        if (method === 'get') {
+          const response = await fallbackClient.get(fallbackEndpoint, { params: payload || {} })
+          return response.data
+        }
+        if (method === 'delete') {
+          const response = await fallbackClient.delete(fallbackEndpoint)
+          return response.data
+        }
+        const response = await fallbackClient[method](fallbackEndpoint, payload || {})
+        return response.data
+      } catch (fallbackError) {
+        const fallbackMessage = buildErrorMessage(fallbackError)
+        showErrorToast(`${fallbackMessage}（主服务故障且兜底失败）`)
+        throw fallbackError
+      }
+    }
+
+    const message = buildErrorMessage(error)
+    showErrorToast(message)
+    throw error
+  }
 }
 
 const request = {
-  get: async (url, params = {}) => {
-    try {
-      const response = await client.get(normalizeUrl(url), { params })
-      return response.data
-    } catch (error) {
-      return handleError(error)
-    }
-  },
-  post: async (url, data = {}) => {
-    try {
-      const response = await client.post(normalizeUrl(url), data)
-      return response.data
-    } catch (error) {
-      return handleError(error)
-    }
-  },
-  put: async (url, data = {}) => {
-    try {
-      const response = await client.put(normalizeUrl(url), data)
-      return response.data
-    } catch (error) {
-      return handleError(error)
-    }
-  },
-  delete: async (url) => {
-    try {
-      const response = await client.delete(normalizeUrl(url))
-      return response.data
-    } catch (error) {
-      return handleError(error)
-    }
-  },
+  get: async (url, params = {}) => execute('get', url, params),
+  post: async (url, data = {}) => execute('post', url, data),
+  put: async (url, data = {}) => execute('put', url, data),
+  delete: async (url) => execute('delete', url),
 }
 
 export default request
