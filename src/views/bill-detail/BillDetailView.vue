@@ -104,8 +104,8 @@ const fillForm = (record) => {
       id: item.id,
       fabricId: item.fabricId,
       fabricName: item.fabricName,
-      quantityInput: item.quantityInput,
-      quantity: Number(item.quantity || 0),
+      quantityInput: String(item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.totalWeight ?? ''),
+      quantity: Number(item.quantity ?? item.totalWeight ?? 0),
       unitPrice: Number(item.unitPrice || 0),
       note: item.note,
     }))
@@ -114,8 +114,8 @@ const fillForm = (record) => {
       id: item.id,
       fabricId: item.fabricId,
       fabricName: item.fabricName,
-      quantityInput: item.quantityInput,
-      quantity: Number(item.quantity || 0),
+      quantityInput: String(item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.totalWeight ?? ''),
+      quantity: Number(item.quantity ?? item.totalWeight ?? 0),
       unitPrice: Number(item.unitPrice || 0),
       note: item.note,
     }))
@@ -174,7 +174,7 @@ const exportToExcel = async () => {
     // 标题栏
     worksheet.columns = [
       { header: '布料', key: 'fabric', width: 20 },
-      { header: '数量 / 重量', key: 'quantityText', width: 24 },
+      { header: '明细重量输入', key: 'quantityText', width: 24 },
       { header: '总重量(斤)', key: 'quantity', width: 14 },
       { header: '单价(元/斤)', key: 'unitPrice', width: 14 },
       { header: '金额(元)', key: 'amount', width: 16 },
@@ -439,7 +439,7 @@ const exportImage = () => {
 
   const columns = [
     { key: 'fabricName', label: '布料', left: 48, width: 180 },
-    { key: 'quantityText', label: '数量 / 重量', left: 228, width: 280 },
+    { key: 'quantityText', label: '明细重量输入', left: 228, width: 280 },
     { key: 'totalWeight', label: '总重量(斤)', left: 688, width: 160 },
     { key: 'unitPrice', label: '单价(元/斤)', left: 848, width: 160 },
     { key: 'amount', label: '金额(元)', left: 1008, width: 180 },
@@ -687,7 +687,7 @@ const exportImage = () => {
           <small>已录入 {{ rows.length }} 条有效明细</small>
         </article>
         <article class="overview-card accent-blue">
-          <span class="overview-label">累计重量</span>
+          <span class="overview-label">总重量</span>
           <strong>{{ totalWeight.toFixed(2) }} 斤</strong>
           <small>支持 `10+10+10`、`10 10 10`、`10.10.10`、`10×3` 快速计算</small>
         </article>
@@ -728,7 +728,7 @@ const exportImage = () => {
           <thead>
             <tr>
               <th>布料</th>
-              <th>数量输入</th>
+              <th>明细重量输入</th>
               <th>总重量(斤)</th>
               <th>单价(元/斤)</th>
               <th>金额(元)</th>

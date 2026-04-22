@@ -21,6 +21,7 @@ const normalizeItem = (item = {}, index = 0) => {
     fabricName: item.fabricName || item.fabric_name || '',
     quantity,
     weightInput: String((item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.quantityInput ?? item.totalWeight ?? '') || ''),
+    quantityInput: String((item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.totalWeight ?? '') || ''),
     totalWeight: Number(item.totalWeight ?? item.total_weight ?? quantity),
     packCount: Number(item.packCount ?? item.pack_count ?? 0),
     packWeight: Number(item.packWeight ?? item.pack_weight ?? 0),
