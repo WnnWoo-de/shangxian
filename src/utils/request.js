@@ -4,12 +4,20 @@ import storage from './storage'
 import { showErrorToast } from './toast'
 
 const PROD_WORKER_API_BASE = 'https://my-cloudflare-backend.wnnwwnnw0705.workers.dev/api'
-const DEFAULT_API_BASE = import.meta.env.DEV ? '/api' : PROD_WORKER_API_BASE
+const DEFAULT_API_BASE = '/api'
 const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
 const FALLBACK_API_BASE = (
   import.meta.env.VITE_FALLBACK_API_BASE_URL
-  || (PRIMARY_API_BASE === '/api' ? PROD_WORKER_API_BASE : '')
+  || (PRIMARY_API_BASE === '/api' ? PROD_WORKER_API_BASE : '/api')
 ).trim()
+const DEFAULT_TIMEOUT_MS = import.meta.env.PROD ? 20000 : 10000
+
+const parseTimeoutMs = (value, fallback) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+const REQUEST_TIMEOUT_MS = parseTimeoutMs(import.meta.env.VITE_API_TIMEOUT, DEFAULT_TIMEOUT_MS)
 
 const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
@@ -19,7 +27,7 @@ const normalizeUrl = (base, url = '') => {
   return url
 }
 
-const createClient = (baseURL) => axios.create({ baseURL, timeout: 10000 })
+const createClient = (baseURL) => axios.create({ baseURL, timeout: REQUEST_TIMEOUT_MS })
 
 const primaryClient = createClient(PRIMARY_API_BASE)
 const fallbackClient = FALLBACK_API_BASE ? createClient(FALLBACK_API_BASE) : null
@@ -46,9 +54,45 @@ const shouldRetryWithFallback = (error) => {
   return noResponse || status >= 500
 }
 
+const isTimeoutError = (error) => error?.code === 'ECONNABORTED'
+
+const requestOnce = async (client, method, endpoint, payload) => {
+  if (method === 'get') {
+    const response = await client.get(endpoint, { params: payload || {} })
+    return response.data
+  }
+  if (method === 'delete') {
+    const response = await client.delete(endpoint)
+    return response.data
+  }
+  const response = await client[method](endpoint, payload || {})
+  return response.data
+}
+
+const requestWithTimeoutRetry = async (client, method, endpoint, payload) => {
+  try {
+    return await requestOnce(client, method, endpoint, payload)
+  } catch (error) {
+    if (method === 'get' && isTimeoutError(error)) {
+      return requestOnce(client, method, endpoint, payload)
+    }
+    throw error
+  }
+}
+
 const buildErrorMessage = (error) => {
+  const code = error?.code
   const status = error?.response?.status
   const apiMessage = error?.response?.data?.message
+
+  if (code === 'ECONNABORTED') {
+    return `网络较慢，请稍后重试（请求超时 ${REQUEST_TIMEOUT_MS}ms）`
+  }
+
+  if (!error?.response) {
+    return '网络连接异常，请检查网络后重试'
+  }
+
   if (apiMessage) return apiMessage
   if (status === 500) return '服务器内部错误（500），请稍后重试或联系管理员'
   if (status) return `请求失败（${status}）`
@@ -59,30 +103,12 @@ const execute = async (method, url, payload) => {
   const endpoint = normalizeUrl(PRIMARY_API_BASE, url)
 
   try {
-    if (method === 'get') {
-      const response = await primaryClient.get(endpoint, { params: payload || {} })
-      return response.data
-    }
-    if (method === 'delete') {
-      const response = await primaryClient.delete(endpoint)
-      return response.data
-    }
-    const response = await primaryClient[method](endpoint, payload || {})
-    return response.data
+    return await requestWithTimeoutRetry(primaryClient, method, endpoint, payload)
   } catch (error) {
     if (shouldRetryWithFallback(error)) {
       try {
         const fallbackEndpoint = normalizeUrl(FALLBACK_API_BASE, url)
-        if (method === 'get') {
-          const response = await fallbackClient.get(fallbackEndpoint, { params: payload || {} })
-          return response.data
-        }
-        if (method === 'delete') {
-          const response = await fallbackClient.delete(fallbackEndpoint)
-          return response.data
-        }
-        const response = await fallbackClient[method](fallbackEndpoint, payload || {})
-        return response.data
+        return await requestWithTimeoutRetry(fallbackClient, method, fallbackEndpoint, payload)
       } catch (fallbackError) {
         const fallbackMessage = buildErrorMessage(fallbackError)
         showErrorToast(`${fallbackMessage}（主服务故障且兜底失败）`)
