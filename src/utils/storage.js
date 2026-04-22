@@ -9,6 +9,7 @@ const DEFAULT_CONFIG = {
   prefix: STORAGE_PREFIX,
   expires: null // 永不过期
 }
+const memoryStorage = {}
 
 // 存储项类型
 const StorageTypes = {
@@ -50,17 +51,22 @@ function getKey(key, options = {}) {
  * @returns {boolean} 是否成功
  */
 function set(key, value, options = {}) {
+  const data = {
+    value,
+    timestamp: Date.now(),
+    expires: options.expires || DEFAULT_CONFIG.expires
+  }
+  const fullKey = getKey(key, options)
+
   try {
-    const data = {
-      value,
-      timestamp: Date.now(),
-      expires: options.expires || DEFAULT_CONFIG.expires
-    }
-    localStorage.setItem(getKey(key, options), JSON.stringify(data))
+    localStorage.setItem(fullKey, JSON.stringify(data))
+    memoryStorage[fullKey] = data
     return true
   } catch (error) {
     console.error('Storage set error:', error)
-    return false
+    // 移动端 localStorage 不可用或容量不足时，降级到内存存储，保证当前会话可用
+    memoryStorage[fullKey] = data
+    return true
   }
 }
 
@@ -72,25 +78,30 @@ function set(key, value, options = {}) {
  * @returns {any} 存储值或默认值
  */
 function get(key, defaultValue = null, options = {}) {
-  try {
-    const rawData = localStorage.getItem(getKey(key, options))
-    if (!rawData) {
-      return defaultValue
-    }
+  const fullKey = getKey(key, options)
 
-    const data = JSON.parse(rawData)
+  const parseData = (data) => {
+    if (!data) return defaultValue
     const { value, timestamp, expires } = data
 
-    // 检查过期时间
     if (expires && Date.now() > timestamp + expires) {
       remove(key, options)
       return defaultValue
     }
-
     return value
+  }
+
+  try {
+    const rawData = localStorage.getItem(fullKey)
+    if (rawData) {
+      const data = JSON.parse(rawData)
+      memoryStorage[fullKey] = data
+      return parseData(data)
+    }
+    return parseData(memoryStorage[fullKey])
   } catch (error) {
     console.error('Storage get error:', error)
-    return defaultValue
+    return parseData(memoryStorage[fullKey])
   }
 }
 
@@ -101,12 +112,15 @@ function get(key, defaultValue = null, options = {}) {
  * @returns {boolean} 是否成功
  */
 function remove(key, options = {}) {
+  const fullKey = getKey(key, options)
   try {
-    localStorage.removeItem(getKey(key, options))
+    localStorage.removeItem(fullKey)
+    delete memoryStorage[fullKey]
     return true
   } catch (error) {
     console.error('Storage remove error:', error)
-    return false
+    delete memoryStorage[fullKey]
+    return true
   }
 }
 
@@ -116,10 +130,19 @@ function remove(key, options = {}) {
  */
 function clear(options = {}) {
   const prefix = options.prefix || DEFAULT_CONFIG.prefix
-  const keys = Object.keys(localStorage)
-  keys.forEach(key => {
+  try {
+    const keys = Object.keys(localStorage)
+    keys.forEach(key => {
+      if (key.startsWith(prefix)) {
+        localStorage.removeItem(key)
+      }
+    })
+  } catch (error) {
+    console.error('Storage clear error:', error)
+  }
+  Object.keys(memoryStorage).forEach((key) => {
     if (key.startsWith(prefix)) {
-      localStorage.removeItem(key)
+      delete memoryStorage[key]
     }
   })
 }
@@ -131,7 +154,13 @@ function clear(options = {}) {
  * @returns {boolean} 是否存在
  */
 function has(key, options = {}) {
-  return !!localStorage.getItem(getKey(key, options))
+  const fullKey = getKey(key, options)
+  try {
+    return !!localStorage.getItem(fullKey) || !!memoryStorage[fullKey]
+  } catch (error) {
+    console.error('Storage has error:', error)
+    return !!memoryStorage[fullKey]
+  }
 }
 
 /**
