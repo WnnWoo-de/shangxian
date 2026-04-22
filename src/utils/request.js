@@ -3,13 +3,9 @@ import axios from 'axios'
 import storage from './storage'
 import { showErrorToast } from './toast'
 
-const PROD_WORKER_API_BASE = 'https://my-cloudflare-backend.wnnwwnnw0705.workers.dev/api'
 const DEFAULT_API_BASE = '/api'
 const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
-const FALLBACK_API_BASE = (
-  import.meta.env.VITE_FALLBACK_API_BASE_URL
-  || (PRIMARY_API_BASE === '/api' ? PROD_WORKER_API_BASE : '/api')
-).trim()
+const FALLBACK_API_BASE = (import.meta.env.VITE_FALLBACK_API_BASE_URL || '').trim()
 const DEFAULT_TIMEOUT_MS = import.meta.env.PROD ? 20000 : 10000
 
 const parseTimeoutMs = (value, fallback) => {
@@ -21,10 +17,18 @@ const REQUEST_TIMEOUT_MS = parseTimeoutMs(import.meta.env.VITE_API_TIMEOUT, DEFA
 
 const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
-  if (base.endsWith('/api') && url.startsWith('/api/')) {
-    return url.slice(4)
+  if (/^https?:\/\//i.test(url)) return url
+
+  let path = String(url).trim()
+  if (path.startsWith('/')) {
+    path = path.slice(1)
   }
-  return url
+
+  if (base.endsWith('/api') && path.startsWith('api/')) {
+    path = path.slice(4)
+  }
+
+  return path || '/'
 }
 
 const createClient = (baseURL) => axios.create({ baseURL, timeout: REQUEST_TIMEOUT_MS })
@@ -51,7 +55,7 @@ const shouldRetryWithFallback = (error) => {
   if (PRIMARY_API_BASE === FALLBACK_API_BASE) return false
   const status = Number(error?.response?.status || 0)
   const noResponse = !error?.response
-  return noResponse || status >= 500
+  return noResponse || status >= 500 || status === 404
 }
 
 const isTimeoutError = (error) => error?.code === 'ECONNABORTED'
