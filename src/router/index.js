@@ -220,6 +220,34 @@ const router = createRouter({
   ]
 })
 
+const CHUNK_RELOAD_GUARD_KEY = 'wsbs_chunk_reload_guard'
+const isChunkLoadError = (error) => {
+  const message = String(error?.message || error || '')
+  return (
+    message.includes('Failed to fetch dynamically imported module')
+    || message.includes('Importing a module script failed')
+    || message.includes('Failed to load module script')
+  )
+}
+
+router.onError((error, to) => {
+  if (!isChunkLoadError(error)) return
+
+  const hasRetried = sessionStorage.getItem(CHUNK_RELOAD_GUARD_KEY) === '1'
+  if (hasRetried) {
+    console.error('Chunk load failed after retry:', error)
+    return
+  }
+
+  sessionStorage.setItem(CHUNK_RELOAD_GUARD_KEY, '1')
+  const target = to?.fullPath || window.location.href
+  window.location.assign(target)
+})
+
+router.afterEach(() => {
+  sessionStorage.removeItem(CHUNK_RELOAD_GUARD_KEY)
+})
+
 // 路由导航守卫
 router.beforeEach((to) => {
   if (to.meta.title) {

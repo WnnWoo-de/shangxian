@@ -7,6 +7,7 @@ import { storage, StorageTypes } from '@/utils'
 import { emitBillDataChanged } from '@/utils/bill-events'
 
 const STORAGE_KEY = StorageTypes.BILLS
+const ENABLE_DEMO_SEED = import.meta.env.DEV
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
@@ -124,8 +125,10 @@ export const useBillRecordStore = defineStore('billRecord', () => {
       const cloudRecords = await fetchBillsApi()
       if (Array.isArray(cloudRecords) && cloudRecords.length > 0) {
         records.value = cloudRecords.map((item) => normalizeRecord(item))
-      } else {
+      } else if (ENABLE_DEMO_SEED) {
         records.value = await seedCloudIfEmpty()
+      } else {
+        records.value = []
       }
 
       persistLocal(records.value)
@@ -133,8 +136,13 @@ export const useBillRecordStore = defineStore('billRecord', () => {
     } catch (error) {
       console.error('Load bills from cloud failed:', error)
       const saved = storage.get(STORAGE_KEY, [])
-      const source = Array.isArray(saved) && saved.length ? saved : seedBillRecords
-      records.value = source.map((item) => normalizeRecord(item))
+      if (Array.isArray(saved) && saved.length) {
+        records.value = saved.map((item) => normalizeRecord(item))
+      } else if (ENABLE_DEMO_SEED) {
+        records.value = seedBillRecords.map((item) => normalizeRecord(item))
+      } else {
+        records.value = []
+      }
       persistLocal(records.value)
       initialized.value = true
     } finally {
