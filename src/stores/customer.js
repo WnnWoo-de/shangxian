@@ -5,6 +5,7 @@ import { fetchCustomersApi, createCustomerApi, updateCustomerApi, deleteCustomer
 import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.CUSTOMERS
+const ENABLE_DEMO_SEED = String(import.meta.env.VITE_ENABLE_DEMO_SEED || '').trim() === '1'
 
 const MOCK_CUSTOMERS = [
   {
@@ -87,8 +88,10 @@ export const useCustomerStore = defineStore('customer', () => {
       const cloudCustomers = await fetchCustomersApi()
       if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
         customers.value = cloudCustomers
-      } else {
+      } else if (ENABLE_DEMO_SEED) {
         customers.value = await seedCloudIfEmpty()
+      } else {
+        customers.value = []
       }
       saveLocal(customers.value)
     } catch (error) {
@@ -96,9 +99,11 @@ export const useCustomerStore = defineStore('customer', () => {
       const saved = storage.get(STORAGE_KEY)
       if (saved && saved.length > 0) {
         customers.value = saved
-      } else {
+      } else if (ENABLE_DEMO_SEED) {
         customers.value = [...MOCK_CUSTOMERS]
         saveLocal(customers.value)
+      } else {
+        customers.value = []
       }
     } finally {
       loading.value = false
@@ -288,7 +293,14 @@ export const useCustomerStore = defineStore('customer', () => {
         updatedAt: new Date().toISOString()
       }))
 
-      await Promise.all(newCustomers.map(item => createCustomerApi(item).catch(() => item)))
+      await Promise.all(newCustomers.map(async (item) => {
+        try {
+          await createCustomerApi(item)
+        } catch (error) {
+          console.warn('导入客户时云端写入失败，已加入待同步队列:', error)
+          enqueueSyncOperation('customers', 'upsert', item.id, item, item.updatedAt)
+        }
+      }))
       customers.value.push(...newCustomers)
       saveLocal(customers.value)
 

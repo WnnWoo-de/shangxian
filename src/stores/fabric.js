@@ -6,6 +6,7 @@ import { fetchFabricsApi, createFabricApi, updateFabricApi, deleteFabricApi } fr
 import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.FABRICS
+const ENABLE_DEMO_SEED = String(import.meta.env.VITE_ENABLE_DEMO_SEED || '').trim() === '1'
 
 const saveLocal = (list) => storage.set(STORAGE_KEY, list)
 
@@ -28,8 +29,10 @@ export const useFabricStore = defineStore('fabric', () => {
       const cloudFabrics = await fetchFabricsApi()
       if (Array.isArray(cloudFabrics) && cloudFabrics.length > 0) {
         fabrics.value = cloudFabrics
-      } else {
+      } else if (ENABLE_DEMO_SEED) {
         fabrics.value = await seedCloudIfEmpty()
+      } else {
+        fabrics.value = []
       }
       saveLocal(fabrics.value)
     } catch (error) {
@@ -37,9 +40,11 @@ export const useFabricStore = defineStore('fabric', () => {
       const saved = storage.get(STORAGE_KEY)
       if (saved && saved.length > 0) {
         fabrics.value = saved
-      } else {
+      } else if (ENABLE_DEMO_SEED) {
         fabrics.value = [...initFabrics]
         saveLocal(fabrics.value)
+      } else {
+        fabrics.value = []
       }
     } finally {
       loading.value = false

@@ -8,7 +8,7 @@ import { emitBillDataChanged } from '@/utils/bill-events'
 import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.BILLS
-const ENABLE_DEMO_SEED = import.meta.env.DEV
+const ENABLE_DEMO_SEED = String(import.meta.env.VITE_ENABLE_DEMO_SEED || '').trim() === '1'
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
