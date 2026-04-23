@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { storage, StorageTypes } from '@/utils'
 import { fabrics as initFabrics } from '@/data/initData'
-import { fetchFabricsApi, createFabricApi, updateFabricApi } from '@/api/cloud'
+import { fetchFabricsApi, createFabricApi, updateFabricApi, deleteFabricApi } from '@/api/cloud'
 import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.FABRICS
@@ -162,8 +162,21 @@ export const useFabricStore = defineStore('fabric', () => {
     if (!fabric) {
       throw new Error('布料不存在')
     }
+    const index = fabrics.value.findIndex(f => f.id === id)
+    if (index === -1) {
+      throw new Error('布料不存在')
+    }
 
-    return await updateFabric(id, { status: 'inactive' })
+    try {
+      await deleteFabricApi(id)
+    } catch (error) {
+      console.warn('云端删除布料失败，已加入待同步队列:', error)
+      enqueueSyncOperation('fabrics', 'delete', id, null, new Date().toISOString())
+    }
+
+    fabrics.value.splice(index, 1)
+    saveLocal(fabrics.value)
+    return true
   }
 
   async function toggleFabricStatus(id) {

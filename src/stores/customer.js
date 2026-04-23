@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { storage, StorageTypes } from '@/utils'
-import { fetchCustomersApi, createCustomerApi, updateCustomerApi } from '@/api/cloud'
+import { fetchCustomersApi, createCustomerApi, updateCustomerApi, deleteCustomerApi } from '@/api/cloud'
 import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.CUSTOMERS
@@ -204,8 +204,21 @@ export const useCustomerStore = defineStore('customer', () => {
     if (!customer) {
       throw new Error('客户不存在')
     }
+    const index = customers.value.findIndex(c => c.id === id)
+    if (index === -1) {
+      throw new Error('客户不存在')
+    }
 
-    return await updateCustomer(id, { status: 'inactive' })
+    try {
+      await deleteCustomerApi(id)
+    } catch (error) {
+      console.warn('云端删除客户失败，已加入待同步队列:', error)
+      enqueueSyncOperation('customers', 'delete', id, null, new Date().toISOString())
+    }
+
+    customers.value.splice(index, 1)
+    saveLocal(customers.value)
+    return true
   }
 
   async function toggleCustomerStatus(id) {
