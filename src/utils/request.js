@@ -6,7 +6,11 @@ import { showErrorToast } from './toast'
 const DEFAULT_API_BASE = '/api'
 const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
 const FALLBACK_API_BASE = (import.meta.env.VITE_FALLBACK_API_BASE_URL || '').trim()
-const DEFAULT_TIMEOUT_MS = import.meta.env.PROD ? 20000 : 10000
+const DEFAULT_TIMEOUT_MS = import.meta.env.PROD ? 30000 : 12000
+const DEFAULT_MAX_TIMEOUT_MS = 60000
+const DEFAULT_GET_RETRY_COUNT = 2
+const DEFAULT_RETRY_BASE_DELAY_MS = 600
+const DEFAULT_ERROR_TOAST_COOLDOWN_MS = 8000
 
 const parseTimeoutMs = (value, fallback) => {
   const parsed = Number(value)
@@ -14,6 +18,54 @@ const parseTimeoutMs = (value, fallback) => {
 }
 
 const REQUEST_TIMEOUT_MS = parseTimeoutMs(import.meta.env.VITE_API_TIMEOUT, DEFAULT_TIMEOUT_MS)
+const MAX_TIMEOUT_MS = parseTimeoutMs(import.meta.env.VITE_API_MAX_TIMEOUT, DEFAULT_MAX_TIMEOUT_MS)
+const GET_MAX_RETRY_COUNT = parseTimeoutMs(import.meta.env.VITE_API_GET_RETRY_COUNT, DEFAULT_GET_RETRY_COUNT)
+const RETRY_BASE_DELAY_MS = parseTimeoutMs(import.meta.env.VITE_API_RETRY_BASE_DELAY, DEFAULT_RETRY_BASE_DELAY_MS)
+const ERROR_TOAST_COOLDOWN_MS = parseTimeoutMs(import.meta.env.VITE_API_ERROR_TOAST_COOLDOWN, DEFAULT_ERROR_TOAST_COOLDOWN_MS)
+
+const MOBILE_UA_REGEX = /Android|iPhone|iPad|iPod|Mobile/i
+
+let lastToastMessage = ''
+let lastToastAt = 0
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const getNetworkSlowFactor = () => {
+  if (typeof navigator === 'undefined') return 1
+
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection
+  let factor = MOBILE_UA_REGEX.test(navigator.userAgent || '') ? 1.25 : 1
+
+  if (!connection) {
+    return factor
+  }
+
+  if (connection.saveData) {
+    factor = Math.max(factor, 1.8)
+  }
+
+  const type = String(connection.effectiveType || '').toLowerCase()
+  if (type === 'slow-2g') factor = Math.max(factor, 3)
+  if (type === '2g') factor = Math.max(factor, 2.6)
+  if (type === '3g') factor = Math.max(factor, 1.8)
+  if (type === '4g') factor = Math.max(factor, 1.2)
+
+  const downlink = Number(connection.downlink || 0)
+  if (downlink > 0 && downlink < 1) {
+    factor = Math.max(factor, 2.3)
+  } else if (downlink >= 1 && downlink < 1.5) {
+    factor = Math.max(factor, 1.9)
+  }
+
+  return factor
+}
+
+const resolveAdaptiveTimeout = (baseTimeout) => {
+  const target = Math.round(baseTimeout * getNetworkSlowFactor())
+  return clamp(target, baseTimeout, MAX_TIMEOUT_MS)
+}
 
 const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
@@ -42,6 +94,8 @@ const addAuthHeader = (config) => {
     config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
   }
+  const requestTimeout = parseTimeoutMs(config?.timeout, REQUEST_TIMEOUT_MS)
+  config.timeout = resolveAdaptiveTimeout(requestTimeout)
   return config
 }
 
@@ -59,6 +113,11 @@ const shouldRetryWithFallback = (error) => {
 }
 
 const isTimeoutError = (error) => error?.code === 'ECONNABORTED'
+const isNetworkError = (error) => {
+  if (error?.response) return false
+  if (error?.code === 'ERR_NETWORK') return true
+  return /network error/i.test(String(error?.message || ''))
+}
 
 const requestOnce = async (client, method, endpoint, payload) => {
   if (method === 'get') {
@@ -74,23 +133,42 @@ const requestOnce = async (client, method, endpoint, payload) => {
 }
 
 const requestWithTimeoutRetry = async (client, method, endpoint, payload) => {
-  try {
-    return await requestOnce(client, method, endpoint, payload)
-  } catch (error) {
-    if (method === 'get' && isTimeoutError(error)) {
-      return requestOnce(client, method, endpoint, payload)
+  let lastError = null
+
+  for (let attempt = 0; attempt <= GET_MAX_RETRY_COUNT; attempt += 1) {
+    try {
+      return await requestOnce(client, method, endpoint, payload)
+    } catch (error) {
+      lastError = error
+      const canRetry = method === 'get' && attempt < GET_MAX_RETRY_COUNT && (isTimeoutError(error) || isNetworkError(error))
+      if (!canRetry) {
+        throw error
+      }
+      const backoffMs = RETRY_BASE_DELAY_MS * (2 ** attempt)
+      await sleep(backoffMs)
     }
-    throw error
   }
+  throw lastError
+}
+
+const showErrorToastThrottled = (message) => {
+  const now = Date.now()
+  if (message === lastToastMessage && now - lastToastAt < ERROR_TOAST_COOLDOWN_MS) {
+    return
+  }
+  lastToastMessage = message
+  lastToastAt = now
+  showErrorToast(message)
 }
 
 const buildErrorMessage = (error) => {
   const code = error?.code
   const status = error?.response?.status
   const apiMessage = error?.response?.data?.message
+  const timeoutMs = parseTimeoutMs(error?.config?.timeout, REQUEST_TIMEOUT_MS)
 
   if (code === 'ECONNABORTED') {
-    return `网络较慢，请稍后重试（请求超时 ${REQUEST_TIMEOUT_MS}ms）`
+    return `网络较慢，请稍后重试（请求超时 ${timeoutMs}ms）`
   }
 
   if (!error?.response) {
@@ -115,13 +193,13 @@ const execute = async (method, url, payload) => {
         return await requestWithTimeoutRetry(fallbackClient, method, fallbackEndpoint, payload)
       } catch (fallbackError) {
         const fallbackMessage = buildErrorMessage(fallbackError)
-        showErrorToast(`${fallbackMessage}（主服务故障且兜底失败）`)
+        showErrorToastThrottled(`${fallbackMessage}（主服务故障且兜底失败）`)
         throw fallbackError
       }
     }
 
     const message = buildErrorMessage(error)
-    showErrorToast(message)
+    showErrorToastThrottled(message)
     throw error
   }
 }
