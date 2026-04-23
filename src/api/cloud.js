@@ -7,6 +7,11 @@ const getData = (res, fallback = null) => {
   return fallback
 }
 
+const DEFAULT_SYNC_FALLBACK_BASE = 'https://ws-wnnw.pages.dev/api'
+const SYNC_FALLBACK_BASE = (import.meta.env.VITE_SYNC_API_FALLBACK_URL || DEFAULT_SYNC_FALLBACK_BASE).trim()
+const normalizeBaseUrl = (base) => String(base || '').replace(/\/+$/, '')
+const getStatusCode = (error) => Number(error?.response?.status || 0)
+
 export const loginApi = async (username, password) => {
   const res = await request.post('/auth/login', { username, password })
   return { token: res?.token, user: res?.user }
@@ -81,19 +86,45 @@ export const pullSyncApi = async (since, full = false) => {
   const params = {}
   if (since) params.since = since
   if (full) params.full = '1'
-  const res = await request.get('/sync/pull', params)
-  return getData(res, { serverTime: null, since: null, changes: {} })
+  try {
+    const res = await request.get('/sync/pull', params)
+    return getData(res, { serverTime: null, since: null, changes: {} })
+  } catch (error) {
+    if (getStatusCode(error) !== 404 || !SYNC_FALLBACK_BASE) {
+      throw error
+    }
+    const fallbackUrl = `${normalizeBaseUrl(SYNC_FALLBACK_BASE)}/sync/pull`
+    const fallbackRes = await request.get(fallbackUrl, params)
+    return getData(fallbackRes, { serverTime: null, since: null, changes: {} })
+  }
 }
 
 export const pushSyncApi = async (operations = []) => {
-  const res = await request.post('/sync/push', { operations })
-  return getData(res, {
-    serverTime: null,
-    appliedCount: 0,
-    conflictCount: 0,
-    invalidCount: 0,
-    appliedOpIds: [],
-    conflicts: [],
-    invalid: [],
-  })
+  try {
+    const res = await request.post('/sync/push', { operations })
+    return getData(res, {
+      serverTime: null,
+      appliedCount: 0,
+      conflictCount: 0,
+      invalidCount: 0,
+      appliedOpIds: [],
+      conflicts: [],
+      invalid: [],
+    })
+  } catch (error) {
+    if (getStatusCode(error) !== 404 || !SYNC_FALLBACK_BASE) {
+      throw error
+    }
+    const fallbackUrl = `${normalizeBaseUrl(SYNC_FALLBACK_BASE)}/sync/push`
+    const fallbackRes = await request.post(fallbackUrl, { operations })
+    return getData(fallbackRes, {
+      serverTime: null,
+      appliedCount: 0,
+      conflictCount: 0,
+      invalidCount: 0,
+      appliedOpIds: [],
+      conflicts: [],
+      invalid: [],
+    })
+  }
 }

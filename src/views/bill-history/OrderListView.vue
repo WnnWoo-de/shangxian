@@ -11,6 +11,7 @@ const router = useRouter()
 const route = useRoute()
 const billRecordStore = useBillRecordStore()
 billRecordStore.init()
+const tableCaptureRef = ref(null)
 
 const isPurchase = computed(() => props.type !== 'sale')
 const quickDate = computed(() => String(route.query.quickDate || '').trim())
@@ -88,8 +89,203 @@ const clearQuickFilter = () => {
   router.replace({ path: route.path, query: { ...route.query, quickDate: undefined } })
 }
 
-const exportToExcel = () => {
-  showToast('功能开发中...')
+const getExportFileBase = () => {
+  const datePart = selectedDate.value || new Date().toISOString().slice(0, 10)
+  const typeText = isPurchase.value ? '进货列表' : '出货列表'
+  return `${typeText}_${datePart}`
+}
+
+const normalizeBillItems = (bill) => {
+  if (Array.isArray(bill?.items) && bill.items.length) return bill.items
+  if (Array.isArray(bill?.details) && bill.details.length) return bill.details
+  return []
+}
+
+const sanitizeSheetName = (name, fallback, usedNames) => {
+  const raw = String(name || '').replace(/[\\/*?:[\]]/g, '-').trim()
+  let base = (raw || fallback || '单据').slice(0, 31)
+  if (!base) base = '单据'
+  let finalName = base
+  let index = 2
+  while (usedNames.has(finalName)) {
+    const suffix = `-${index}`
+    finalName = `${base.slice(0, Math.max(1, 31 - suffix.length))}${suffix}`
+    index += 1
+  }
+  usedNames.add(finalName)
+  return finalName
+}
+
+const writeBillSheet = (worksheet, bill) => {
+  const partnerTitle = isPurchase.value ? '供应商' : '客户'
+  const dateText = String(bill?.createdAt || bill?.billDate || new Date().toISOString().slice(0, 10))
+  const noteText = String(bill?.note || '').trim() || '-'
+  const items = normalizeBillItems(bill)
+
+  worksheet.columns = [
+    { width: 22 },
+    { width: 30 },
+    { width: 14 },
+    { width: 14 },
+    { width: 16 },
+    { width: 16 },
+  ]
+
+  worksheet.addRow(['单据日期', dateText])
+  worksheet.addRow([partnerTitle, String(bill?.partnerName || '-').trim() || '-'])
+  worksheet.addRow(['单号', String(bill?.billNo || '-').trim() || '-'])
+  worksheet.addRow(['备注', noteText])
+  worksheet.addRow([isPurchase.value ? '进货方式' : '出货方式', '按重量出货'])
+  worksheet.addRow(['布料', '明细重量输入', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
+
+  const detailRows = items.length
+    ? items.map((item) => {
+      const totalWeight = Number(item?.quantity ?? item?.totalWeight ?? 0)
+      const unitPrice = Number(item?.unitPrice ?? 0)
+      return {
+        fabricName: String(item?.fabricName || item?.fabric || '-').trim() || '-',
+        quantityText: String(item?.quantityInput ?? item?.weightInput ?? item?.weight_input_text ?? '').trim() || '-',
+        totalWeight,
+        unitPrice,
+        amount: totalWeight * unitPrice,
+        note: String(item?.note || '').trim() || '-',
+      }
+    })
+    : [{
+      fabricName: '-',
+      quantityText: '-',
+      totalWeight: 0,
+      unitPrice: 0,
+      amount: 0,
+      note: '-',
+    }]
+
+  detailRows.forEach((row) => {
+    worksheet.addRow([
+      row.fabricName,
+      row.quantityText,
+      row.totalWeight,
+      row.unitPrice,
+      row.amount,
+      row.note,
+    ])
+  })
+
+  const totalWeight = detailRows.reduce((sum, row) => sum + Number(row.totalWeight || 0), 0)
+  const totalAmount = detailRows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+  const totalWeightRowIndex = 7 + detailRows.length
+  const totalAmountRowIndex = totalWeightRowIndex + 1
+
+  worksheet.addRow(['', '总重量', totalWeight, '', '', ''])
+  worksheet.addRow(['', '总金额', '', '', totalAmount, ''])
+
+  for (let i = 1; i <= 5; i += 1) {
+    worksheet.getCell(`A${i}`).font = { bold: true }
+  }
+
+  const headerRow = worksheet.getRow(6)
+  headerRow.font = { bold: true }
+
+  for (let i = 7; i < totalWeightRowIndex; i += 1) {
+    const row = worksheet.getRow(i)
+    row.getCell(3).numFmt = '0.00'
+    row.getCell(4).numFmt = '¥#,##0.00'
+    row.getCell(5).numFmt = '¥#,##0.00'
+  }
+
+  worksheet.getCell(`C${totalWeightRowIndex}`).numFmt = '0.00'
+  worksheet.getCell(`E${totalAmountRowIndex}`).numFmt = '¥#,##0.00'
+
+  worksheet.getCell(`B${totalWeightRowIndex}`).font = { bold: true }
+  worksheet.getCell(`C${totalWeightRowIndex}`).font = { bold: true }
+  worksheet.getCell(`B${totalAmountRowIndex}`).font = { bold: true }
+  worksheet.getCell(`E${totalAmountRowIndex}`).font = { bold: true }
+
+  worksheet.mergeCells(`B${totalAmountRowIndex}:D${totalAmountRowIndex}`)
+  worksheet.getCell(`B${totalAmountRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' }
+}
+
+const exportToExcel = async () => {
+  if (!list.value.length) {
+    showToast('暂无可导出的单据', 'warning')
+    return
+  }
+
+  try {
+    const excelModule = await import('exceljs')
+    const ExcelJS = excelModule.default
+    const workbook = new ExcelJS.Workbook()
+    const usedNames = new Set()
+    list.value.forEach((bill, index) => {
+      const sheetName = sanitizeSheetName(
+        bill?.billNo || `${isPurchase.value ? '进货' : '出货'}-${index + 1}`,
+        `${isPurchase.value ? '进货' : '出货'}-${index + 1}`,
+        usedNames
+      )
+      const worksheet = workbook.addWorksheet(sheetName)
+      writeBillSheet(worksheet, bill)
+    })
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob(
+      [buffer],
+      { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+    )
+    const url = window.URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${getExportFileBase()}.xlsx`
+    anchor.click()
+    window.URL.revokeObjectURL(url)
+    showToast('Excel 导出成功', 'success')
+  } catch (error) {
+    console.error('导出 Excel 失败:', error)
+    showToast('导出 Excel 失败，请重试', 'error')
+  }
+}
+
+const exportToImage = async () => {
+  if (!list.value.length) {
+    showToast('暂无可导出的单据', 'warning')
+    return
+  }
+  if (!tableCaptureRef.value) {
+    showToast('未找到可导出的区域', 'error')
+    return
+  }
+
+  try {
+    const html2canvasModule = await import('html2canvas')
+    const html2canvas = html2canvasModule.default
+    const canvas = await html2canvas(tableCaptureRef.value, {
+      backgroundColor: '#ffffff',
+      scale: Math.min(2, window.devicePixelRatio || 1.5),
+      useCORS: true,
+      logging: false,
+    })
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) {
+      const dataUrl = canvas.toDataURL('image/png')
+      const anchor = document.createElement('a')
+      anchor.href = dataUrl
+      anchor.download = `${getExportFileBase()}.png`
+      anchor.click()
+      showToast('图片导出成功', 'success')
+      return
+    }
+
+    const url = window.URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${getExportFileBase()}.png`
+    anchor.click()
+    window.URL.revokeObjectURL(url)
+    showToast('图片导出成功', 'success')
+  } catch (error) {
+    console.error('导出图片失败:', error)
+    showToast('导出图片失败，请重试', 'error')
+  }
 }
 
 const getStatusText = (status, unsettled) => {
@@ -213,6 +409,9 @@ const recentPartners = computed(() => {
           <button class="btn-secondary" @click="exportToExcel">
             导出Excel
           </button>
+          <button class="btn-secondary" @click="exportToImage">
+            导出图片
+          </button>
           <button v-if="selectedDate" class="btn-ghost" @click="clearQuickFilter">
             查看全部
           </button>
@@ -222,7 +421,7 @@ const recentPartners = computed(() => {
 
     <!-- 单据列表 -->
     <section class="list-section">
-      <div class="list-container">
+      <div ref="tableCaptureRef" class="list-container">
         <div class="list-header">
           <h3>单据列表</h3>
           <span class="list-tip">支持查看、编辑、删除</span>
@@ -504,6 +703,8 @@ const recentPartners = computed(() => {
   .filter-actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
+    align-items: flex-end;
 
     .btn-secondary {
       padding: 10px 16px;

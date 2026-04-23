@@ -148,131 +148,87 @@ const exportToExcel = async () => {
     const workbook = new ExcelJS.Workbook()
     const worksheet = workbook.addWorksheet(exportTitle.value)
 
-    // 添加单据基本信息
-    worksheet.addRow(['单据类型', isSale.value ? '出货单据' : '进货单据'])
+    const detailRows = rows.value
+      .filter((item) => item && (item.fabricName?.trim() || Number(item.quantity) > 0 || Number(item.unitPrice) > 0))
+      .map((item) => {
+        const quantity = Number(item.quantity || 0)
+        const unitPrice = Number(item.unitPrice || 0)
+        return {
+          fabricName: item.fabricName || '-',
+          quantityText: item.quantityInput || '-',
+          totalWeight: quantity,
+          unitPrice,
+          amount: quantity * unitPrice,
+          note: item.note || '-',
+        }
+      })
+
+    const normalizedRows = detailRows.length ? detailRows : [{
+      fabricName: '-',
+      quantityText: '-',
+      totalWeight: 0,
+      unitPrice: 0,
+      amount: 0,
+      note: '-',
+    }]
+
+    worksheet.columns = [
+      { width: 22 },
+      { width: 30 },
+      { width: 14 },
+      { width: 14 },
+      { width: 16 },
+      { width: 16 },
+    ]
+
     worksheet.addRow(['单据日期', form.createdAt || new Date().toISOString().slice(0, 10)])
     worksheet.addRow([isSale.value ? '客户' : '供应商', form.supplier.trim() || '-'])
     worksheet.addRow(['单号', form.orderNo || '-'])
     worksheet.addRow(['备注', form.note.trim() || '-'])
-    worksheet.addRow(['出货方式', '按重量出货'])
-    worksheet.addRow([])
+    worksheet.addRow([isSale.value ? '出货方式' : '进货方式', '按重量出货'])
+    worksheet.addRow(['布料', '明细重量输入', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
 
-    // 标题栏
-    worksheet.columns = [
-      { header: '布料', key: 'fabric', width: 20 },
-      { header: '明细重量输入', key: 'quantityText', width: 24 },
-      { header: '总重量(斤)', key: 'quantity', width: 14 },
-      { header: '单价(元/斤)', key: 'unitPrice', width: 14 },
-      { header: '金额(元)', key: 'amount', width: 16 },
-      { header: '备注', key: 'note', width: 20 },
-    ]
-
-    // 填充数据
-    rows.value.forEach((row) => {
-      const total = Number(row.quantity) * Number(row.unitPrice)
-      worksheet.addRow({
-        fabric: row.fabricName,
-        quantityText: row.quantityInput || '-',
-        quantity: Number(row.quantity),
-        unitPrice: Number(row.unitPrice),
-        amount: total,
-        note: row.note || '-',
-      })
+    normalizedRows.forEach((row) => {
+      worksheet.addRow([
+        row.fabricName,
+        row.quantityText,
+        row.totalWeight,
+        row.unitPrice,
+        row.amount,
+        row.note,
+      ])
     })
 
-    // 添加总重量行
-    worksheet.addRow(['总重量', '', Number(totalWeight.value || 0), '', '', ''])
-    // 添加总金额行
-    worksheet.addRow(['总金额', '', '', '', Number(totalAmount.value || 0), ''])
+    const totalWeightNumber = normalizedRows.reduce((sum, item) => sum + Number(item.totalWeight || 0), 0)
+    const totalAmountNumber = normalizedRows.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const totalWeightRowIndex = 7 + normalizedRows.length
+    const totalAmountRowIndex = totalWeightRowIndex + 1
 
-    // 格式化列
-    worksheet.getColumn('C').numFmt = '0.00'
-    worksheet.getColumn('D').numFmt = '¥#,##0.00'
-    worksheet.getColumn('E').numFmt = '¥#,##0.00'
+    worksheet.addRow(['', '总重量', totalWeightNumber, '', '', ''])
+    worksheet.addRow(['', '总金额', '', '', totalAmountNumber, ''])
 
-    // 设置表头样式
-    const headerRow = worksheet.getRow(8)
-    headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } }
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF409EFF' }
+    for (let i = 1; i <= 5; i += 1) {
+      worksheet.getCell(`A${i}`).font = { bold: true }
     }
-    headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
+    worksheet.getRow(6).font = { bold: true }
 
-    // 设置基本信息加粗
-    for (let i = 1; i <= 6; i++) {
-      const cell = worksheet.getCell(`A${i}`)
-      cell.font = { bold: true }
-    }
-
-    // 设置数据行样式
-    for (let i = 9; i <= worksheet.rowCount - 2; i++) {
+    for (let i = 7; i < totalWeightRowIndex; i += 1) {
       const row = worksheet.getRow(i)
-      row.alignment = { vertical: 'middle', horizontal: 'left' }
-      // 交替行颜色
-      if (i % 2 === 0) {
-        row.eachCell((cell) => {
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFFAFAFA' }
-          }
-        })
-      }
+      row.getCell(3).numFmt = '0.00'
+      row.getCell(4).numFmt = '¥#,##0.00'
+      row.getCell(5).numFmt = '¥#,##0.00'
     }
 
-    // 设置总重量和总金额行样式
-    const totalWeightRow = worksheet.getRow(worksheet.rowCount - 1)
-    const totalAmountRow = worksheet.getRow(worksheet.rowCount)
+    worksheet.getCell(`C${totalWeightRowIndex}`).numFmt = '0.00'
+    worksheet.getCell(`E${totalAmountRowIndex}`).numFmt = '¥#,##0.00'
 
-    // 合并总重量行的单元格并设置样式
-    worksheet.mergeCells(`A${totalWeightRow.number}:B${totalWeightRow.number}`)
-    totalWeightRow.getCell('A').value = '总重量'
-    totalWeightRow.getCell('A').font = { bold: true, size: 12 }
-    totalWeightRow.getCell('A').alignment = { vertical: 'middle', horizontal: 'center' }
-    totalWeightRow.getCell('A').fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE6F7FF' }
-    }
-    totalWeightRow.getCell('C').font = { bold: true, size: 12 }
-    totalWeightRow.getCell('C').alignment = { vertical: 'middle', horizontal: 'right' }
-    totalWeightRow.getCell('C').fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE6F7FF' }
-    }
+    worksheet.getCell(`B${totalWeightRowIndex}`).font = { bold: true }
+    worksheet.getCell(`C${totalWeightRowIndex}`).font = { bold: true }
+    worksheet.getCell(`B${totalAmountRowIndex}`).font = { bold: true }
+    worksheet.getCell(`E${totalAmountRowIndex}`).font = { bold: true }
 
-    // 合并总金额行的单元格并设置样式
-    worksheet.mergeCells(`A${totalAmountRow.number}:D${totalAmountRow.number}`)
-    totalAmountRow.getCell('A').value = '总金额'
-    totalAmountRow.getCell('A').font = { bold: true, size: 12 }
-    totalAmountRow.getCell('A').alignment = { vertical: 'middle', horizontal: 'center' }
-    totalAmountRow.getCell('A').fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE6F7FF' }
-    }
-    totalAmountRow.getCell('E').font = { bold: true, size: 12 }
-    totalAmountRow.getCell('E').alignment = { vertical: 'middle', horizontal: 'right' }
-    totalAmountRow.getCell('E').fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE6F7FF' }
-    }
-
-    // 设置边框
-    worksheet.eachRow((row) => {
-      row.eachCell((cell) => {
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-          left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-          bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-          right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
-        }
-      })
-    })
+    worksheet.mergeCells(`B${totalAmountRowIndex}:D${totalAmountRowIndex}`)
+    worksheet.getCell(`B${totalAmountRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' }
 
     // 导出
     const buffer = await workbook.xlsx.writeBuffer()
@@ -471,6 +427,12 @@ const exportImage = () => {
 
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, width, canvasHeight)
+
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#1f3852'
+  ctx.font = 'bold 30px "SimSun", serif'
+  ctx.fillText('皖盛布碎', width / 2, 42)
+  ctx.textAlign = 'left'
 
   ctx.fillStyle = '#1f3852'
   ctx.font = 'bold 34px "SimSun", serif'

@@ -743,6 +743,12 @@ const exportImage = () => {
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, width, canvasHeight)
 
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#1f3852'
+  ctx.font = 'bold 30px "SimSun", serif'
+  ctx.fillText('皖盛布碎', width / 2, 42)
+  ctx.textAlign = 'left'
+
   ctx.fillStyle = '#1f3852'
   ctx.font = 'bold 34px "SimSun", serif'
   ctx.fillText(exportTitle.value, 48, 62)
