@@ -9,6 +9,7 @@ import { readJson, writeJson, removeItem } from '../../utils/storage'
 import { multiplyMoney, addMoney, formatMoney } from '../../utils/money'
 import { showToast } from '../../utils/toast'
 import { MASTER_DATA_CHANGED_EVENT } from '../../utils/master-data-events'
+import { getExportImageBrandName } from '../../utils/app-config'
 
 const props = defineProps({
   type: {
@@ -692,7 +693,7 @@ const exportImage = () => {
   ctx.font = '22px "SimSun", serif'
   const noteLines = getWrappedLines(`备注：${form.note.trim() || '-'}`, width - 96)
   const noteLineHeight = 30
-  const noteTop = 200
+  const noteTop = 228
   const noteHeight = Math.max(noteLineHeight, noteLines.length * noteLineHeight)
   const saleModeText = '出货方式：按重量出货'
   const tableTop = noteTop + noteHeight + 40
@@ -743,20 +744,20 @@ const exportImage = () => {
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, width, canvasHeight)
 
+  const exportBrandName = getExportImageBrandName()
   ctx.textAlign = 'center'
   ctx.fillStyle = '#1f3852'
-  ctx.font = 'bold 30px "SimSun", serif'
-  ctx.fillText('皖盛布碎', width / 2, 42)
+  ctx.font = 'bold 32px "SimSun", serif'
+  ctx.fillText(exportBrandName, width / 2, 48)
+  ctx.font = 'bold 34px "SimSun", serif'
+  ctx.fillText(exportTitle.value, width / 2, 92)
   ctx.textAlign = 'left'
 
   ctx.fillStyle = '#1f3852'
-  ctx.font = 'bold 34px "SimSun", serif'
-  ctx.fillText(exportTitle.value, 48, 62)
-
   ctx.font = '22px "SimSun", serif'
   ctx.fillStyle = '#4e6b86'
-  ctx.fillText(`日期：${new Date().toISOString().slice(0, 10)}`, 48, 104)
-  ctx.fillText(`${partnerLabel.value}：${form.partnerName.trim() || '-'}`, 48, 136)
+  ctx.fillText(`日期：${new Date().toISOString().slice(0, 10)}`, 48, 148)
+  ctx.fillText(`${partnerLabel.value}：${form.partnerName.trim() || '-'}`, 48, 180)
 
   noteLines.forEach((line, index) => {
     ctx.fillText(line, 48, noteTop + index * noteLineHeight)

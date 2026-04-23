@@ -4,8 +4,26 @@ import storage from './storage'
 import { showErrorToast } from './toast'
 
 const DEFAULT_API_BASE = '/api'
-const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
-const FALLBACK_API_BASE = (import.meta.env.VITE_FALLBACK_API_BASE_URL || '').trim()
+const LEGACY_WORKER_HOST = 'my-cloudflare-backend.wnnwwnnw0705.workers.dev'
+const DEFAULT_CANONICAL_API_BASE = (import.meta.env.VITE_SYNC_API_FALLBACK_URL || 'https://www.wsbs.wnnw.fun/api').trim()
+
+const rewriteLegacyApiBase = (base) => {
+  const input = String(base || '').trim()
+  if (!input) return input
+  if (!/^https?:\/\//i.test(input)) return input
+  try {
+    const url = new URL(input)
+    if (url.host === LEGACY_WORKER_HOST) {
+      return DEFAULT_CANONICAL_API_BASE || DEFAULT_API_BASE
+    }
+    return input
+  } catch {
+    return input
+  }
+}
+
+const PRIMARY_API_BASE = rewriteLegacyApiBase((import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE)
+const FALLBACK_API_BASE = rewriteLegacyApiBase((import.meta.env.VITE_FALLBACK_API_BASE_URL || '').trim())
 const DEFAULT_TIMEOUT_MS = import.meta.env.PROD ? 30000 : 12000
 const DEFAULT_MAX_TIMEOUT_MS = 60000
 const DEFAULT_GET_RETRY_COUNT = 2
@@ -69,7 +87,9 @@ const resolveAdaptiveTimeout = (baseTimeout) => {
 
 const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
-  if (/^https?:\/\//i.test(url)) return url
+  if (/^https?:\/\//i.test(url)) {
+    return rewriteLegacyApiBase(url)
+  }
 
   let path = String(url).trim()
   if (path.startsWith('/')) {

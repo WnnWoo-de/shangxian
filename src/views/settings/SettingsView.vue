@@ -1,5 +1,7 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { showToast } from '@/utils/toast'
+import { getExportImageBrandName, setExportImageBrandName } from '@/utils/app-config'
 // UUID is not necessary, just standard icons or simple css shapes
 
 const settingsList = ref([
@@ -32,6 +34,33 @@ const settingsList = ref([
     type: 'text'
   }
 ])
+
+const exportImageBrandName = ref('')
+const savingBrandName = ref(false)
+
+const loadBrandName = () => {
+  exportImageBrandName.value = getExportImageBrandName()
+}
+
+const saveBrandName = async () => {
+  if (savingBrandName.value) return
+  savingBrandName.value = true
+  try {
+    const nextName = String(exportImageBrandName.value || '').trim()
+    setExportImageBrandName(nextName)
+    exportImageBrandName.value = getExportImageBrandName()
+    showToast('导出图片顶部标题已保存', 'success')
+  } catch (error) {
+    console.error('保存导出图片标题失败:', error)
+    showToast('保存失败，请重试', 'error')
+  } finally {
+    savingBrandName.value = false
+  }
+}
+
+onMounted(() => {
+  loadBrandName()
+})
 </script>
 
 <template>
@@ -40,6 +69,27 @@ const settingsList = ref([
       <h2 class="title">系统设置</h2>
       <p class="subtitle">管理您的偏好设置与系统状态</p>
     </div>
+
+    <section class="panel settings-panel">
+      <div class="setting-item">
+        <div class="item-info">
+          <h3>导出图片顶部标题</h3>
+          <p>用于单据详情页和开单页导出图片顶部中间显示的文字。</p>
+        </div>
+        <div class="item-action item-action-row">
+          <input
+            v-model="exportImageBrandName"
+            type="text"
+            class="brand-input"
+            placeholder="请输入导出图片顶部标题"
+            maxlength="24"
+          />
+          <button class="action-btn" :disabled="savingBrandName" @click="saveBrandName">
+            {{ savingBrandName ? '保存中...' : '保存' }}
+          </button>
+        </div>
+      </div>
+    </section>
 
     <section class="panel settings-panel">
       <div 
@@ -155,6 +205,28 @@ const settingsList = ref([
   align-items: center;
 }
 
+.item-action-row {
+  gap: 10px;
+}
+
+.brand-input {
+  width: 260px;
+  max-width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--input-border);
+  padding: 0 12px;
+  font-size: 14px;
+  background: #fff;
+  color: var(--text-primary);
+}
+
+.brand-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(36, 127, 214, 0.12);
+}
+
 .value-text {
   font-size: 15px;
   font-weight: 500;
@@ -204,6 +276,13 @@ const settingsList = ref([
   white-space: nowrap;
 }
 
+.action-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .action-btn:hover {
   background: var(--accent-blue-deep);
   color: #fff;
@@ -231,6 +310,16 @@ const settingsList = ref([
 
   .item-action {
     align-self: flex-end;
+  }
+
+  .item-action-row {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brand-input {
+    width: 100%;
   }
 }
 
