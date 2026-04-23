@@ -2,7 +2,10 @@ import { fail, listRows, ok, parseBody } from '../helpers/http'
 
 export const registerFabricRoutes = (app) => {
   app.get('/api/fabrics', async (c) => {
-    const fabrics = await listRows(c.env.DB, 'SELECT data FROM fabrics ORDER BY datetime(updated_at) DESC')
+    const fabrics = await listRows(
+      c.env.DB,
+      'SELECT data FROM fabrics WHERE deleted_at IS NULL ORDER BY datetime(updated_at) DESC'
+    )
     return ok(c, { data: fabrics })
   })
 
@@ -25,8 +28,8 @@ export const registerFabricRoutes = (app) => {
 
     await c.env.DB
       .prepare(
-        `INSERT OR REPLACE INTO fabrics (id, code, name, status, data, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+        `INSERT OR REPLACE INTO fabrics (id, code, name, status, data, created_at, updated_at, deleted_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)`
       )
       .bind(fabric.id, fabric.code, fabric.name, fabric.status, JSON.stringify(fabric), fabric.createdAt, fabric.updatedAt)
       .run()
@@ -38,7 +41,7 @@ export const registerFabricRoutes = (app) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少布料ID', 400)
 
-    const existingRow = await c.env.DB.prepare('SELECT data FROM fabrics WHERE id = ?1').bind(id).first()
+    const existingRow = await c.env.DB.prepare('SELECT data FROM fabrics WHERE id = ?1 AND deleted_at IS NULL').bind(id).first()
     if (!existingRow?.data) return fail(c, '布料不存在', 404)
 
     const existing = JSON.parse(existingRow.data)
@@ -53,7 +56,7 @@ export const registerFabricRoutes = (app) => {
     await c.env.DB
       .prepare(
         `UPDATE fabrics
-           SET code = ?2, name = ?3, status = ?4, data = ?5, updated_at = ?6
+           SET code = ?2, name = ?3, status = ?4, data = ?5, updated_at = ?6, deleted_at = NULL
          WHERE id = ?1`
       )
       .bind(
@@ -72,7 +75,27 @@ export const registerFabricRoutes = (app) => {
   app.delete('/api/fabrics/:id', async (c) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少布料ID', 400)
-    await c.env.DB.prepare('DELETE FROM fabrics WHERE id = ?1').bind(id).run()
-    return ok(c, { data: { id } })
+    const existingRow = await c.env.DB.prepare('SELECT data FROM fabrics WHERE id = ?1').bind(id).first()
+    if (!existingRow?.data) return ok(c, { data: { id } })
+
+    const now = new Date().toISOString()
+    const existing = JSON.parse(existingRow.data)
+    const deleted = {
+      ...existing,
+      id,
+      status: 'inactive',
+      updatedAt: now,
+      deletedAt: now,
+    }
+
+    await c.env.DB
+      .prepare(
+        `UPDATE fabrics
+           SET status = ?2, data = ?3, updated_at = ?4, deleted_at = ?5
+         WHERE id = ?1`
+      )
+      .bind(id, 'inactive', JSON.stringify(deleted), now, now)
+      .run()
+    return ok(c, { data: { id, deletedAt: now } })
   })
 }

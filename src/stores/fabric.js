@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { storage, StorageTypes } from '@/utils'
 import { fabrics as initFabrics } from '@/data/initData'
 import { fetchFabricsApi, createFabricApi, updateFabricApi } from '@/api/cloud'
+import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.FABRICS
 
@@ -108,6 +109,7 @@ export const useFabricStore = defineStore('fabric', () => {
         created = await createFabricApi(draft)
       } catch (error) {
         console.warn('云端新增布料失败，已回退本地:', error)
+        enqueueSyncOperation('fabrics', 'upsert', draft.id, draft, draft.updatedAt)
       }
 
       fabrics.value.push(created)
@@ -142,6 +144,7 @@ export const useFabricStore = defineStore('fabric', () => {
       } catch (error) {
         console.warn('云端更新布料失败，已回退本地:', error)
         fabrics.value[index] = next
+        enqueueSyncOperation('fabrics', 'upsert', next.id, next, next.updatedAt)
       }
 
       saveLocal(fabrics.value)

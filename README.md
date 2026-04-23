@@ -36,6 +36,8 @@ npx wrangler d1 create ws-wnnw-db
 npx wrangler d1 migrations apply ws-wnnw-db --remote
 ```
 
+本次多端同步落地依赖 `migrations/0002_soft_delete_sync.sql`，请确保迁移执行成功后再发布前端。
+
 ### 3. 在 Cloudflare Pages 绑定 D1
 
 进入 Pages 项目 `ws-wnnw`：
@@ -68,3 +70,12 @@ Variables:
 ```sh
 npm run test:unit
 ```
+
+## 多端同步能力（已落地）
+
+- 同步模式：`先上传本地待同步队列 -> 再增量拉取云端变更`
+- 离线保障：新增/编辑/删除失败时会进入本地队列，网络恢复后自动重试
+- 删除一致性：服务端改为软删除（`deleted_at`），避免多端“删除回流”
+- 同步接口：
+  - `POST /api/sync/push`
+  - `GET /api/sync/pull?since=<ISO时间>`

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { storage } from '@/utils'
 import { useRouter } from 'vue-router'
 import { loginApi } from '@/api/cloud'
+import { clearSyncQueue } from '@/utils/sync-queue'
 
 const MOCK_USERS = [
   {
@@ -108,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       storage.removeToken()
       storage.removeUser()
+      clearSyncQueue()
 
       router.push('/login')
     } catch (error) {

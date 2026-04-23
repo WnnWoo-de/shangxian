@@ -5,6 +5,7 @@ import { billRecords as seedBillRecords } from '@/data/billRecords'
 import { createBillApi, deleteBillApi, fetchBillsApi, updateBillApi } from '@/api/cloud'
 import { storage, StorageTypes } from '@/utils'
 import { emitBillDataChanged } from '@/utils/bill-events'
+import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.BILLS
 const ENABLE_DEMO_SEED = import.meta.env.DEV
@@ -181,6 +182,7 @@ export const useBillRecordStore = defineStore('billRecord', () => {
       next = normalizeRecord(await createBillApi(normalized))
     } catch (error) {
       console.warn('云端创建单据失败，已回退本地:', error)
+      enqueueSyncOperation('bills', 'upsert', normalized.id, normalized, normalized.updatedAt || new Date().toISOString())
     }
 
     records.value.unshift(next)
@@ -207,6 +209,7 @@ export const useBillRecordStore = defineStore('billRecord', () => {
     } catch (error) {
       console.warn('云端更新单据失败，已回退本地:', error)
       records.value[index] = normalized
+      enqueueSyncOperation('bills', 'upsert', normalized.id, normalized, normalized.updatedAt || new Date().toISOString())
     }
 
     persistLocal(records.value)
@@ -222,6 +225,7 @@ export const useBillRecordStore = defineStore('billRecord', () => {
       await deleteBillApi(String(id))
     } catch (error) {
       console.warn('云端删除单据失败，已回退本地:', error)
+      enqueueSyncOperation('bills', 'delete', String(id), null, new Date().toISOString())
     }
 
     records.value.splice(index, 1)

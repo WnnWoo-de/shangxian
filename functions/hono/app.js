@@ -8,6 +8,7 @@ import { registerCustomerRoutes } from './routes/customers'
 import { registerFabricRoutes } from './routes/fabrics'
 import { registerBillRoutes } from './routes/bills'
 import { registerStatsRoutes } from './routes/stats'
+import { registerSyncRoutes } from './routes/sync'
 
 const app = new Hono()
 
@@ -27,6 +28,7 @@ registerCustomerRoutes(app)
 registerFabricRoutes(app)
 registerBillRoutes(app)
 registerStatsRoutes(app)
+registerSyncRoutes(app)
 
 app.all('/api/*', (c) => fail(c, 'Not Found', 404))
 

@@ -2,7 +2,10 @@ import { fail, listRows, ok, parseBody } from '../helpers/http'
 
 export const registerCustomerRoutes = (app) => {
   app.get('/api/customers', async (c) => {
-    const customers = await listRows(c.env.DB, 'SELECT data FROM customers ORDER BY datetime(updated_at) DESC')
+    const customers = await listRows(
+      c.env.DB,
+      'SELECT data FROM customers WHERE deleted_at IS NULL ORDER BY datetime(updated_at) DESC'
+    )
     return ok(c, { data: customers })
   })
 
@@ -24,8 +27,8 @@ export const registerCustomerRoutes = (app) => {
 
     await c.env.DB
       .prepare(
-        `INSERT OR REPLACE INTO customers (id, name, status, data, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+        `INSERT OR REPLACE INTO customers (id, name, status, data, created_at, updated_at, deleted_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)`
       )
       .bind(customer.id, customer.name, customer.status, JSON.stringify(customer), customer.createdAt, customer.updatedAt)
       .run()
@@ -37,7 +40,7 @@ export const registerCustomerRoutes = (app) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少客户ID', 400)
 
-    const existingRow = await c.env.DB.prepare('SELECT data FROM customers WHERE id = ?1').bind(id).first()
+    const existingRow = await c.env.DB.prepare('SELECT data FROM customers WHERE id = ?1 AND deleted_at IS NULL').bind(id).first()
     if (!existingRow?.data) return fail(c, '客户不存在', 404)
 
     const existing = JSON.parse(existingRow.data)
@@ -52,7 +55,7 @@ export const registerCustomerRoutes = (app) => {
     await c.env.DB
       .prepare(
         `UPDATE customers
-           SET name = ?2, status = ?3, data = ?4, updated_at = ?5
+           SET name = ?2, status = ?3, data = ?4, updated_at = ?5, deleted_at = NULL
          WHERE id = ?1`
       )
       .bind(id, String(updated.name || ''), String(updated.status || 'active'), JSON.stringify(updated), updated.updatedAt)
@@ -64,7 +67,28 @@ export const registerCustomerRoutes = (app) => {
   app.delete('/api/customers/:id', async (c) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少客户ID', 400)
-    await c.env.DB.prepare('DELETE FROM customers WHERE id = ?1').bind(id).run()
-    return ok(c, { data: { id } })
+    const existingRow = await c.env.DB.prepare('SELECT data FROM customers WHERE id = ?1').bind(id).first()
+    if (!existingRow?.data) return ok(c, { data: { id } })
+
+    const now = new Date().toISOString()
+    const existing = JSON.parse(existingRow.data)
+    const deleted = {
+      ...existing,
+      id,
+      status: 'inactive',
+      updatedAt: now,
+      deletedAt: now,
+    }
+
+    await c.env.DB
+      .prepare(
+        `UPDATE customers
+           SET status = ?2, data = ?3, updated_at = ?4, deleted_at = ?5
+         WHERE id = ?1`
+      )
+      .bind(id, 'inactive', JSON.stringify(deleted), now, now)
+      .run()
+
+    return ok(c, { data: { id, deletedAt: now } })
   })
 }

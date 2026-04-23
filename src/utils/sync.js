@@ -1,5 +1,7 @@
 import { getCache, setCache } from './cache'
 import storage from './storage'
+import { pullSyncApi, pushSyncApi } from '@/api/cloud'
+import { getSyncQueue, getSyncQueueStats, removeSyncQueueByOpIds } from './sync-queue'
 
 let syncTimer = null
 let syncInProgress = false
@@ -27,8 +29,8 @@ const readLastSyncTime = () => {
   return null
 }
 
-const markSynced = () => {
-  const now = new Date().toISOString()
+const markSynced = (time) => {
+  const now = String(time || new Date().toISOString())
   setCache(LAST_SYNC_CACHE_KEY, now, 7 * 24 * 60 * 60 * 1000)
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(LAST_SYNC_STORAGE_KEY, now)
@@ -86,6 +88,32 @@ const resolveStores = async () => {
   }
 }
 
+const countRemoteChanges = (changes = {}) => ({
+  bills: toList(changes?.bills?.upserts).length + toList(changes?.bills?.deletes).length,
+  customers: toList(changes?.customers?.upserts).length + toList(changes?.customers?.deletes).length,
+  fabrics: toList(changes?.fabrics?.upserts).length + toList(changes?.fabrics?.deletes).length,
+})
+
+const pickRefreshTargets = (detail, force, pushResult = {}) => {
+  const conflictEntities = new Set()
+  toList(pushResult.conflicts).forEach((item) => conflictEntities.add(String(item?.entity || '')))
+  toList(pushResult.invalid).forEach((item) => conflictEntities.add(String(item?.entity || '')))
+
+  return {
+    bills: force || detail.bills > 0 || conflictEntities.has('bills'),
+    customers: force || detail.customers > 0 || conflictEntities.has('customers'),
+    fabrics: force || detail.fabrics > 0 || conflictEntities.has('fabrics'),
+  }
+}
+
+const refreshByTargets = async (stores, targets) => {
+  const jobs = []
+  if (targets.bills) jobs.push(stores.billRecordStore.refresh())
+  if (targets.customers) jobs.push(stores.customerStore.refresh())
+  if (targets.fabrics) jobs.push(stores.fabricStore.refresh())
+  await Promise.all(jobs)
+}
+
 const runSync = async (force = false) => {
   if (!storage.getToken()) {
     return { success: false, syncedCount: 0, msg: '未登录，无法同步', lastSyncTime: readLastSyncTime() }
@@ -104,27 +132,67 @@ const runSync = async (force = false) => {
       return { success: false, syncedCount: 0, msg: '当前有数据操作，稍后自动重试', lastSyncTime: readLastSyncTime() }
     }
 
-    const before = getStoreDataSnapshot(stores)
-    await Promise.all([
-      stores.billRecordStore.refresh(),
-      stores.customerStore.refresh(),
-      stores.fabricStore.refresh(),
-    ])
-    const after = getStoreDataSnapshot(stores)
-
-    const detail = {
-      bills: diffCount(before.bills, after.bills),
-      customers: diffCount(before.customers, after.customers),
-      fabrics: diffCount(before.fabrics, after.fabrics),
+    const pendingQueue = getSyncQueue()
+    let pushResult = {
+      appliedCount: 0,
+      conflictCount: 0,
+      invalidCount: 0,
+      appliedOpIds: [],
+      conflicts: [],
+      invalid: [],
+      serverTime: null,
     }
+
+    if (pendingQueue.length > 0) {
+      pushResult = await pushSyncApi(pendingQueue)
+      const handledOpIds = [
+        ...toList(pushResult.appliedOpIds),
+        ...toList(pushResult.conflicts).map((item) => item?.opId),
+        ...toList(pushResult.invalid).map((item) => item?.opId),
+      ].filter(Boolean)
+      removeSyncQueueByOpIds(handledOpIds)
+    }
+
+    const since = force ? null : readLastSyncTime()
+    const pullResult = await pullSyncApi(since, force || !since)
+    const detail = countRemoteChanges(pullResult?.changes || {})
+    const refreshTargets = pickRefreshTargets(detail, force, pushResult)
+
+    const needRefresh = refreshTargets.bills || refreshTargets.customers || refreshTargets.fabrics
+    if (needRefresh) {
+      const before = getStoreDataSnapshot(stores)
+      await refreshByTargets(stores, refreshTargets)
+      const after = getStoreDataSnapshot(stores)
+      if (refreshTargets.bills) detail.bills = Math.max(detail.bills, diffCount(before.bills, after.bills))
+      if (refreshTargets.customers) detail.customers = Math.max(detail.customers, diffCount(before.customers, after.customers))
+      if (refreshTargets.fabrics) detail.fabrics = Math.max(detail.fabrics, diffCount(before.fabrics, after.fabrics))
+    }
+
     const syncedCount = detail.bills + detail.customers + detail.fabrics
-    const lastSyncTime = markSynced()
+    const lastSyncTime = markSynced(pullResult?.serverTime || pushResult?.serverTime)
+    const pendingStats = getSyncQueueStats()
+    const conflictCount = Number(pushResult.conflictCount || 0)
+    const invalidCount = Number(pushResult.invalidCount || 0)
+
+    const msgParts = []
+    if (pushResult.appliedCount > 0) msgParts.push(`已上传 ${pushResult.appliedCount} 条本地改动`)
+    if (syncedCount > 0) msgParts.push(`已拉取 ${syncedCount} 条云端更新`)
+    if (!msgParts.length) msgParts.push('同步完成，暂无更新')
+    if (conflictCount > 0) msgParts.push(`检测到 ${conflictCount} 条冲突，已保留云端版本`)
+    if (invalidCount > 0) msgParts.push(`${invalidCount} 条无效改动已忽略`)
+
     return {
       success: true,
       syncedCount,
       detail,
-      msg: syncedCount > 0 ? `同步完成，更新 ${syncedCount} 条` : '同步完成，暂无更新',
+      msg: msgParts.join('；'),
       lastSyncTime,
+      push: {
+        appliedCount: Number(pushResult.appliedCount || 0),
+        conflictCount,
+        invalidCount,
+      },
+      pendingCount: pendingStats.total,
     }
   } catch (error) {
     lastSyncError = error?.message || '同步失败'
@@ -193,10 +261,12 @@ export const forceRefreshAll = async () => {
 
 export const getSyncStatus = () => {
   const lastSyncTime = readLastSyncTime()
+  const pendingStats = getSyncQueueStats()
   return {
     lastSyncTime,
     status: syncInProgress ? 'syncing' : (syncTimer ? 'running' : 'idle'),
-    pendingCount: 0,
+    pendingCount: pendingStats.total,
+    pendingDetail: pendingStats.byEntity,
     lastError: lastSyncError || null,
   }
 }

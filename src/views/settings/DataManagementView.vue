@@ -14,6 +14,7 @@ const serverStatus = ref('disconnected')
 const syncing = ref(false)
 const autoSyncEnabled = ref(false)
 const lastSyncTime = ref('')
+const pendingCount = ref(0)
 
 const billRecordStore = useBillRecordStore()
 const customerStore = useCustomerStore()
@@ -79,6 +80,7 @@ const syncData = async () => {
   } catch (error) {
     setStatus('同步失败，请稍后重试', 'error')
   } finally {
+    updateLastSyncTime()
     syncing.value = false
   }
 }
@@ -97,6 +99,7 @@ const forceSyncData = async () => {
   } catch (error) {
     setStatus('强制同步失败', 'error')
   } finally {
+    updateLastSyncTime()
     syncing.value = false
   }
 }
@@ -117,6 +120,7 @@ const updateLastSyncTime = () => {
   if (syncStatus.lastSyncTime) {
     lastSyncTime.value = new Date(syncStatus.lastSyncTime).toLocaleString('zh-CN')
   }
+  pendingCount.value = Number(syncStatus.pendingCount || 0)
   autoSyncEnabled.value = syncStatus.status === 'running' || syncStatus.status === 'syncing'
 }
 
@@ -172,6 +176,10 @@ onMounted(async () => {
           <span class="label">自动同步：</span>
           <span class="value">{{ autoSyncEnabled ? '已开启' : '已关闭' }}</span>
         </div>
+        <div class="sync-status-item">
+          <span class="label">待上传改动：</span>
+          <span class="value">{{ pendingCount }} 条</span>
+        </div>
       </div>
       <div class="action-group">
         <button class="action-btn primary" @click="syncData" :disabled="syncing || serverStatus !== 'connected'">
@@ -184,7 +192,7 @@ onMounted(async () => {
           {{ autoSyncEnabled ? '关闭自动同步' : '开启自动同步' }}
         </button>
       </div>
-      <p class="hint">开启自动同步后，每30秒会自动从云端获取最新数据到本地。</p>
+      <p class="hint">开启自动同步后，每30秒会自动上传本地离线改动，并从云端拉取最新数据。</p>
     </section>
 
     <section class="panel stats-panel" v-if="stats">
@@ -215,9 +223,9 @@ onMounted(async () => {
         <p><strong>如何实现多端同步：</strong></p>
         <ol>
           <li>在任意设备上登录同一个账号</li>
-          <li>在一台设备上添加/修改/删除数据后，数据会保存到云端数据库</li>
-          <li>在另一台设备上，点击「立即同步」按钮，即可获取最新数据</li>
-          <li>或开启「自动同步」，系统每30秒自动获取最新数据</li>
+          <li>在一台设备上添加/修改/删除数据后，在线会立即写云端，离线会进入待同步队列</li>
+          <li>在另一台设备上，点击「立即同步」按钮即可上传本地改动并拉取最新数据</li>
+          <li>或开启「自动同步」，系统每30秒自动执行一次“先上传后拉取”</li>
         </ol>
         <p><strong>支持同步的数据：</strong>单据、客户、布料</p>
       </div>

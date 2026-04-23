@@ -5,6 +5,7 @@ export const registerBillRoutes = (app) => {
     const bills = await listRows(
       c.env.DB,
       `SELECT data FROM bills
+       WHERE deleted_at IS NULL
        ORDER BY date(bill_date) DESC, datetime(updated_at) DESC`
     )
     return ok(c, { data: bills })
@@ -32,8 +33,8 @@ export const registerBillRoutes = (app) => {
     await c.env.DB
       .prepare(
         `INSERT OR REPLACE INTO bills
-        (id, bill_no, type, bill_date, customer_name, status, total_amount, total_weight, data, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
+        (id, bill_no, type, bill_date, customer_name, status, total_amount, total_weight, data, created_at, updated_at, deleted_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL)`
       )
       .bind(
         bill.id,
@@ -57,7 +58,7 @@ export const registerBillRoutes = (app) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少单据ID', 400)
 
-    const existingRow = await c.env.DB.prepare('SELECT data FROM bills WHERE id = ?1').bind(id).first()
+    const existingRow = await c.env.DB.prepare('SELECT data FROM bills WHERE id = ?1 AND deleted_at IS NULL').bind(id).first()
     if (!existingRow?.data) return fail(c, '单据不存在', 404)
 
     const existing = JSON.parse(existingRow.data)
@@ -83,7 +84,8 @@ export const registerBillRoutes = (app) => {
                total_amount = ?7,
                total_weight = ?8,
                data = ?9,
-               updated_at = ?10
+               updated_at = ?10,
+               deleted_at = NULL
          WHERE id = ?1`
       )
       .bind(
@@ -106,7 +108,31 @@ export const registerBillRoutes = (app) => {
   app.delete('/api/bills/:id', async (c) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少单据ID', 400)
-    await c.env.DB.prepare('DELETE FROM bills WHERE id = ?1').bind(id).run()
-    return ok(c, { data: { id } })
+    const existingRow = await c.env.DB.prepare('SELECT data FROM bills WHERE id = ?1').bind(id).first()
+    if (!existingRow?.data) return ok(c, { data: { id } })
+
+    const now = new Date().toISOString()
+    const existing = JSON.parse(existingRow.data)
+    const deleted = {
+      ...existing,
+      id,
+      status: 'deleted',
+      updatedAt: now,
+      deletedAt: now,
+    }
+
+    await c.env.DB
+      .prepare(
+        `UPDATE bills
+           SET status = ?2,
+               data = ?3,
+               updated_at = ?4,
+               deleted_at = ?5
+         WHERE id = ?1`
+      )
+      .bind(id, 'deleted', JSON.stringify(deleted), now, now)
+      .run()
+
+    return ok(c, { data: { id, deletedAt: now } })
   })
 }

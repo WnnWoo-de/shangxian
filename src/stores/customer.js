@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { storage, StorageTypes } from '@/utils'
 import { fetchCustomersApi, createCustomerApi, updateCustomerApi } from '@/api/cloud'
+import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.CUSTOMERS
 
@@ -151,6 +152,7 @@ export const useCustomerStore = defineStore('customer', () => {
         created = await createCustomerApi(draft)
       } catch (error) {
         console.warn('云端新增客户失败，已回退本地:', error)
+        enqueueSyncOperation('customers', 'upsert', draft.id, draft, draft.updatedAt)
       }
 
       customers.value.push(created)
@@ -184,6 +186,7 @@ export const useCustomerStore = defineStore('customer', () => {
       } catch (error) {
         console.warn('云端更新客户失败，已回退本地:', error)
         customers.value[index] = next
+        enqueueSyncOperation('customers', 'upsert', next.id, next, next.updatedAt)
       }
 
       saveLocal(customers.value)

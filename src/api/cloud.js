@@ -76,3 +76,24 @@ export const fetchStatsOverviewApi = async () => {
   const res = await request.get('/stats/overview')
   return getData(res, { billCount: 0, customerCount: 0, fabricCount: 0 })
 }
+
+export const pullSyncApi = async (since, full = false) => {
+  const params = {}
+  if (since) params.since = since
+  if (full) params.full = '1'
+  const res = await request.get('/sync/pull', params)
+  return getData(res, { serverTime: null, since: null, changes: {} })
+}
+
+export const pushSyncApi = async (operations = []) => {
+  const res = await request.post('/sync/push', { operations })
+  return getData(res, {
+    serverTime: null,
+    appliedCount: 0,
+    conflictCount: 0,
+    invalidCount: 0,
+    appliedOpIds: [],
+    conflicts: [],
+    invalid: [],
+  })
+}
