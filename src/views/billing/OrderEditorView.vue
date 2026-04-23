@@ -749,11 +749,11 @@ const exportImage = () => {
   ctx.fillStyle = '#1f3852'
   ctx.font = 'bold 32px "SimSun", serif'
   ctx.fillText(exportBrandName, width / 2, 48)
-  ctx.font = 'bold 34px "SimSun", serif'
-  ctx.fillText(exportTitle.value, width / 2, 92)
   ctx.textAlign = 'left'
 
   ctx.fillStyle = '#1f3852'
+  ctx.font = 'bold 34px "SimSun", serif'
+  ctx.fillText(exportTitle.value, 48, 92)
   ctx.font = '22px "SimSun", serif'
   ctx.fillStyle = '#4e6b86'
   ctx.fillText(`日期：${new Date().toISOString().slice(0, 10)}`, 48, 148)
