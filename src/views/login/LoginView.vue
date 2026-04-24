@@ -99,7 +99,6 @@ const login = async () => {
           </div>
 
           <div class="helper-row">
-            <span>默认演示账号已填充：皖盛布碎 / 123456</span>
             <span>安全连接</span>
           </div>
 
