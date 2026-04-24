@@ -141,7 +141,12 @@ const fabrics = computed(() => fabricStore.activeFabrics)
 const filteredPartners = computed(() => {
   const keyword = partnerKeyword.value.trim()
   if (!keyword) return partners.value
-  return partners.value.filter((item) => item.name.includes(keyword) || item.contact.includes(keyword) || item.phone.includes(keyword))
+  return partners.value.filter((item) => {
+    const name = String(item.name || '')
+    const contact = String(item.contact || item.contactPerson || '')
+    const phone = String(item.phone || '')
+    return name.includes(keyword) || contact.includes(keyword) || phone.includes(keyword)
+  })
 })
 
 const selectFabric = (row) => {
@@ -363,6 +368,22 @@ const saveBill = async () => {
 
   saving.value = true
   try {
+    const partnerName = form.partnerName.trim()
+    if (!form.partnerId && partnerName) {
+      const matched = customerStore.customers.find((item) => String(item.name || '').trim() === partnerName)
+      if (matched?.id) {
+        form.partnerId = matched.id
+      } else {
+        const createdCustomer = await customerStore.addCustomer({
+          name: partnerName,
+          contact: '',
+          phone: '',
+          status: 'active',
+        })
+        form.partnerId = createdCustomer?.id || ''
+      }
+    }
+
     const payload = {
       type: props.type,
       billNo: isEditing.value ? currentRecord.value.billNo : `B${Date.now()}`,
@@ -896,7 +917,7 @@ onUnmounted(() => {
           />
           <datalist id="partner-options">
             <option v-for="item in filteredPartners" :key="item.id" :value="item.name">
-              {{ item.contact }} {{ item.phone }}
+              {{ item.contact || item.contactPerson || '' }} {{ item.phone || '' }}
             </option>
           </datalist>
           <input v-model="partnerKeyword" type="text" placeholder="按名称 / 联系人筛选已有对象" />

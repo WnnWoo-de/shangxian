@@ -24,7 +24,12 @@ const form = reactive({
 const list = computed(() => {
   const kw = keyword.value.trim()
   if (!kw) return customerStore.customers
-  return customerStore.customers.filter((item) => item.name.includes(kw) || item.contact.includes(kw) || item.phone.includes(kw))
+  return customerStore.customers.filter((item) => {
+    const name = String(item.name || '')
+    const contact = String(item.contact || item.contactPerson || '')
+    const phone = String(item.phone || '')
+    return name.includes(kw) || contact.includes(kw) || phone.includes(kw)
+  })
 })
 
 const activeCount = computed(() => list.value.filter((item) => item.status === 'active').length)
@@ -48,8 +53,8 @@ const openEdit = (item) => {
   mode.value = 'edit'
   editingId.value = item.id
   form.name = item.name
-  form.contact = item.contact
-  form.phone = item.phone
+  form.contact = item.contact || item.contactPerson || ''
+  form.phone = item.phone || ''
   form.status = item.status
   showModal.value = true
 }
@@ -180,8 +185,8 @@ const submit = async () => {
           <tbody>
             <tr v-for="item in list" :key="item.id">
               <td><strong>{{ item.name }}</strong></td>
-              <td>{{ item.contact }}</td>
-              <td>{{ item.phone }}</td>
+              <td>{{ item.contact || item.contactPerson || '-' }}</td>
+              <td>{{ item.phone || '-' }}</td>
               <td>
                 <span :class="['inner-page__status', item.status === 'active' ? 'inner-page__status--active' : 'inner-page__status--disabled']">
                   {{ item.status === 'active' ? '启用' : '停用' }}
@@ -208,7 +213,7 @@ const submit = async () => {
         <div class="customer-card__top">
           <div>
             <h3>{{ item.name }}</h3>
-            <p>{{ item.contact }} · {{ item.phone }}</p>
+            <p>{{ item.contact || item.contactPerson || '-' }} · {{ item.phone || '-' }}</p>
           </div>
           <span :class="['inner-page__status', item.status === 'active' ? 'inner-page__status--active' : 'inner-page__status--disabled']">
             {{ item.status === 'active' ? '启用' : '停用' }}
