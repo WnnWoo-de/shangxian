@@ -5,11 +5,16 @@ import { fetchStatisticsSummaryApi } from '../../api/statistics'
 import { formatMoney } from '../../utils/money'
 import { BILL_DATA_CHANGED_EVENT } from '../../utils/bill-events'
 
+const CUSTOMER_PAGE_SIZE = 5
+const FABRIC_PAGE_SIZE = 5
+
 const selectedMonth = ref('')
 const months = ref([])
 const loading = ref(false)
 const suppressMonthWatch = ref(false)
 const chartMotionReady = ref(false)
+const customerPage = ref(1)
+const fabricPage = ref(1)
 const summaryData = ref({
   overview: {
     totalIncome: 0,
@@ -23,6 +28,18 @@ const summaryData = ref({
   customerRanking: [],
   fabricDistribution: [],
 })
+
+const clampPage = (page, pageCount) => Math.min(Math.max(page, 1), pageCount)
+
+const paginate = (list, page, pageSize) => {
+  const start = (page - 1) * pageSize
+  return list.slice(start, start + pageSize)
+}
+
+const resetPanelPages = () => {
+  customerPage.value = 1
+  fabricPage.value = 1
+}
 
 const loadStatistics = async (month = '') => {
   loading.value = true
@@ -80,11 +97,23 @@ const animatedDailyTrend = computed(() => dailyTrend.value.map((item) => ({
   renderHeight: chartMotionReady.value ? item.height : 0,
 })))
 
-const byCustomer = computed(() => summaryData.value.customerRanking || [])
+const byCustomer = computed(() => {
+  const list = Array.isArray(summaryData.value.customerRanking) ? summaryData.value.customerRanking : []
+  return list.map((item, index) => ({
+    ...item,
+    rank: index + 1,
+    billCount: Number(item.billCount || 0),
+    totalWeight: Number(item.totalWeight || 0),
+    totalAmount: Number(item.totalAmount || 0),
+  }))
+})
+
+const customerPageCount = computed(() => Math.max(1, Math.ceil(byCustomer.value.length / CUSTOMER_PAGE_SIZE)))
+const pagedCustomers = computed(() => paginate(byCustomer.value, customerPage.value, CUSTOMER_PAGE_SIZE))
 
 const byFabric = computed(() => {
-  const list = summaryData.value.fabricDistribution || []
-  const topAmount = list[0]?.totalAmount || 1
+  const list = Array.isArray(summaryData.value.fabricDistribution) ? summaryData.value.fabricDistribution : []
+  const topAmount = Math.max(...list.map((item) => Number(item.totalAmount || 0)), 1)
 
   return list.map((item) => ({
     fabricName: item.fabricName,
@@ -94,6 +123,17 @@ const byFabric = computed(() => {
   }))
 })
 
+const fabricPageCount = computed(() => Math.max(1, Math.ceil(byFabric.value.length / FABRIC_PAGE_SIZE)))
+const pagedFabrics = computed(() => paginate(byFabric.value, fabricPage.value, FABRIC_PAGE_SIZE))
+
+const goCustomerPage = (page) => {
+  customerPage.value = clampPage(page, customerPageCount.value)
+}
+
+const goFabricPage = (page) => {
+  fabricPage.value = clampPage(page, fabricPageCount.value)
+}
+
 const handlePageReactiveRefresh = () => {
   if (document.visibilityState === 'visible') {
     loadStatistics(selectedMonth.value)
@@ -102,14 +142,23 @@ const handlePageReactiveRefresh = () => {
 
 watch(selectedMonth, async (value, oldValue) => {
   if (suppressMonthWatch.value || !value || value === oldValue) return
+  resetPanelPages()
   chartMotionReady.value = false
   await loadStatistics(value)
   await nextTick()
   chartMotionReady.value = true
 })
 
+watch(byCustomer, () => {
+  customerPage.value = clampPage(customerPage.value, customerPageCount.value)
+})
+
+watch(byFabric, () => {
+  fabricPage.value = clampPage(fabricPage.value, fabricPageCount.value)
+})
+
 watch(
-  dailyTrend,
+  [dailyTrend, pagedFabrics],
   async () => {
     chartMotionReady.value = false
     await nextTick()
@@ -191,7 +240,30 @@ onUnmounted(() => {
 
     <div class="detail-grid">
       <article class="panel stat-panel">
-        <h2>客户交易排名 <span class="badge">Ranking</span></h2>
+        <div class="panel-head">
+          <div class="panel-title-group">
+            <h2>客户交易排名 <span class="badge">Ranking</span></h2>
+            <span v-if="byCustomer.length > 0" class="panel-count">{{ byCustomer.length }} 位客户</span>
+          </div>
+          <div v-if="byCustomer.length > 0" class="pager-inline">
+            <button type="button" class="pager-btn" :disabled="customerPage === 1" @click="goCustomerPage(customerPage - 1)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
+            <button
+              type="button"
+              class="pager-btn"
+              :disabled="customerPage === customerPageCount"
+              @click="goCustomerPage(customerPage + 1)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -203,10 +275,10 @@ onUnmounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(item, index) in byCustomer" :key="item.customerName">
+              <tr v-for="item in pagedCustomers" :key="item.customerName">
                 <td>
                   <div class="customer-cell">
-                    <span class="rank-num" :class="{ 'top-3': index < 3 }">{{ index + 1 }}</span>
+                    <span class="rank-num" :class="{ 'top-3': item.rank <= 3 }">{{ item.rank }}</span>
                     {{ item.customerName }}
                   </div>
                 </td>
@@ -226,12 +298,35 @@ onUnmounted(() => {
       </article>
 
       <article class="panel stat-panel">
-        <h2>布料构成分析 <span class="badge">Distribution</span></h2>
+        <div class="panel-head">
+          <div class="panel-title-group">
+            <h2>布料构成分析 <span class="badge">Distribution</span></h2>
+            <span v-if="byFabric.length > 0" class="panel-count">{{ byFabric.length }} 个品类</span>
+          </div>
+          <div v-if="byFabric.length > 0" class="pager-inline">
+            <button type="button" class="pager-btn" :disabled="fabricPage === 1" @click="goFabricPage(fabricPage - 1)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <span class="pager-text">{{ fabricPage }} / {{ fabricPageCount }}</span>
+            <button
+              type="button"
+              class="pager-btn"
+              :disabled="fabricPage === fabricPageCount"
+              @click="goFabricPage(fabricPage + 1)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <div class="bar-chart">
-          <div v-for="item in byFabric" :key="item.fabricName" class="bar-row">
+          <div v-for="item in pagedFabrics" :key="item.fabricName" class="bar-row">
             <span class="label">{{ item.fabricName }}</span>
             <div class="bar-track">
-              <div class="bar-fill" :style="{ width: `${item.ratio}%` }"></div>
+              <div class="bar-fill" :class="{ ready: chartMotionReady }" :style="{ width: `${chartMotionReady ? item.ratio : 0}%` }"></div>
             </div>
             <span class="value">{{ formatMoney(item.totalAmount) }}</span>
           </div>
@@ -438,13 +533,41 @@ onUnmounted(() => {
   padding: 32px;
 }
 
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.panel-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 h2 {
   display: flex;
   align-items: center;
   gap: 12px;
   color: var(--text-normal);
-  margin-bottom: 24px;
+  margin-bottom: 0;
   font-size: 18px;
+  font-weight: 700;
+}
+
+.panel-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(38, 115, 199, 0.08);
+  color: var(--primary-dark);
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -455,6 +578,50 @@ h2 {
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 600;
+}
+
+.pager-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pager-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s, opacity 0.2s;
+}
+
+.pager-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pager-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: rgba(38, 115, 199, 0.05);
+  color: var(--primary-dark);
+}
+
+.pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pager-text {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 table {
@@ -542,7 +709,11 @@ th {
 .bar-fill {
   height: 100%;
   background: linear-gradient(90deg, #3ccfd3, var(--accent-blue-deep));
-  transition: width 1s ease;
+  transition: none;
+}
+
+.bar-fill.ready {
+  transition: width 0.6s ease;
 }
 
 .value {
@@ -588,6 +759,11 @@ th {
 
   .modern-select {
     width: 100%;
+  }
+
+  .panel-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .bar-row {
