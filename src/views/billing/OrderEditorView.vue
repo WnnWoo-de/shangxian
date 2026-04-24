@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AppIcon from '../../components/icons/AppIcon.vue'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { useCustomerStore } from '../../stores/customer'
 import { useFabricStore } from '../../stores/fabric'
@@ -909,7 +910,10 @@ onUnmounted(() => {
 
     <section class="panel form-panel">
       <div class="panel-title-row">
-        <h3>单据信息</h3>
+        <h3 class="title-with-icon">
+          <AppIcon name="receipt" size="18" />
+          <span>单据信息</span>
+        </h3>
       </div>
       <div class="base-grid">
         <label class="field full-span">
@@ -966,8 +970,16 @@ onUnmounted(() => {
 
     <section class="panel detail-panel">
       <div class="panel-title-row">
-        <h3>货品明细</h3>
-        <button type="button" class="btn-ghost" @click="addRow">新增明细</button>
+        <h3 class="title-with-icon">
+          <AppIcon name="layers" size="18" />
+          <span>货品明细</span>
+        </h3>
+        <button type="button" class="btn-ghost" @click="addRow">
+          <span class="btn-content">
+            <AppIcon name="plus" size="16" />
+            <span>新增明细</span>
+          </span>
+        </button>
       </div>
 
       <div class="detail-list">
@@ -1012,7 +1024,12 @@ onUnmounted(() => {
               <span>明细备注</span>
               <div class="row-note-box">
                 <input v-model="rows[idx].note" type="text" placeholder="选填" />
-                <button type="button" class="btn-text danger" @click="removeRow(idx)">删除</button>
+                <button type="button" class="btn-text danger" @click="removeRow(idx)">
+                  <span class="btn-content">
+                    <AppIcon name="trash" size="16" />
+                    <span>删除</span>
+                  </span>
+                </button>
               </div>
             </label>
           </div>
@@ -1040,11 +1057,36 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="actions action-toolbar">
-        <button type="button" class="btn-ghost" @click="addRow">新增明细</button>
-        <button type="button" class="btn-ghost" @click="saveDraft">保存草稿</button>
-        <button type="button" class="btn-ghost" @click="exportTable">导出表格</button>
-        <button type="button" class="btn-ghost" @click="exportImage">导出图片</button>
-        <button type="button" class="btn-primary" :disabled="saving" @click="saveBill">提交单据</button>
+        <button type="button" class="btn-ghost" @click="addRow">
+          <span class="btn-content">
+            <AppIcon name="plus" size="16" />
+            <span>新增明细</span>
+          </span>
+        </button>
+        <button type="button" class="btn-ghost" @click="saveDraft">
+          <span class="btn-content">
+            <AppIcon name="save" size="16" />
+            <span>保存草稿</span>
+          </span>
+        </button>
+        <button type="button" class="btn-ghost" @click="exportTable">
+          <span class="btn-content">
+            <AppIcon name="table" size="16" />
+            <span>导出表格</span>
+          </span>
+        </button>
+        <button type="button" class="btn-ghost" @click="exportImage">
+          <span class="btn-content">
+            <AppIcon name="image" size="16" />
+            <span>导出图片</span>
+          </span>
+        </button>
+        <button type="button" class="btn-primary" :disabled="saving" @click="saveBill">
+          <span class="btn-content">
+            <AppIcon name="check" size="16" />
+            <span>提交单据</span>
+          </span>
+        </button>
       </div>
     </footer>
   </section>
@@ -1117,6 +1159,11 @@ onUnmounted(() => {
 .panel-title-row h3 {
   margin: 0;
   font-size: 20px;
+}
+.title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .base-grid,
 .detail-grid {
@@ -1285,6 +1332,11 @@ onUnmounted(() => {
 }
 .btn-text.danger {
   color: #d24d57;
+}
+.btn-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .purchase-theme .hero {
   background: linear-gradient(135deg, rgba(22, 124, 99, 0.12), rgba(35, 180, 140, 0.08));

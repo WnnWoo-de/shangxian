@@ -1,5 +1,6 @@
 // Toast 提示工具
 // 简单的消息提示实现
+import { buildIconMarkup } from '../components/icons/iconRegistry.js'
 
 let toastContainer = null
 const DEDUPE_WINDOW_MS = 2500
@@ -45,10 +46,10 @@ const ToastColors = {
 
 // Toast 图标
 const ToastIcons = {
-  success: '✓',
-  error: '✕',
-  warning: '⚠',
-  info: 'ℹ'
+  success: 'check',
+  error: 'x',
+  warning: 'warning',
+  info: 'info'
 }
 
 /**
@@ -91,10 +92,21 @@ function showToast(message, type = ToastTypes.INFO, duration = 3000) {
     animation: toast-in 0.3s ease;
   `
 
-  toast.innerHTML = `
-    <span style="font-size: 18px; font-weight: 700;">${icon}</span>
-    <span>${message}</span>
+  const iconNode = document.createElement('span')
+  iconNode.style.cssText = `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
   `
+  iconNode.innerHTML = buildIconMarkup(icon, { size: 18 })
+
+  const messageNode = document.createElement('span')
+  messageNode.textContent = message
+
+  toast.append(iconNode, messageNode)
 
   toastContainer.appendChild(toast)
 

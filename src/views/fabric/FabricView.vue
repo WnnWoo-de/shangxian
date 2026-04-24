@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import AppIcon from '../../components/icons/AppIcon.vue'
 import { useFabricStore } from '../../stores/fabric'
 import { showToast } from '../../utils/toast'
 
@@ -83,7 +84,7 @@ const submit = async () => {
     <section class="inner-page__toolbar">
       <div class="inner-page__toolbar-group">
         <div class="inner-page__search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <AppIcon name="search" />
           <input v-model="keyword" placeholder="搜索布料名称 / 编号" />
         </div>
       </div>

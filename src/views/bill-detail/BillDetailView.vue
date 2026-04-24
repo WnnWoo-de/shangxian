@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AppIcon from '../../components/icons/AppIcon.vue'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { useCustomerStore } from '../../stores/customer'
 import { useFabricStore } from '../../stores/fabric'
@@ -668,7 +669,7 @@ const exportImage = () => {
                         class="cell-input"
                       />
                       <div class="arrow" @mousedown.stop="toggleFabricOptions(item.id)">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <AppIcon name="chevron-down" size="18" />
                       </div>
                       <Transition name="fade-pop">
                         <ul v-if="showFabricOptionsForRow[item.id] && getFilteredFabrics(item.fabricName).length" class="dropdown-list">

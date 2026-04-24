@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
+import AppIcon from '../../components/icons/AppIcon.vue'
 import { fetchStatisticsSummaryApi } from '../../api/statistics'
 import { BILL_DATA_CHANGED_EVENT } from '../../utils/bill-events'
 import { formatMoney } from '../../utils/money'
@@ -317,9 +318,7 @@ onUnmounted(() => {
     <div class="overview-grid">
       <article class="panel metric income-card">
         <div class="metric-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v20M17 7l-5-5-5 5" />
-          </svg>
+          <AppIcon name="arrow-up" />
         </div>
         <span class="metric-label">总收入</span>
         <strong class="metric-value income">{{ formatMoney(summary.totalIncome) }}</strong>
@@ -329,9 +328,7 @@ onUnmounted(() => {
 
       <article class="panel metric expense-card">
         <div class="metric-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22V2M7 17l5 5 5-5" />
-          </svg>
+          <AppIcon name="arrow-down" />
         </div>
         <span class="metric-label">总支出</span>
         <strong class="metric-value expense">{{ formatMoney(summary.totalExpense) }}</strong>
@@ -341,10 +338,7 @@ onUnmounted(() => {
 
       <article class="panel metric net-card">
         <div class="metric-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 6v12M8 10l4-4 4 4M8 14l4 4 4-4" />
-          </svg>
+          <AppIcon name="swap-vertical" />
         </div>
         <span class="metric-label">净收支</span>
         <strong class="metric-value" :class="summary.netAmount >= 0 ? 'income' : 'expense'">
@@ -356,9 +350,7 @@ onUnmounted(() => {
 
       <article class="panel metric side-card">
         <div class="metric-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
+          <AppIcon name="box" />
         </div>
         <span class="metric-label">总重量 / 单据</span>
         <strong class="metric-value side">{{ summary.totalWeight.toFixed(2) }} 斤</strong>
@@ -379,9 +371,7 @@ onUnmounted(() => {
           </div>
           <div v-if="dailyLedger.length > 0" class="pager-inline">
             <button type="button" class="pager-btn" :disabled="ledgerPage === 1" @click="goLedgerPage(ledgerPage - 1)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <AppIcon name="chevron-left" />
             </button>
             <span class="pager-text">{{ ledgerPage }} / {{ ledgerPageCount }}</span>
             <button
@@ -390,9 +380,7 @@ onUnmounted(() => {
               :disabled="ledgerPage === ledgerPageCount"
               @click="goLedgerPage(ledgerPage + 1)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              <AppIcon name="chevron-right" />
             </button>
           </div>
         </div>
@@ -411,15 +399,11 @@ onUnmounted(() => {
             </div>
             <div class="ledger-values">
               <span class="income-text">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 19V5M5 12l7-7 7 7" />
-                </svg>
+                <AppIcon name="arrow-up" />
                 {{ formatMoney(item.income) }}
               </span>
               <span class="expense-text">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 5v14M5 12l7 7 7-7" />
-                </svg>
+                <AppIcon name="arrow-down" />
                 {{ formatMoney(item.expense) }}
               </span>
             </div>
@@ -444,22 +428,7 @@ onUnmounted(() => {
         <div class="insight-list">
           <div v-for="item in insightCards" :key="item.key" class="insight-item">
             <div class="insight-icon" :class="`${item.tone}-icon`">
-              <svg v-if="item.icon === 'calendar'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" />
-                <path d="M16 2v4M8 2v4M3 10h18" />
-              </svg>
-              <svg v-else-if="item.icon === 'return'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 14l-4-4 4-4" />
-                <path d="M5 10h11a4 4 0 1 1 0 8h-1" />
-              </svg>
-              <svg v-else-if="item.icon === 'trend'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3v18h18" />
-                <path d="M18 9l-5 5-4-4-3 3" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </svg>
+              <AppIcon :name="item.icon" />
             </div>
             <div class="insight-content">
               <span>{{ item.label }}</span>
@@ -486,9 +455,7 @@ onUnmounted(() => {
               :disabled="customerPage === 1"
               @click="goCustomerPage(customerPage - 1)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <AppIcon name="chevron-left" />
             </button>
             <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
             <button
@@ -497,9 +464,7 @@ onUnmounted(() => {
               :disabled="customerPage === customerPageCount"
               @click="goCustomerPage(customerPage + 1)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              <AppIcon name="chevron-right" />
             </button>
           </div>
         </div>
@@ -539,9 +504,7 @@ onUnmounted(() => {
           </div>
           <div v-if="expenseByFabric.length > 0" class="pager-inline">
             <button type="button" class="pager-btn" :disabled="fabricPage === 1" @click="goFabricPage(fabricPage - 1)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <AppIcon name="chevron-left" />
             </button>
             <span class="pager-text">{{ fabricPage }} / {{ fabricPageCount }}</span>
             <button
@@ -550,9 +513,7 @@ onUnmounted(() => {
               :disabled="fabricPage === fabricPageCount"
               @click="goFabricPage(fabricPage + 1)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              <AppIcon name="chevron-right" />
             </button>
           </div>
         </div>

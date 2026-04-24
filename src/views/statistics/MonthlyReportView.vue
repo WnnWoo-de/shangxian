@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
+import AppIcon from '../../components/icons/AppIcon.vue'
 import { fetchStatisticsSummaryApi } from '../../api/statistics'
 import { formatMoney } from '../../utils/money'
 import { BILL_DATA_CHANGED_EVENT } from '../../utils/bill-events'
@@ -247,9 +248,7 @@ onUnmounted(() => {
           </div>
           <div v-if="byCustomer.length > 0" class="pager-inline">
             <button type="button" class="pager-btn" :disabled="customerPage === 1" @click="goCustomerPage(customerPage - 1)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <AppIcon name="chevron-left" />
             </button>
             <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
             <button
@@ -258,9 +257,7 @@ onUnmounted(() => {
               :disabled="customerPage === customerPageCount"
               @click="goCustomerPage(customerPage + 1)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              <AppIcon name="chevron-right" />
             </button>
           </div>
         </div>
@@ -305,9 +302,7 @@ onUnmounted(() => {
           </div>
           <div v-if="byFabric.length > 0" class="pager-inline">
             <button type="button" class="pager-btn" :disabled="fabricPage === 1" @click="goFabricPage(fabricPage - 1)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <AppIcon name="chevron-left" />
             </button>
             <span class="pager-text">{{ fabricPage }} / {{ fabricPageCount }}</span>
             <button
@@ -316,9 +311,7 @@ onUnmounted(() => {
               :disabled="fabricPage === fabricPageCount"
               @click="goFabricPage(fabricPage + 1)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              <AppIcon name="chevron-right" />
             </button>
           </div>
         </div>

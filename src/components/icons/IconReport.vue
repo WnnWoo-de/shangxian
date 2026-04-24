@@ -1,8 +1,7 @@
+<script setup>
+import AppIcon from './AppIcon.vue'
+</script>
+
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="3" y1="3" x2="21" y2="3"></line>
-    <line x1="3" y1="12" x2="21" y2="12"></line>
-    <line x1="3" y1="21" x2="21" y2="21"></line>
-    <line x1="18" y1="3" x2="18" y2="21"></line>
-  </svg>
+  <AppIcon name="report" />
 </template>

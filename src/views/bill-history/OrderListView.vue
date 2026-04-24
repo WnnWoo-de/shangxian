@@ -1,6 +1,7 @@
 <script setup>
 import { computed, reactive, watch, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import AppIcon from '../../components/icons/AppIcon.vue'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { formatMoney } from '../../utils/money'
 import { showToast } from '../../utils/toast'
@@ -122,7 +123,8 @@ const recentPartners = computed(() => {
         </div>
         <div class="page-actions">
           <button class="btn-primary" @click="openCreate">
-            {{ isPurchase ? '📥 进货开单' : '📤 出货开单' }}
+            <AppIcon :name="isPurchase ? 'purchase' : 'sale'" size="18" />
+            <span>{{ isPurchase ? '进货开单' : '出货开单' }}</span>
           </button>
         </div>
       </div>
@@ -266,7 +268,9 @@ const recentPartners = computed(() => {
               <tr v-if="list.length === 0" class="empty-row">
                 <td colspan="9">
                   <div class="empty-state">
-                    <div class="empty-icon">📭</div>
+                    <div class="empty-icon">
+                      <AppIcon name="inbox" size="52" />
+                    </div>
                     <p class="empty-text">暂无单据</p>
                     <p class="empty-desc">{{ isPurchase ? '点击上方按钮创建第一张进货单' : '点击上方按钮创建第一张出货单' }}</p>
                   </div>
@@ -333,6 +337,9 @@ const recentPartners = computed(() => {
   .page-actions {
     .btn-primary {
       padding: 12px 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       background: linear-gradient(135deg, #1a915c, #23ac6f);
       color: #fff;
       border: none;
@@ -700,7 +707,9 @@ const recentPartners = computed(() => {
 
               .empty-state {
                 .empty-icon {
-                  font-size: 48px;
+                  display: inline-grid;
+                  place-items: center;
+                  color: #d4a76a;
                   margin-bottom: 16px;
                 }
 
