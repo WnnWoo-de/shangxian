@@ -6,8 +6,11 @@ import { useBillRecordStore } from '../../stores/billRecord'
 import { useCustomerStore } from '../../stores/customer'
 import { useFabricStore } from '../../stores/fabric'
 import { readJson, writeJson, removeItem } from '../../utils/storage'
+import { createCanvasTableColumns, drawCanvasTableGrid, getCanvasBlockStartY, getCanvasCenterTextY, getCanvasTableWidth } from '../../utils/canvas-table'
+import { getCanvasWrappedRowHeight, wrapCanvasText } from '../../utils/canvas-text'
 import { multiplyMoney, addMoney, formatMoney } from '../../utils/money'
 import { showToast } from '../../utils/toast'
+import { countExcelTextLines, formatExcelWrapText, getExcelWrappedRowHeight } from '../../utils/excel'
 import { MASTER_DATA_CHANGED_EVENT } from '../../utils/master-data-events'
 import { getExportImageBrandName } from '../../utils/app-config'
 
@@ -518,49 +521,53 @@ const exportTable = async () => {
     const ExcelJS = await loadExcelJS()
     const workbook = new ExcelJS.Workbook()
     const worksheet = workbook.addWorksheet(exportTitle.value)
-
-    // 添加单据基本信息
-    worksheet.addRow(['单据类型', isPurchase.value ? '进货单' : '出货单'])
-    worksheet.addRow(['单据日期', new Date().toISOString().slice(0, 10)])
-    worksheet.addRow([partnerLabel.value, form.partnerName.trim() || '-'])
-    worksheet.addRow(['备注', form.note.trim() || '-'])
-    worksheet.addRow(['出货方式', '按重量出货'])
-    worksheet.addRow([])
-
-    // 添加表头
-    worksheet.columns = [
-      { header: '布料', key: 'fabric', width: 20 },
-      { header: '数量 / 重量', key: 'quantity', width: 24 },
-      { header: '总重量(斤)', key: 'totalWeight', width: 14 },
-      { header: '单价(元/斤)', key: 'unitPrice', width: 14 },
-      { header: '金额(元)', key: 'amount', width: 16 },
-      { header: '备注', key: 'note', width: 20 },
+    const detailRowMeta = []
+    const metaRows = [
+      ['单据日期', new Date().toISOString().slice(0, 10)],
+      [partnerLabel.value, form.partnerName.trim() || '-'],
+      ['备注', form.note.trim() || '-'],
+      ['出货方式', '按重量出货'],
     ]
+
+    worksheet.columns = [
+      { key: 'fabric', width: 22 },
+      { key: 'quantity', width: 24 },
+      { key: 'totalWeight', width: 14 },
+      { key: 'unitPrice', width: 14 },
+      { key: 'amount', width: 16 },
+      { key: 'note', width: 18 },
+    ]
+
+    metaRows.forEach((row) => worksheet.addRow(row))
+    const headerRow = worksheet.addRow(['布料', '数量 / 重量', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
 
     // 填充数据
     exportRows.forEach((item) => {
-      worksheet.addRow({
+      const quantityText = formatExcelWrapText(item.quantityInput || '-', { maxCharsPerLine: 16 })
+      const noteText = formatExcelWrapText(item.note || '-', { maxCharsPerLine: 18, breakPattern: /([\s,，、;；/]+)/ })
+      const row = worksheet.addRow({
         fabric: item.fabricName || '-',
-        quantity: item.quantityInput || '-',
+        quantity: quantityText,
         totalWeight: Number(item.quantity || 0),
         unitPrice: Number(item.unitPrice || 0),
         amount: Number(item.amount || 0),
-        note: item.note || '-',
+        note: noteText,
+      })
+
+      detailRowMeta.push({
+        rowNumber: row.number,
+        lineCount: Math.max(countExcelTextLines(quantityText), countExcelTextLines(noteText)),
       })
     })
 
-    // 添加总重量行
-    worksheet.addRow(['总重量', '', Number(totalWeight.value || 0), '', '', ''])
-    // 添加总金额行
-    worksheet.addRow(['总金额', '', '', '', Number(totalAmount.value || 0), ''])
+    const totalWeightRow = worksheet.addRow(['总重量', '', Number(totalWeight.value || 0), '', '', ''])
+    const totalAmountRow = worksheet.addRow(['总金额', '', '', '', Number(totalAmount.value || 0), ''])
 
     // 格式化列
     worksheet.getColumn('C').numFmt = '0.00'
     worksheet.getColumn('D').numFmt = '¥#,##0.00'
     worksheet.getColumn('E').numFmt = '¥#,##0.00'
 
-    // 设置表头样式
-    const headerRow = worksheet.getRow(7)
     headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } }
     headerRow.fill = {
       type: 'pattern',
@@ -570,30 +577,28 @@ const exportTable = async () => {
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
 
     // 设置基本信息加粗
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= metaRows.length; i++) {
       const cell = worksheet.getCell(`A${i}`)
       cell.font = { bold: true }
     }
 
     // 设置数据行样式
-    for (let i = 8; i <= worksheet.rowCount - 2; i++) {
-      const row = worksheet.getRow(i)
+    detailRowMeta.forEach(({ rowNumber, lineCount }, index) => {
+      const row = worksheet.getRow(rowNumber)
       row.alignment = { vertical: 'middle', horizontal: 'left' }
-      // 交替行颜色
-      if (i % 2 === 0) {
+      row.getCell('B').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
+      row.getCell('F').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
+      row.height = getExcelWrappedRowHeight(lineCount)
+      if (index % 2 === 0) {
         row.eachCell((cell) => {
           cell.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FFFAFAFA' }
+            fgColor: { argb: 'FFF8FBFF' }
           }
         })
       }
-    }
-
-    // 设置总重量和总金额行样式
-    const totalWeightRow = worksheet.getRow(worksheet.rowCount - 1)
-    const totalAmountRow = worksheet.getRow(worksheet.rowCount)
+    })
 
     // 合并总重量行的单元格并设置样式
     worksheet.mergeCells(`A${totalWeightRow.number}:B${totalWeightRow.number}`)
@@ -669,8 +674,6 @@ const exportImage = () => {
 
   const canvas = document.createElement('canvas')
   const width = 1400
-  const tableLeft = 40
-  const tableWidth = 1120
   const rowBaseHeight = 42
   const rowLineHeight = 22
   const footerHeight = 150
@@ -681,38 +684,18 @@ const exportImage = () => {
     return
   }
 
-  const getWrappedLines = (text, maxWidth) => {
-    const source = String(text || '-').trim() || '-'
-    const segments = source.split(/\r?\n/)
-    const lines = []
-
-    segments.forEach((segment) => {
-      let currentLine = ''
-      for (const char of segment) {
-        const testLine = currentLine + char
-        if (currentLine && ctx.measureText(testLine).width > maxWidth) {
-          lines.push(currentLine)
-          currentLine = char
-        } else {
-          currentLine = testLine
-        }
-      }
-      if (currentLine) lines.push(currentLine)
-    })
-
-    return lines.length ? lines : ['-']
-  }
-
-  const columns = [
-    { key: 'fabricName', label: '布料', left: 48, width: 180 },
-    { key: 'quantityText', label: '数量 / 重量', left: 228, width: 280 },
-    { key: 'totalWeight', label: '总重量(斤)', left: 688, width: 160 },
-    { key: 'unitPrice', label: '单价(元/斤)', left: 848, width: 160 },
-    { key: 'amount', label: '金额(元)', left: 1008, width: 180 },
-  ]
+  const tableLeft = 48
+  const columns = createCanvasTableColumns(tableLeft, [
+    { key: 'fabricName', label: '布料', width: 180 },
+    { key: 'quantityText', label: '数量 / 重量', width: 360 },
+    { key: 'totalWeight', label: '总重量(斤)', width: 170, align: 'center' },
+    { key: 'unitPrice', label: '单价(元/斤)', width: 170, align: 'center' },
+    { key: 'amount', label: '金额(元)', width: 210, align: 'center' },
+  ])
+  const tableWidth = getCanvasTableWidth(columns)
 
   ctx.font = '22px "SimSun", serif'
-  const noteLines = getWrappedLines(`备注：${form.note.trim() || '-'}`, width - 96)
+  const noteLines = wrapCanvasText(ctx, `备注：${form.note.trim() || '-'}`, width - 96)
   const noteLineHeight = 30
   const noteTop = 228
   const noteHeight = Math.max(noteLineHeight, noteLines.length * noteLineHeight)
@@ -744,9 +727,12 @@ const exportImage = () => {
       amount: item.amount || 0,
     }
 
-    const wrappedFabricLines = getWrappedLines(rowData.fabricName, columns[0].width - 20)
-    const wrappedQuantityLines = getWrappedLines(rowData.quantityText, columns[1].width - 20)
-    const rowHeight = Math.max(rowBaseHeight, 16 + Math.max(wrappedFabricLines.length, wrappedQuantityLines.length) * rowLineHeight)
+    const wrappedFabricLines = wrapCanvasText(ctx, rowData.fabricName, columns[0].width - 20)
+    const wrappedQuantityLines = wrapCanvasText(ctx, rowData.quantityText, columns[1].width - 20)
+    const rowHeight = getCanvasWrappedRowHeight(
+      Math.max(wrappedFabricLines.length, wrappedQuantityLines.length),
+      { minHeight: rowBaseHeight, lineHeight: rowLineHeight }
+    )
 
     return {
       rowData,
@@ -789,13 +775,6 @@ const exportImage = () => {
   ctx.fillStyle = '#f2f7fc'
   ctx.fillRect(tableLeft, tableTop, tableWidth, rowBaseHeight)
 
-  ctx.font = 'bold 18px "SimSun", serif'
-  ctx.fillStyle = '#2f506d'
-  columns.forEach((col) => {
-    ctx.fillText(col.label, col.left + 10, tableTop + 27)
-  })
-
-  ctx.font = '16px "SimSun", serif'
   let currentY = tableTop + rowBaseHeight
   preparedRows.forEach((item, index) => {
     if (index % 2 === 0) {
@@ -805,6 +784,36 @@ const exportImage = () => {
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(tableLeft, currentY, tableWidth, item.rowHeight)
     }
+
+    currentY += item.rowHeight
+  })
+
+  drawCanvasTableGrid(ctx, {
+    columns,
+    tableTop,
+    headerHeight: rowBaseHeight,
+    rowHeights: preparedRows.map((item) => item.rowHeight),
+  })
+
+  ctx.font = 'bold 18px "SimSun", serif'
+  ctx.fillStyle = '#2f506d'
+  columns.forEach((col) => {
+    if (col.align === 'center') {
+      ctx.textAlign = 'center'
+      ctx.fillText(col.label, col.left + col.width / 2, tableTop + 27)
+      ctx.textAlign = 'left'
+      return
+    }
+
+    ctx.fillText(col.label, col.left + col.paddingX, tableTop + 27)
+  })
+
+  ctx.font = '16px "SimSun", serif'
+  currentY = tableTop + rowBaseHeight
+  preparedRows.forEach((item) => {
+    const fabricTextY = getCanvasBlockStartY(currentY, item.rowHeight, item.wrappedFabricLines.length, rowLineHeight)
+    const quantityTextY = getCanvasBlockStartY(currentY, item.rowHeight, item.wrappedQuantityLines.length, rowLineHeight)
+    const numericTextY = getCanvasCenterTextY(currentY, item.rowHeight)
 
     ctx.fillStyle = '#234462'
     columns.forEach((col) => {
@@ -818,17 +827,15 @@ const exportImage = () => {
 
       if (col.key === 'fabricName') {
         item.wrappedFabricLines.forEach((line, lineIndex) => {
-          ctx.fillText(line, col.left + 10, currentY + 14 + lineIndex * rowLineHeight)
+          ctx.fillText(line, col.left + col.paddingX, fabricTextY + lineIndex * rowLineHeight)
         })
       } else if (col.key === 'quantityText') {
         item.wrappedQuantityLines.forEach((line, lineIndex) => {
-          ctx.fillText(line, col.left + 10, currentY + 14 + lineIndex * rowLineHeight)
+          ctx.fillText(line, col.left + col.paddingX, quantityTextY + lineIndex * rowLineHeight)
         })
       } else {
-        // 数值列居中显示
         ctx.textAlign = 'center'
-        const centerX = col.left + col.width / 2
-        ctx.fillText(textToDraw, centerX, currentY + 27)
+        ctx.fillText(textToDraw, col.left + col.width / 2, numericTextY)
         ctx.textAlign = 'left'
       }
     })
