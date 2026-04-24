@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useCustomerStore } from '@/stores/customer'
 import { useFabricStore } from '@/stores/fabric'
 import { useBillRecordStore } from '@/stores/billRecord'
+import { setupPwaAutoUpdate } from '@/pwa'
 import { incrementalSync, startAutoSync, stopAutoSync } from '@/utils/sync'
 
 const app = createApp(App)
@@ -48,6 +49,8 @@ watch(
   },
   { immediate: true }
 )
+
+setupPwaAutoUpdate()
 
 // 挂载应用
 app.mount('#app')

@@ -11,6 +11,7 @@ export default defineConfig({
     vue(),
     vueDevTools(),
     VitePWA({
+      injectRegister: false,
       manifest: {
         name: '记账助手',
         short_name: '记账',
