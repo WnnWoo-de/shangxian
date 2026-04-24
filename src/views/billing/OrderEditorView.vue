@@ -42,7 +42,7 @@ const settlementLabel = computed(() => (isPurchase.value ? '已付款' : '已收
 const pageClass = computed(() => (isPurchase.value ? 'purchase-theme' : 'sale-theme'))
 const draftText = computed(() => (isPurchase.value ? '进货草稿' : '出货草稿'))
 const exportTitle = computed(() => (isPurchase.value ? '进货单据明细' : '出货单据明细'))
-const partnerLabel = computed(() => (isPurchase.value ? '供货方' : '收货方'))
+const partnerLabel = computed(() => (isPurchase.value ? '供货方' : '客户'))
 const quantityLabel = computed(() => '数量 / 重量')
 const totalWeightLabel = computed(() => '总重量')
 const amountSummaryLabel = computed(() => (isPurchase.value ? '进货总额' : '出货总额'))
@@ -906,7 +906,7 @@ onUnmounted(() => {
       </div>
       <div class="base-grid">
         <label class="field full-span">
-          <span>{{ isPurchase ? '供货方' : '收货方' }}</span>
+          <span>{{ partnerLabel }}</span>
           <input
             v-model.trim="form.partnerName"
             list="partner-options"
