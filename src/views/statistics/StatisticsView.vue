@@ -6,7 +6,6 @@ import { BILL_DATA_CHANGED_EVENT } from '../../utils/bill-events'
 import { formatMoney } from '../../utils/money'
 
 const LEDGER_PAGE_SIZE = 5
-const SUMMARY_PAGE_SIZE = 2
 const CUSTOMER_PAGE_SIZE = 4
 const FABRIC_PAGE_SIZE = 4
 
@@ -17,7 +16,6 @@ const suppressMonthWatch = ref(false)
 const barMotionReady = ref(false)
 
 const ledgerPage = ref(1)
-const summaryPage = ref(1)
 const customerPage = ref(1)
 const fabricPage = ref(1)
 
@@ -44,7 +42,6 @@ const paginate = (list, page, pageSize) => {
 
 const resetPanelPages = () => {
   ledgerPage.value = 1
-  summaryPage.value = 1
   customerPage.value = 1
   fabricPage.value = 1
 }
@@ -165,9 +162,6 @@ const insightCards = computed(() => [
   },
 ])
 
-const summaryPageCount = computed(() => Math.max(1, Math.ceil(insightCards.value.length / SUMMARY_PAGE_SIZE)))
-const pagedInsightCards = computed(() => paginate(insightCards.value, summaryPage.value, SUMMARY_PAGE_SIZE))
-
 const expenseByCustomer = computed(() => {
   const list = Array.isArray(summaryData.value.customerRanking) ? summaryData.value.customerRanking : []
   return list.map((item, index) => ({
@@ -206,10 +200,6 @@ const goLedgerPage = (page) => {
   ledgerPage.value = clampPage(page, ledgerPageCount.value)
 }
 
-const goSummaryPage = (page) => {
-  summaryPage.value = clampPage(page, summaryPageCount.value)
-}
-
 const goCustomerPage = (page) => {
   customerPage.value = clampPage(page, customerPageCount.value)
 }
@@ -238,10 +228,6 @@ watch(selectedMonth, async (value, oldValue) => {
 
 watch(dailyLedger, () => {
   ledgerPage.value = clampPage(ledgerPage.value, ledgerPageCount.value)
-})
-
-watch(insightCards, () => {
-  summaryPage.value = clampPage(summaryPage.value, summaryPageCount.value)
 })
 
 watch(expenseByCustomer, () => {
@@ -453,28 +439,10 @@ onUnmounted(() => {
               <span class="panel-count">{{ insightCards.length }} 项</span>
             </div>
           </div>
-          <div class="pager-inline">
-            <button type="button" class="pager-btn" :disabled="summaryPage === 1" @click="goSummaryPage(summaryPage - 1)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-            <span class="pager-text">{{ summaryPage }} / {{ summaryPageCount }}</span>
-            <button
-              type="button"
-              class="pager-btn"
-              :disabled="summaryPage === summaryPageCount"
-              @click="goSummaryPage(summaryPage + 1)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-          </div>
         </div>
 
         <div class="insight-list">
-          <div v-for="item in pagedInsightCards" :key="item.key" class="insight-item">
+          <div v-for="item in insightCards" :key="item.key" class="insight-item">
             <div class="insight-icon" :class="`${item.tone}-icon`">
               <svg v-if="item.icon === 'calendar'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" />

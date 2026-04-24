@@ -240,7 +240,9 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .main-layout{
   min-height:100vh;
+  min-height:100dvh;
   display:flex;
+  align-items:stretch;
   background:radial-gradient(circle at left top,rgba(158,207,194,.16),transparent 24%),radial-gradient(circle at right top,rgba(227,187,122,.18),transparent 28%),linear-gradient(180deg,#fffaf4 0%,#f8efe3 100%)
 }
 .mobile-overlay{
@@ -252,14 +254,18 @@ onBeforeUnmount(() => {
   @include respond-from(md){display:none}
 }
 .sidebar{
-  width:318px;
-  padding:18px;
+  width:320px;
+  min-height:100vh;
+  min-height:100dvh;
+  flex:0 0 320px;
   position:relative;
   z-index:50;
   @include respond-to(md){
     position:fixed;
     inset:0 auto 0 0;
     width:min(86vw,320px);
+    min-height:100dvh;
+    flex:none;
     transform:translateX(-110%);
     transition:transform $transition-normal
   }
@@ -268,18 +274,23 @@ onBeforeUnmount(() => {
   @include respond-to(md){transform:translateX(0)}
 }
 .sidebar-shell{
-  height:calc(100vh - 36px);
+  position:relative;
+  min-height:100vh;
+  min-height:100dvh;
   display:flex;
   flex-direction:column;
   gap:16px;
-  padding:18px;
-  border-radius:30px;
+  padding:20px 18px 18px;
+  border-radius:0 30px 30px 0;
   background:linear-gradient(180deg,rgba(255,251,246,.98) 0%,rgba(250,242,232,.97) 56%,rgba(246,237,225,.96) 100%);
   box-shadow:0 32px 60px rgba(179,153,123,.18);
   border:1px solid rgba(255,255,255,.72);
+  border-left:none;
   overflow:hidden;
   @include respond-to(md){
-    height:100vh;
+    min-height:100vh;
+    min-height:100dvh;
+    height:100dvh;
     border-radius:0 28px 28px 0;
     padding-top:calc(18px + var(--safe-area-inset-top));
     padding-bottom:calc(18px + var(--safe-area-inset-bottom))
@@ -504,9 +515,11 @@ onBeforeUnmount(() => {
 .main-content{
   flex:1;
   min-width:0;
+  min-height:100vh;
+  min-height:100dvh;
   display:flex;
   flex-direction:column;
-  padding:18px 18px 18px 0;
+  padding:18px;
   @include respond-to(md){padding:16px}
 }
 .top-bar{
