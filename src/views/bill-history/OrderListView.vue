@@ -161,7 +161,7 @@ const list = computed(() => {
   return filtered
 })
 
-const pageSizeOptions = [10, 20, 50]
+const pageSizeOptions = [5, 10, 20, 50]
 const currentPage = ref(1)
 const pageSize = ref(10)
 const totalPages = computed(() => Math.max(1, Math.ceil(list.value.length / pageSize.value)))
