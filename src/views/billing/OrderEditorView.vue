@@ -51,6 +51,8 @@ const partnerLabel = computed(() => (isPurchase.value ? '供货方' : '客户'))
 const quantityLabel = computed(() => '数量 / 重量')
 const totalWeightLabel = computed(() => '总重量')
 const roundAmount = (value) => Math.round(Number(value) || 0)
+const hasWeighing = computed(() => Number(form.firstWeight || 0) > 0 || Number(form.lastWeight || 0) > 0)
+const formatKg = (value) => `${Number(value || 0).toFixed(2)} 公斤`
 
 const form = reactive({
   partnerId: '',
@@ -524,6 +526,13 @@ const exportTable = async () => {
       [partnerLabel.value, form.partnerName.trim() || '-'],
       ['出货方式', '按重量出货'],
     ]
+    if (hasWeighing.value) {
+      metaRows.push(
+        ['过磅总重量', formatKg(form.firstWeight)],
+        ['车皮重量', formatKg(form.lastWeight)],
+        ['净重量', formatKg(form.netWeight)]
+      )
+    }
 
     worksheet.columns = [
       { key: 'fabric', width: 22 },
@@ -686,7 +695,14 @@ const exportImage = () => {
   ])
   const tableWidth = getCanvasTableWidth(columns)
 
-  const tableTop = 228
+  const weighingLines = hasWeighing.value
+    ? [
+        `过磅总重量：${formatKg(form.firstWeight)}`,
+        `车皮重量：${formatKg(form.lastWeight)}`,
+        `净重量：${formatKg(form.netWeight)}`,
+      ]
+    : []
+  const tableTop = hasWeighing.value ? 276 : 228
 
   ctx.font = '16px "SimSun", serif'
   const preparedRows = exportRows.map((item) => {
@@ -751,6 +767,10 @@ const exportImage = () => {
   ctx.fillStyle = '#4e6b86'
   ctx.fillText(`日期：${new Date().toISOString().slice(0, 10)}`, 48, 148)
   ctx.fillText(`${partnerLabel.value}：${form.partnerName.trim() || '-'}`, 48, 180)
+
+  weighingLines.forEach((line, index) => {
+    ctx.fillText(line, 48 + index * 360, 222)
+  })
 
   ctx.fillStyle = '#f2f7fc'
   ctx.fillRect(tableLeft, tableTop, tableWidth, rowBaseHeight)
@@ -969,6 +989,41 @@ const exportImage = () => {
       </div>
     </section>
 
+    <section class="panel weighing-panel">
+      <div class="panel-title-row">
+        <h3 class="title-with-icon">
+          <AppIcon name="scale" size="18" />
+          <span>过磅信息</span>
+        </h3>
+      </div>
+      <div class="weighing-grid">
+        <label class="field">
+          <span>过磅总重量（公斤）</span>
+          <input
+            v-model.number="form.firstWeight"
+            type="number"
+            min="0"
+            step="0.01"
+            autocomplete="off"
+          />
+        </label>
+        <label class="field">
+          <span>车皮重量（公斤）</span>
+          <input
+            v-model.number="form.lastWeight"
+            type="number"
+            min="0"
+            step="0.01"
+            autocomplete="off"
+          />
+        </label>
+        <label class="field readonly-field">
+          <span>净重量（公斤）</span>
+          <input :value="formatKg(form.netWeight)" type="text" readonly />
+        </label>
+      </div>
+    </section>
+
     <footer class="settlement-bar panel">
       <div class="settlement-summary">
         <div>
@@ -1068,6 +1123,7 @@ const exportImage = () => {
 }
 .form-panel,
 .detail-panel,
+.weighing-panel,
 .settlement-bar {
   padding: 24px;
 }
@@ -1087,10 +1143,14 @@ const exportImage = () => {
   gap: 8px;
 }
 .base-grid,
-.detail-grid {
+.detail-grid,
+.weighing-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+.weighing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .field {
   display: flex;
@@ -1256,7 +1316,8 @@ const exportImage = () => {
   }
   .settlement-summary,
   .base-grid,
-  .detail-grid {
+  .detail-grid,
+  .weighing-grid {
     grid-template-columns: 1fr;
   }
   .action-toolbar {
@@ -1285,6 +1346,7 @@ const exportImage = () => {
 
   .form-panel,
   .detail-panel,
+  .weighing-panel,
   .settlement-bar {
     padding: 18px !important;
   }
@@ -1380,6 +1442,7 @@ const exportImage = () => {
 
   .form-panel,
   .detail-panel,
+  .weighing-panel,
   .settlement-bar {
     padding: 14px !important;
   }

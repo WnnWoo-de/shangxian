@@ -121,7 +121,7 @@ const normalizeRecord = (record = {}) => {
     unsettledAmount,
     firstWeight: toFiniteNumber(record.firstWeight, 0),
     lastWeight: toFiniteNumber(record.lastWeight, 0),
-    netWeight: toFiniteNumber(record.netWeight, totalWeight),
+    netWeight: toFiniteNumber(record.netWeight, 0),
   }
 }
 

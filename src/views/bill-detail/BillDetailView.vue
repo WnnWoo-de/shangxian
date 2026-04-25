@@ -62,6 +62,8 @@ const form = reactive({
   lastWeight: 0,
   netWeight: 0,
 })
+const hasWeighing = computed(() => Number(form.firstWeight || 0) > 0 || Number(form.lastWeight || 0) > 0)
+const formatKg = (value) => `${Number(value || 0).toFixed(2)} 公斤`
 
 const rows = ref([])
 const deleting = ref(false)
@@ -86,7 +88,7 @@ const fillForm = (record) => {
   form.note = record.note
   form.firstWeight = Number(record.firstWeight || 0)
   form.lastWeight = Number(record.lastWeight || 0)
-  form.netWeight = Number(record.netWeight || 0)
+  form.netWeight = Number(record.netWeight || Math.max(form.firstWeight - form.lastWeight, 0))
 
   if (Array.isArray(record.items) && record.items.length) {
     rows.value = record.items.map((item) => ({
@@ -221,6 +223,13 @@ const exportToExcel = async () => {
       ['备注', form.note.trim() || '-'],
       ['出货方式', '按重量出货'],
     ]
+    if (hasWeighing.value) {
+      metaRows.push(
+        ['过磅总重量', formatKg(form.firstWeight)],
+        ['车皮重量', formatKg(form.lastWeight)],
+        ['净重量', formatKg(form.netWeight)]
+      )
+    }
 
     worksheet.columns = [
       { key: 'fabric', width: 22 },
@@ -455,7 +464,14 @@ const exportImage = () => {
   ])
   const tableWidth = getCanvasTableWidth(columns)
 
-  const tableTop = 228
+  const weighingLines = hasWeighing.value
+    ? [
+        `过磅总重量：${formatKg(form.firstWeight)}`,
+        `车皮重量：${formatKg(form.lastWeight)}`,
+        `净重量：${formatKg(form.netWeight)}`,
+      ]
+    : []
+  const tableTop = hasWeighing.value ? 276 : 228
 
   ctx.font = '16px "SimSun", serif'
   const preparedRows = exportRows.map((item) => {
@@ -520,6 +536,10 @@ const exportImage = () => {
   ctx.fillStyle = '#4e6b86'
   ctx.fillText(`日期：${form.createdAt || new Date().toISOString().slice(0, 10)}`, 48, 148)
   ctx.fillText(`${isSale.value ? '客户' : '供应商'}：${form.supplier.trim() || '-'}`, 48, 180)
+
+  weighingLines.forEach((line, index) => {
+    ctx.fillText(line, 48 + index * 360, 222)
+  })
 
   ctx.fillStyle = '#f2f7fc'
   ctx.fillRect(tableLeft, tableTop, tableWidth, rowBaseHeight)
@@ -677,19 +697,19 @@ const exportImage = () => {
         </article>
       </section>
 
-      <div v-if="form.firstWeight > 0 || form.lastWeight > 0" class="weight-panel">
+      <div v-if="hasWeighing" class="weight-panel">
         <div class="weight-inputs">
           <label class="field">
-            <span>初磅 (斤)</span>
-            <input :value="form.firstWeight.toFixed(2)" type="text" readonly />
+            <span>过磅总重量（公斤）</span>
+            <input :value="formatKg(form.firstWeight)" type="text" readonly />
           </label>
           <label class="field">
-            <span>次磅 (斤)</span>
-            <input :value="form.lastWeight.toFixed(2)" type="text" readonly />
+            <span>车皮重量（公斤）</span>
+            <input :value="formatKg(form.lastWeight)" type="text" readonly />
           </label>
           <label class="field">
-            <span>净重 (斤)</span>
-            <input :value="form.netWeight.toFixed(2)" type="text" readonly />
+            <span>净重量（公斤）</span>
+            <input :value="formatKg(form.netWeight)" type="text" readonly />
           </label>
         </div>
       </div>
