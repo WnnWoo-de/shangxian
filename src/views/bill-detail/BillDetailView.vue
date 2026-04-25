@@ -455,12 +455,7 @@ const exportImage = () => {
   ])
   const tableWidth = getCanvasTableWidth(columns)
 
-  ctx.font = '22px "SimSun", serif'
-  const noteLines = wrapCanvasText(ctx, `备注：${form.note.trim() || '-'}`, width - 96)
-  const noteLineHeight = 30
-  const noteTop = 228
-  const noteHeight = Math.max(noteLineHeight, noteLines.length * noteLineHeight)
-  const tableTop = noteTop + noteHeight + 40
+  const tableTop = 228
 
   ctx.font = '16px "SimSun", serif'
   const preparedRows = exportRows.map((item) => {
@@ -525,12 +520,6 @@ const exportImage = () => {
   ctx.fillStyle = '#4e6b86'
   ctx.fillText(`日期：${form.createdAt || new Date().toISOString().slice(0, 10)}`, 48, 148)
   ctx.fillText(`${isSale.value ? '客户' : '供应商'}：${form.supplier.trim() || '-'}`, 48, 180)
-
-  noteLines.forEach((line, index) => {
-    ctx.fillText(line, 48, noteTop + index * noteLineHeight)
-  })
-
-  ctx.fillText(`出货方式：按重量出货`, 48, noteTop + noteHeight + 22)
 
   ctx.fillStyle = '#f2f7fc'
   ctx.fillRect(tableLeft, tableTop, tableWidth, rowBaseHeight)
