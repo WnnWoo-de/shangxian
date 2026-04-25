@@ -185,4 +185,76 @@ const moveFabric = async (item, direction) => {
 .fabric-card__actions{margin-top:14px}
 .order-actions .inner-page__btn-text:disabled,
 .fabric-card__actions .inner-page__btn-text:disabled{cursor:not-allowed;opacity:.42}
+
+@media (max-width: 768px) {
+  .pagination-bar {
+    justify-content: center;
+    flex-wrap: wrap;
+    padding-top: 14px;
+    border-top: 1px solid rgba(139, 125, 112, 0.12);
+  }
+
+  .pagination-bar__btn {
+    min-width: 124px;
+    min-height: 42px;
+  }
+
+  .fabric-card__top h3 {
+    font-size: 17px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .fabric-card__top p {
+    font-size: 13px;
+  }
+
+  .fabric-card__price-grid {
+    gap: 10px;
+  }
+
+  .fabric-card__price-grid div {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .fabric-card__price-grid strong {
+    font-size: 16px;
+    overflow-wrap: anywhere;
+  }
+
+  .fabric-card__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .fabric-card__actions .inner-page__btn-text {
+    min-height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 250, 241, 0.9);
+    border: 1px solid rgba(139, 125, 112, 0.12);
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination-bar {
+    gap: 8px;
+  }
+
+  .pagination-bar span {
+    width: 100%;
+    text-align: center;
+  }
+
+  .pagination-bar__btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+
+  .fabric-card__price-grid,
+  .fabric-card__actions {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

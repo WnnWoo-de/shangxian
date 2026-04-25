@@ -302,6 +302,36 @@ textarea,
   .el-input-number {
     width: 100% !important;
   }
+
+  .el-message {
+    top: max(12px, var(--safe-area-inset-top)) !important;
+  }
+
+  .el-message-box {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px);
+    border-radius: 18px;
+  }
+
+  .el-message-box__btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+
+    .el-button {
+      width: 100%;
+      margin: 0;
+    }
+  }
+
+  .el-pagination {
+    justify-content: center;
+    white-space: normal;
+  }
+
+  .el-table {
+    font-size: 13px;
+  }
 }
 
 // 中等屏幕 (平板竖屏/手机横屏)

@@ -434,6 +434,57 @@ const recentPartners = computed(() => {
           </table>
         </div>
 
+        <div class="mobile-bill-list">
+          <article v-for="item in paginatedList" :key="`mobile-${item.id}`" class="mobile-bill-card">
+            <div class="mobile-bill-head">
+              <div>
+                <span class="mobile-bill-no">{{ item.billNo }}</span>
+                <strong>{{ item.partnerName || '未命名客户' }}</strong>
+              </div>
+              <span class="status-tag" :class="`status-${getStatusColor(item.status, item.unsettledAmount)}`">
+                {{ getStatusText(item.status, item.unsettledAmount) }}
+              </span>
+            </div>
+            <div class="mobile-bill-meta">
+              <span>{{ item.billDate }}</span>
+              <span>{{ getRecordTotalWeight(item).toFixed(2) }} 斤</span>
+            </div>
+            <div class="mobile-bill-money">
+              <div>
+                <span>{{ amountLabel }}</span>
+                <strong>{{ formatMoney(getRecordTotalAmount(item)) }}</strong>
+              </div>
+              <div>
+                <span>{{ settlementLabel }}</span>
+                <strong>{{ formatMoney(isPurchase ? item.paidAmount : item.receivedAmount) }}</strong>
+              </div>
+              <div>
+                <span>未结</span>
+                <strong :class="{ negative: Number(item.unsettledAmount || 0) > 0 }">{{ formatMoney(item.unsettledAmount) }}</strong>
+              </div>
+            </div>
+            <div class="mobile-weight-list">
+              <article v-for="(detail, detailIndex) in getRecordWeightDetails(item).slice(0, 3)" :key="detailIndex" class="mobile-weight-item">
+                <span>{{ detail.fabricName }}</span>
+                <strong>{{ detail.totalWeight.toFixed(2) }} 斤</strong>
+              </article>
+              <button v-if="getRecordWeightDetails(item).length > 3" type="button" class="mobile-more-btn" @click="viewBill(item.id)">
+                查看全部 {{ getRecordWeightDetails(item).length }} 条明细
+              </button>
+            </div>
+            <div class="mobile-bill-actions">
+              <button class="btn-text" @click="viewBill(item.id)">查看</button>
+              <button class="btn-text" @click="editBill(item.id)">编辑</button>
+              <button class="btn-text btn-danger" @click="deleteBill(item.id)">删除</button>
+            </div>
+          </article>
+          <div v-if="list.length === 0" class="mobile-empty-state">
+            <AppIcon name="inbox" size="46" />
+            <p>暂无单据</p>
+            <span>{{ isPurchase ? '点击上方按钮创建第一张进货单' : '点击上方按钮创建第一张出货单' }}</span>
+          </div>
+        </div>
+
         <div v-if="list.length > 0" class="pagination-bar">
           <div class="page-size-control">
             <span>每页</span>
@@ -1128,7 +1179,41 @@ const recentPartners = computed(() => {
   }
 }
 
+.mobile-bill-list {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  .order-list-page {
+    min-height: auto;
+    padding: 0;
+    background: transparent;
+  }
+
+  .page-header {
+    margin-bottom: 16px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .header-content .page-info .page-title {
+    font-size: 24px;
+  }
+
+  .header-content .page-actions,
+  .header-content .page-actions .btn-primary {
+    width: 100%;
+  }
+
+  .header-content .page-actions .btn-primary {
+    justify-content: center;
+    min-height: 44px;
+  }
+
   .stats-section {
     margin-bottom: 16px;
   }
@@ -1183,9 +1268,191 @@ const recentPartners = computed(() => {
   }
 
   .list-section .list-container .table-wrap {
-    margin-inline: -6px;
-    padding-inline: 6px;
-    -webkit-overflow-scrolling: touch;
+    display: none;
+  }
+
+  .mobile-bill-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .mobile-bill-card {
+    padding: 14px;
+    border: 1px solid rgba(139, 125, 112, 0.12);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  }
+
+  .mobile-bill-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .mobile-bill-head > div {
+    min-width: 0;
+  }
+
+  .mobile-bill-head strong {
+    display: block;
+    margin-top: 3px;
+    color: #231f1c;
+    font-size: 16px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-bill-head .status-tag {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .mobile-bill-head .status-green {
+    background: rgba(26, 145, 92, 0.1);
+    color: #1a915c;
+  }
+
+  .mobile-bill-head .status-blue {
+    background: rgba(44, 62, 80, 0.1);
+    color: #2c3e50;
+  }
+
+  .mobile-bill-head .status-orange {
+    background: rgba(231, 118, 34, 0.12);
+    color: #e67e22;
+  }
+
+  .mobile-bill-no {
+    color: #8b7d70;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .mobile-bill-meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    color: #7b6e62;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .mobile-bill-money {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .mobile-bill-money div {
+    min-width: 0;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(255, 250, 241, 0.82);
+  }
+
+  .mobile-bill-money span,
+  .mobile-weight-item span {
+    display: block;
+    color: #8b7d70;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .mobile-bill-money strong {
+    display: block;
+    margin-top: 4px;
+    color: #1a915c;
+    font-size: 14px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-bill-money strong.negative {
+    color: #e74c3c;
+  }
+
+  .mobile-weight-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .mobile-weight-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 12px;
+    background: rgba(139, 125, 112, 0.06);
+  }
+
+  .mobile-weight-item span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-weight-item strong {
+    flex: 0 0 auto;
+    color: #231f1c;
+    font-size: 13px;
+  }
+
+  .mobile-more-btn {
+    min-height: 36px;
+    border: 1px solid rgba(26, 145, 92, 0.18);
+    border-radius: 12px;
+    background: rgba(26, 145, 92, 0.08);
+    color: #137348;
+    font-weight: 700;
+  }
+
+  .mobile-bill-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .mobile-bill-actions .btn-text {
+    min-height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 250, 241, 0.9);
+    border: 1px solid rgba(139, 125, 112, 0.12);
+    color: #9b7e5c;
+    font-weight: 700;
+  }
+
+  .mobile-bill-actions .btn-danger {
+    color: #e74c3c;
+  }
+
+  .mobile-empty-state {
+    display: grid;
+    place-items: center;
+    gap: 6px;
+    padding: 34px 16px;
+    color: #8b7d70;
+    text-align: center;
+  }
+
+  .mobile-empty-state p {
+    margin: 8px 0 0;
+    color: #231f1c;
+    font-weight: 700;
+  }
+
+  .mobile-empty-state span {
+    font-size: 13px;
   }
 
   .list-section .list-container .pagination-bar {

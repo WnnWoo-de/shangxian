@@ -616,12 +616,62 @@ const moveCustomer = async (item, direction) => {
 }
 
 @media (max-width: 768px) {
+  .customer-card__top h3 {
+    font-size: 17px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .customer-card__top p {
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+  }
+
+  .customer-card__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .customer-card__actions .inner-page__btn-text {
+    min-height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 250, 241, 0.9);
+    border: 1px solid rgba(139, 125, 112, 0.12);
+  }
+
+  .customer-pagination {
+    justify-content: center;
+  }
+
+  .customer-pagination__size,
+  .customer-pagination__summary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .customer-pagination__actions {
+    width: 100%;
+  }
+
+  .customer-pagination__actions button {
+    min-width: 40px;
+    height: 40px;
+  }
+
   .customer-price-modal {
     width: 100%;
   }
 
   .price-table-wrap {
     max-height: calc(100dvh - 220px);
+  }
+}
+
+@media (max-width: 480px) {
+  .customer-card__actions {
+    grid-template-columns: 1fr;
   }
 }
 </style>

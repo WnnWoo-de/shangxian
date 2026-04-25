@@ -706,6 +706,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 480px) {
+  .main-layout {
+    min-height: 100dvh;
+    background:
+      linear-gradient(180deg, rgba(255, 250, 243, .98) 0%, rgba(245, 235, 222, .98) 100%);
+  }
+
   .mobile-overlay {
     background: rgba(45, 36, 28, .2);
   }
@@ -746,6 +752,30 @@ onBeforeUnmount(() => {
 
   .user-card {
     margin-bottom: 8px;
+  }
+
+  .top-bar {
+    position: sticky;
+    top: calc(8px + var(--safe-area-inset-top));
+    z-index: 20;
+    box-shadow: 0 12px 26px rgba(179, 153, 123, .12);
+  }
+
+  .top-copy {
+    overflow: hidden;
+  }
+
+  .page-title-row {
+    gap: 6px;
+  }
+
+  .title-badge {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .page-content {
+    overflow: visible;
   }
 }
 </style>

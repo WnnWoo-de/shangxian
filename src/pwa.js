@@ -7,6 +7,7 @@ export const setupPwaAutoUpdate = () => {
 
   let hasReloaded = false
   let intervalId = 0
+  let updateSW = null
 
   const reloadApp = () => {
     if (hasReloaded) return
@@ -14,10 +15,23 @@ export const setupPwaAutoUpdate = () => {
     window.location.reload()
   }
 
-  const updateSW = registerSW({
+  const activateUpdate = () => {
+    if (typeof updateSW === 'function') {
+      updateSW(true)
+      return
+    }
+    reloadApp()
+  }
+
+  updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      reloadApp()
+      activateUpdate()
+    },
+    onOfflineReady() {
+      navigator.serviceWorker.ready
+        .then((registration) => registration.update())
+        .catch(() => {})
     },
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return
@@ -27,6 +41,7 @@ export const setupPwaAutoUpdate = () => {
         registration.update().catch(() => {})
       }
 
+      registration.active?.postMessage({ type: 'SKIP_WAITING' })
       checkForUpdates()
       window.addEventListener('focus', checkForUpdates)
       document.addEventListener('visibilitychange', checkForUpdates)
