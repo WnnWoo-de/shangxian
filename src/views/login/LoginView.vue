@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useCustomerStore } from '../../stores/customer'
@@ -16,12 +16,6 @@ const loginError = ref('')
 const form = reactive({
   username: '',
   password: '',
-})
-
-onMounted(() => {
-  // 默认填充演示账号
-  form.username = '皖盛布碎'
-  form.password = '123456'
 })
 
 const login = async () => {
@@ -87,7 +81,7 @@ const login = async () => {
           <p class="form-desc">请输入账号与密码，继续今天的业务处理。</p>
         </div>
 
-        <form @submit.prevent="login" class="login-form">
+        <form @submit.prevent="login" class="login-form" autocomplete="on">
           <div class="field">
             <label>账号</label>
             <input v-model="form.username" type="text" placeholder="输入您的用户名" autocomplete="username" inputmode="text" />
