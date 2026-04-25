@@ -14,6 +14,7 @@ import { useCustomerPriceStore } from '@/stores/customerPrice'
 import { useFabricStore } from '@/stores/fabric'
 import { useBillRecordStore } from '@/stores/billRecord'
 import { setupPwaAutoUpdate } from '@/pwa'
+import { setupPwaInstallPrompt } from '@/utils/pwa-install'
 import { incrementalSync, startAutoSync, stopAutoSync } from '@/utils/sync'
 
 const app = createApp(App)
@@ -55,6 +56,7 @@ watch(
 )
 
 setupPwaAutoUpdate()
+setupPwaInstallPrompt()
 
 // 挂载应用
 app.mount('#app')

@@ -1,7 +1,8 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { showToast } from '@/utils/toast'
 import { getExportImageBrandName, setExportImageBrandName } from '@/utils/app-config'
+import { canPromptPwaInstall, getPwaInstallLabel, isPwaStandalone, promptPwaInstall, subscribePwaInstallState } from '@/utils/pwa-install'
 // UUID is not necessary, just standard icons or simple css shapes
 
 const settingsList = ref([
@@ -37,6 +38,14 @@ const settingsList = ref([
 
 const exportImageBrandName = ref('')
 const savingBrandName = ref(false)
+const canInstallPwa = ref(false)
+const pwaInstallText = ref('检测安装状态中')
+let unsubscribePwaInstall = null
+
+const updatePwaInstallState = () => {
+  canInstallPwa.value = canPromptPwaInstall()
+  pwaInstallText.value = getPwaInstallLabel()
+}
 
 const loadBrandName = () => {
   exportImageBrandName.value = getExportImageBrandName()
@@ -58,8 +67,34 @@ const saveBrandName = async () => {
   }
 }
 
+const installPwa = async () => {
+  if (isPwaStandalone()) {
+    showToast('当前已经是应用模式', 'success')
+    updatePwaInstallState()
+    return
+  }
+
+  const result = await promptPwaInstall()
+  updatePwaInstallState()
+
+  if (result?.outcome === 'unavailable') {
+    showToast('请在安卓浏览器菜单中选择“安装应用”或“添加到主屏幕”', 'error')
+    return
+  }
+
+  if (result?.outcome === 'accepted') {
+    showToast('正在安装应用', 'success')
+  }
+}
+
 onMounted(() => {
   loadBrandName()
+  updatePwaInstallState()
+  unsubscribePwaInstall = subscribePwaInstallState(updatePwaInstallState)
+})
+
+onBeforeUnmount(() => {
+  unsubscribePwaInstall?.()
 })
 </script>
 
@@ -92,6 +127,18 @@ onMounted(() => {
     </section>
 
     <section class="panel settings-panel">
+      <div class="setting-item">
+        <div class="item-info">
+          <h3>安装到安卓平板桌面</h3>
+          <p>安装后可像普通应用一样从桌面打开，并支持离线缓存。</p>
+        </div>
+        <div class="item-action">
+          <button class="action-btn" :disabled="!canInstallPwa" @click="installPwa">
+            {{ pwaInstallText }}
+          </button>
+        </div>
+      </div>
+
       <div 
         class="setting-item" 
         v-for="(item, index) in settingsList" 
