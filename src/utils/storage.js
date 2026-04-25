@@ -20,6 +20,7 @@ const StorageTypes = {
   // 业务数据
   CUSTOMERS: 'customers',
   FABRICS: 'fabrics',
+  CUSTOMER_PRICES: 'customer_prices',
   BILLS: 'bills',
 
   // 草稿与状态

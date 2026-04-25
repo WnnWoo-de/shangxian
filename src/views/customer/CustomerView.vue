@@ -2,9 +2,15 @@
 import { computed, reactive, ref, watch } from 'vue'
 import AppIcon from '../../components/icons/AppIcon.vue'
 import { useCustomerStore } from '../../stores/customer'
+import { useCustomerPriceStore } from '../../stores/customerPrice'
+import { useFabricStore } from '../../stores/fabric'
 import { showToast } from '../../utils/toast'
 
 const customerStore = useCustomerStore()
+const customerPriceStore = useCustomerPriceStore()
+const fabricStore = useFabricStore()
+customerPriceStore.init()
+fabricStore.init()
 const keyword = ref('')
 
 const showModal = ref(false)
@@ -14,6 +20,9 @@ const editingId = ref('')
 const showDeleteConfirm = ref(false)
 const deletingId = ref('')
 const deletingName = ref('')
+const showPriceModal = ref(false)
+const priceCustomer = ref(null)
+const priceRows = ref([])
 
 const form = reactive({
   name: '',
@@ -101,7 +110,10 @@ const confirmDelete = async () => {
   if (!deletingId.value) return
   try {
     const success = await customerStore.deleteCustomer(deletingId.value)
-    if (success) showToast('客户删除成功')
+    if (success) {
+      customerPriceStore.removeCustomerPrices(deletingId.value)
+      showToast('客户删除成功')
+    }
     else showToast('删除失败', 'error')
   } catch (error) {
     console.error('删除客户异常:', error)
@@ -116,6 +128,48 @@ const cancelDelete = () => {
   showDeleteConfirm.value = false
   deletingId.value = ''
   deletingName.value = ''
+}
+
+const openPriceSettings = (item) => {
+  priceCustomer.value = item
+  priceRows.value = fabricStore.activeFabrics.map((fabric) => {
+    const saved = customerPriceStore.getPrice(item.id, fabric.id)
+    return {
+      fabricId: fabric.id,
+      fabricName: fabric.name,
+      defaultPurchasePrice: Number(fabric.defaultPurchasePrice || 0),
+      defaultSalePrice: Number(fabric.defaultSalePrice || 0),
+      purchasePrice: Number(saved?.purchasePrice || 0),
+      salePrice: Number(saved?.salePrice || 0),
+    }
+  })
+  showPriceModal.value = true
+}
+
+const savePriceSettings = () => {
+  if (!priceCustomer.value) return
+
+  priceRows.value.forEach((row) => {
+    const purchasePrice = Number(row.purchasePrice || 0)
+    const salePrice = Number(row.salePrice || 0)
+
+    if (purchasePrice > 0 || salePrice > 0) {
+      customerPriceStore.upsertPrice({
+        customerId: priceCustomer.value.id,
+        customerName: priceCustomer.value.name,
+        fabricId: row.fabricId,
+        fabricName: row.fabricName,
+        purchasePrice,
+        salePrice,
+      })
+      return
+    }
+
+    customerPriceStore.removePrice(priceCustomer.value.id, row.fabricId)
+  })
+
+  showPriceModal.value = false
+  showToast('客户品种价格已保存')
 }
 
 const submit = async () => {
@@ -226,6 +280,7 @@ const submit = async () => {
               </td>
               <td>
                 <div class="inner-page__actions">
+                  <button type="button" class="inner-page__btn-text" @click="openPriceSettings(item)">价格</button>
                   <button type="button" class="inner-page__btn-text" @click="openEdit(item)">编辑</button>
                   <button type="button" class="inner-page__btn-text inner-page__btn-text--danger" @click="openDelete(item)">删除</button>
                 </div>
@@ -277,6 +332,7 @@ const submit = async () => {
           </span>
         </div>
         <div class="inner-page__actions customer-card__actions">
+          <button type="button" class="inner-page__btn-text" @click="openPriceSettings(item)">价格</button>
           <button type="button" class="inner-page__btn-text" @click="openEdit(item)">编辑</button>
           <button type="button" class="inner-page__btn-text inner-page__btn-text--danger" @click="openDelete(item)">删除</button>
         </div>
@@ -339,6 +395,41 @@ const submit = async () => {
           <footer class="inner-page__modal-actions">
             <button type="button" class="inner-page__btn-ghost" @click="cancelDelete">取消</button>
             <button type="button" class="inner-page__btn-danger" @click="confirmDelete">确认删除</button>
+          </footer>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="fade">
+      <div v-if="showPriceModal" class="inner-page__modal-mask" @click.self="showPriceModal = false">
+        <div class="inner-page__modal customer-price-modal">
+          <h3>{{ priceCustomer?.name || '' }} - 品种价格</h3>
+          <p class="price-modal-tip">为空时开单会使用品种默认价；填写后，该客户选择对应品种会自动带出此价格。</p>
+          <div class="price-table-wrap">
+            <table class="price-table">
+              <thead>
+                <tr>
+                  <th>品种</th>
+                  <th>默认进价</th>
+                  <th>客户进价</th>
+                  <th>默认出价</th>
+                  <th>客户出价</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in priceRows" :key="row.fabricId">
+                  <td><strong>{{ row.fabricName }}</strong></td>
+                  <td>¥ {{ row.defaultPurchasePrice.toFixed(2) }}</td>
+                  <td><input v-model.number="row.purchasePrice" type="number" min="0" step="0.01" placeholder="默认" /></td>
+                  <td>¥ {{ row.defaultSalePrice.toFixed(2) }}</td>
+                  <td><input v-model.number="row.salePrice" type="number" min="0" step="0.01" placeholder="默认" /></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <footer class="inner-page__modal-actions">
+            <button type="button" class="inner-page__btn-ghost" @click="showPriceModal = false">取消</button>
+            <button type="button" class="inner-page__btn" @click="savePriceSettings">保存价格</button>
           </footer>
         </div>
       </div>
@@ -445,5 +536,67 @@ const submit = async () => {
 .customer-pagination--mobile {
   justify-content: center;
   padding: 14px;
+}
+
+.customer-price-modal {
+  width: min(920px, 100%);
+}
+
+.price-modal-tip {
+  margin: -6px 0 16px;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.price-table-wrap {
+  max-height: min(58vh, 520px);
+  overflow: auto;
+  border: 1px solid rgba(139, 125, 112, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.price-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.price-table th,
+.price-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(139, 125, 112, 0.1);
+  text-align: left;
+  font-size: 13px;
+}
+
+.price-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(255, 250, 241, 0.96);
+  color: var(--text-soft);
+}
+
+.price-table input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(139, 125, 112, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text-normal);
+  outline: none;
+}
+
+@media (max-width: 768px) {
+  .customer-price-modal {
+    width: 100%;
+  }
+
+  .price-table-wrap {
+    max-height: calc(100dvh - 220px);
+  }
 }
 </style>

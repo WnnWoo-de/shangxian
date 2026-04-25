@@ -10,6 +10,7 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from '@/stores/auth'
 import { useCustomerStore } from '@/stores/customer'
+import { useCustomerPriceStore } from '@/stores/customerPrice'
 import { useFabricStore } from '@/stores/fabric'
 import { useBillRecordStore } from '@/stores/billRecord'
 import { setupPwaAutoUpdate } from '@/pwa'
@@ -30,6 +31,9 @@ authStore.init()
 
 const customerStore = useCustomerStore()
 customerStore.init()
+
+const customerPriceStore = useCustomerPriceStore()
+customerPriceStore.init()
 
 const fabricStore = useFabricStore()
 fabricStore.init()

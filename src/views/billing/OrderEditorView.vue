@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../../components/icons/AppIcon.vue'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { useCustomerStore } from '../../stores/customer'
+import { useCustomerPriceStore } from '../../stores/customerPrice'
 import { useFabricStore } from '../../stores/fabric'
 import { removeItem } from '../../utils/storage'
 import { createCanvasTableColumns, drawCanvasTableGrid, getCanvasBlockStartY, getCanvasCenterTextY, getCanvasTableWidth } from '../../utils/canvas-table'
@@ -26,6 +27,7 @@ const route = useRoute()
 const router = useRouter()
 const billRecordStore = useBillRecordStore()
 const customerStore = useCustomerStore()
+const customerPriceStore = useCustomerPriceStore()
 const fabricStore = useFabricStore()
 const saving = ref(false)
 const isPurchase = computed(() => props.type === 'purchase')
@@ -141,6 +143,7 @@ const rows = ref([makeRow()])
 
 const partners = computed(() => customerStore.activeCustomers)
 const fabrics = computed(() => fabricStore.activeFabrics)
+customerPriceStore.init()
 
 const filteredPartners = computed(() => {
   const keyword = partnerKeyword.value.trim()
@@ -156,20 +159,23 @@ const filteredPartners = computed(() => {
 const selectFabric = (row) => {
   const selected = fabrics.value.find((item) => item.id === row.fabricId)
   row.fabricName = selected?.name || ''
-  // 自动填充价格
-  if (selected) {
-    row.unitPrice = isPurchase.value ? selected.defaultPurchasePrice : selected.defaultSalePrice
-  }
+  if (selected) row.unitPrice = getPreferredUnitPrice(selected)
 }
 
 const syncRowFabric = (row) => {
   const keyword = row.fabricName.trim()
   const matched = fabrics.value.find((item) => item.name === keyword)
   row.fabricId = matched?.id || ''
-  // 自动填充价格
-  if (matched) {
-    row.unitPrice = isPurchase.value ? matched.defaultPurchasePrice : matched.defaultSalePrice
-  }
+  if (matched) row.unitPrice = getPreferredUnitPrice(matched)
+}
+
+const refreshRowPricesForPartner = () => {
+  if (isEditing.value) return
+  rows.value.forEach((row) => {
+    if (!row.fabricId) return
+    const selected = fabrics.value.find((item) => item.id === row.fabricId)
+    if (selected) row.unitPrice = getPreferredUnitPrice(selected)
+  })
 }
 
 const fillForm = (record) => {
@@ -229,6 +235,9 @@ watch(rows, () => {
   // 触发 rowViews 计算属性重新计算
   rowViews.value.forEach(() => {})
 }, { deep: true })
+
+watch(() => form.partnerName, syncPartnerSelection)
+watch(() => form.partnerId, refreshRowPricesForPartner)
 
 const rowViews = computed(() => {
   return rows.value.map((row) => {
@@ -454,6 +463,19 @@ onMounted(() => {
 
   if (!isEditing.value) clearDraft()
 })
+
+const getPreferredUnitPrice = (fabric) => {
+  if (!fabric) return 0
+  const customerPrice = customerPriceStore.getUnitPrice(form.partnerId, fabric.id, props.type)
+  if (customerPrice > 0) return customerPrice
+  return Number(isPurchase.value ? fabric.defaultPurchasePrice : fabric.defaultSalePrice) || 0
+}
+
+const getPriceSourceText = (row) => {
+  if (!row?.fabricId) return '选择品种后自动带价'
+  if (customerPriceStore.getUnitPrice(form.partnerId, row.fabricId, props.type) > 0) return '客户专属价'
+  return '品种默认价'
+}
 
 onUnmounted(() => {
   window.removeEventListener(MASTER_DATA_CHANGED_EVENT, onDataChanged)
@@ -978,6 +1000,7 @@ const exportImage = () => {
             <label class="field">
               <span>{{ priceLabel }}</span>
               <input v-model.number="rows[idx].unitPrice" type="number" min="0" step="0.01" />
+              <small class="field-tip">{{ getPriceSourceText(rows[idx]) }}</small>
             </label>
 
             <label class="field readonly-field">
