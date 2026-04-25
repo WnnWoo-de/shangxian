@@ -152,6 +152,12 @@ const lastAutoWeightInput = ref('')
 const partners = computed(() => customerStore.activeCustomers)
 const fabrics = computed(() => fabricStore.activeFabrics)
 const primaryRow = computed(() => rows.value[0] || null)
+const currentPartner = computed(() => {
+  const partnerName = form.partnerName.trim()
+  return customerStore.customers.find((item) => {
+    return (form.partnerId && item.id === form.partnerId) || (partnerName && String(item.name || '').trim() === partnerName)
+  }) || null
+})
 customerPriceStore.init()
 
 const selectFabric = (row) => {
@@ -561,6 +567,34 @@ const getExportFileBase = () => {
   return `${typeText}_${date}_${partnerName}`
 }
 
+const getPartnerContactText = () => {
+  const partner = currentPartner.value
+  return String(partner?.contact || partner?.contactPerson || '').trim()
+}
+
+const buildExportMetaRows = () => {
+  const rows = [
+    ['单据日期', new Date().toISOString().slice(0, 10)],
+  ]
+  const partnerName = form.partnerName.trim()
+  const contactText = getPartnerContactText()
+
+  if (partnerName) rows.push([`${partnerLabel.value}名称`, partnerName])
+  if (contactText) rows.push(['联系人', contactText])
+
+  rows.push(['出货方式', '按重量出货'])
+
+  if (hasWeighing.value) {
+    rows.push(
+      ['过磅总重量', formatKg(form.firstWeight)],
+      ['车皮重量', formatKg(form.lastWeight)],
+      ['净重量', formatKg(form.netWeight)]
+    )
+  }
+
+  return rows
+}
+
 const loadExcelJS = async () => {
   const module = await import('exceljs')
   return module.default
@@ -578,18 +612,7 @@ const exportTable = async () => {
     const workbook = new ExcelJS.Workbook()
     const worksheet = workbook.addWorksheet(exportTitle.value)
     const detailRowMeta = []
-    const metaRows = [
-      ['单据日期', new Date().toISOString().slice(0, 10)],
-      [partnerLabel.value, form.partnerName.trim() || '-'],
-      ['出货方式', '按重量出货'],
-    ]
-    if (hasWeighing.value) {
-      metaRows.push(
-        ['过磅总重量', formatKg(form.firstWeight)],
-        ['车皮重量', formatKg(form.lastWeight)],
-        ['净重量', formatKg(form.netWeight)]
-      )
-    }
+    const metaRows = buildExportMetaRows()
 
     worksheet.columns = [
       { key: 'fabric', width: 22 },
@@ -751,15 +774,10 @@ const exportImage = () => {
     { key: 'amount', label: '金额(元)', width: 210, align: 'center' },
   ])
   const tableWidth = getCanvasTableWidth(columns)
-
-  const weighingLines = hasWeighing.value
-    ? [
-        `过磅总重量：${formatKg(form.firstWeight)}`,
-        `车皮重量：${formatKg(form.lastWeight)}`,
-        `净重量：${formatKg(form.netWeight)}`,
-      ]
-    : []
-  const tableTop = hasWeighing.value ? 276 : 228
+  const metaRows = buildExportMetaRows()
+  const metaStartY = 148
+  const metaLineHeight = 32
+  const tableTop = metaStartY + metaRows.length * metaLineHeight + 28
 
   ctx.font = '16px "SimSun", serif'
   const preparedRows = exportRows.map((item) => {
@@ -822,11 +840,8 @@ const exportImage = () => {
   ctx.fillText(exportTitle.value, 48, 92)
   ctx.font = '22px "SimSun", serif'
   ctx.fillStyle = '#4e6b86'
-  ctx.fillText(`日期：${new Date().toISOString().slice(0, 10)}`, 48, 148)
-  ctx.fillText(`${partnerLabel.value}：${form.partnerName.trim() || '-'}`, 48, 180)
-
-  weighingLines.forEach((line, index) => {
-    ctx.fillText(line, 48 + index * 360, 222)
+  metaRows.forEach(([label, value], index) => {
+    ctx.fillText(`${label}：${value}`, 48, metaStartY + index * metaLineHeight)
   })
 
   ctx.fillStyle = '#f2f7fc'

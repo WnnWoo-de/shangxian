@@ -56,6 +56,7 @@ const hasRecord = computed(() => Boolean(currentRecord.value))
 const form = reactive({
   orderNo: '',
   createdAt: '',
+  partnerId: '',
   supplier: '',
   note: '',
   firstWeight: 0,
@@ -72,6 +73,13 @@ const isEditing = computed(() => Boolean(recordId.value))
 const showFabricOptionsForRow = ref({})
 
 const fabrics = computed(() => fabricStore.activeFabrics)
+const currentPartner = computed(() => {
+  const record = currentRecord.value
+  const partnerName = form.supplier.trim()
+  return customerStore.customers.find((item) => {
+    return (record?.partnerId && item.id === record.partnerId) || (partnerName && String(item.name || '').trim() === partnerName)
+  }) || null
+})
 
 const getFilteredFabrics = (keyword) => {
   const query = String(keyword || '').trim().toLowerCase()
@@ -84,6 +92,7 @@ const fillForm = (record) => {
 
   form.orderNo = record.billNo
   form.createdAt = record.billDate || String(record.createdAt || '').slice(0, 10)
+  form.partnerId = record.partnerId || record.customerId || ''
   form.supplier = record.partnerName
   form.note = record.note
   form.firstWeight = Number(record.firstWeight || 0)
@@ -217,19 +226,7 @@ const exportToExcel = async () => {
     const workbook = new ExcelJS.Workbook()
     const worksheet = workbook.addWorksheet(exportTitle.value)
     const detailRowMeta = []
-    const metaRows = [
-      ['单据日期', form.createdAt || new Date().toISOString().slice(0, 10)],
-      [isSale.value ? '客户' : '供应商', form.supplier.trim() || '-'],
-      ['备注', form.note.trim() || '-'],
-      ['出货方式', '按重量出货'],
-    ]
-    if (hasWeighing.value) {
-      metaRows.push(
-        ['过磅总重量', formatKg(form.firstWeight)],
-        ['车皮重量', formatKg(form.lastWeight)],
-        ['净重量', formatKg(form.netWeight)]
-      )
-    }
+    const metaRows = buildExportMetaRows()
 
     worksheet.columns = [
       { key: 'fabric', width: 22 },
@@ -435,6 +432,35 @@ const getExportFileBase = () => {
   return `${typeText}_${date}_${partnerName}`
 }
 
+const getPartnerContactText = () => {
+  const partner = currentPartner.value
+  return String(partner?.contact || partner?.contactPerson || '').trim()
+}
+
+const buildExportMetaRows = () => {
+  const rows = [
+    ['单据日期', form.createdAt || new Date().toISOString().slice(0, 10)],
+  ]
+  const partnerName = form.supplier.trim()
+  const contactText = getPartnerContactText()
+
+  if (partnerName) rows.push([`${isSale.value ? '客户' : '供应商'}名称`, partnerName])
+  if (contactText) rows.push(['联系人', contactText])
+  if (form.note.trim()) rows.push(['备注', form.note.trim()])
+
+  rows.push(['出货方式', '按重量出货'])
+
+  if (hasWeighing.value) {
+    rows.push(
+      ['过磅总重量', formatKg(form.firstWeight)],
+      ['车皮重量', formatKg(form.lastWeight)],
+      ['净重量', formatKg(form.netWeight)]
+    )
+  }
+
+  return rows
+}
+
 const exportImage = () => {
   const exportRows = buildExportRows()
   if (!exportRows.length) {
@@ -463,15 +489,10 @@ const exportImage = () => {
     { key: 'amount', label: '金额(元)', width: 210, align: 'center' },
   ])
   const tableWidth = getCanvasTableWidth(columns)
-
-  const weighingLines = hasWeighing.value
-    ? [
-        `过磅总重量：${formatKg(form.firstWeight)}`,
-        `车皮重量：${formatKg(form.lastWeight)}`,
-        `净重量：${formatKg(form.netWeight)}`,
-      ]
-    : []
-  const tableTop = hasWeighing.value ? 276 : 228
+  const metaRows = buildExportMetaRows()
+  const metaStartY = 148
+  const metaLineHeight = 32
+  const tableTop = metaStartY + metaRows.length * metaLineHeight + 28
 
   ctx.font = '16px "SimSun", serif'
   const preparedRows = exportRows.map((item) => {
@@ -534,11 +555,8 @@ const exportImage = () => {
   ctx.fillText(exportTitle.value, 48, 92)
   ctx.font = '22px "SimSun", serif'
   ctx.fillStyle = '#4e6b86'
-  ctx.fillText(`日期：${form.createdAt || new Date().toISOString().slice(0, 10)}`, 48, 148)
-  ctx.fillText(`${isSale.value ? '客户' : '供应商'}：${form.supplier.trim() || '-'}`, 48, 180)
-
-  weighingLines.forEach((line, index) => {
-    ctx.fillText(line, 48 + index * 360, 222)
+  metaRows.forEach(([label, value], index) => {
+    ctx.fillText(`${label}：${value}`, 48, metaStartY + index * metaLineHeight)
   })
 
   ctx.fillStyle = '#f2f7fc'
