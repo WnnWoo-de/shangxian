@@ -16,7 +16,25 @@ export const canPromptPwaInstall = () => Boolean(deferredPrompt) && !isPwaStanda
 export const getPwaInstallLabel = () => {
   if (isPwaStandalone()) return '已安装'
   if (canPromptPwaInstall()) return '安装到桌面'
-  return '浏览器菜单中安装'
+  return '安装到桌面'
+}
+
+export const getPwaInstallGuide = () => {
+  if (typeof window === 'undefined') return '请在浏览器菜单中选择“安装应用”或“添加到主屏幕”。'
+
+  const userAgent = window.navigator.userAgent || ''
+  const isIos = /iPad|iPhone|iPod/.test(userAgent) || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
+  const isAndroid = /Android/i.test(userAgent)
+
+  if (isIos) {
+    return '请点击浏览器底部或顶部的分享按钮，然后选择“添加到主屏幕”。'
+  }
+
+  if (isAndroid) {
+    return '请点击浏览器右上角菜单，然后选择“安装应用”或“添加到主屏幕”。'
+  }
+
+  return '请在浏览器地址栏或菜单中选择“安装应用”或“添加到主屏幕”。'
 }
 
 export const setupPwaInstallPrompt = () => {

@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { showToast } from '@/utils/toast'
 import { getExportImageBrandName, setExportImageBrandName } from '@/utils/app-config'
-import { canPromptPwaInstall, getPwaInstallLabel, isPwaStandalone, promptPwaInstall, subscribePwaInstallState } from '@/utils/pwa-install'
+import { getPwaInstallGuide, getPwaInstallLabel, isPwaStandalone, promptPwaInstall, subscribePwaInstallState } from '@/utils/pwa-install'
 // UUID is not necessary, just standard icons or simple css shapes
 
 const settingsList = ref([
@@ -38,13 +38,17 @@ const settingsList = ref([
 
 const exportImageBrandName = ref('')
 const savingBrandName = ref(false)
-const canInstallPwa = ref(false)
+const isInstalledPwa = ref(false)
 const pwaInstallText = ref('检测安装状态中')
+const pwaInstallGuide = ref('')
+const showPwaInstallGuide = ref(false)
 let unsubscribePwaInstall = null
 
 const updatePwaInstallState = () => {
-  canInstallPwa.value = canPromptPwaInstall()
+  isInstalledPwa.value = isPwaStandalone()
   pwaInstallText.value = getPwaInstallLabel()
+  pwaInstallGuide.value = getPwaInstallGuide()
+  if (isInstalledPwa.value) showPwaInstallGuide.value = false
 }
 
 const loadBrandName = () => {
@@ -78,12 +82,14 @@ const installPwa = async () => {
   updatePwaInstallState()
 
   if (result?.outcome === 'unavailable') {
-    showToast('请在安卓浏览器菜单中选择“安装应用”或“添加到主屏幕”', 'error')
+    showPwaInstallGuide.value = true
+    showToast('请按下方提示安装到桌面', 'error')
     return
   }
 
   if (result?.outcome === 'accepted') {
     showToast('正在安装应用', 'success')
+    showPwaInstallGuide.value = false
   }
 }
 
@@ -133,10 +139,14 @@ onBeforeUnmount(() => {
           <p>安装后可像普通应用一样从桌面打开，并支持离线缓存。</p>
         </div>
         <div class="item-action">
-          <button class="action-btn" :disabled="!canInstallPwa" @click="installPwa">
+          <button class="action-btn" :disabled="isInstalledPwa" @click="installPwa">
             {{ pwaInstallText }}
           </button>
         </div>
+      </div>
+      <div v-if="showPwaInstallGuide" class="install-guide">
+        <strong>平板安装提示</strong>
+        <p>{{ pwaInstallGuide }}</p>
       </div>
 
       <div 
@@ -338,6 +348,28 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 12px rgba(36, 127, 214, 0.2);
 }
 
+.install-guide {
+  margin: -6px 24px 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255, 248, 229, 0.92);
+  border: 1px solid rgba(228, 176, 72, 0.28);
+  color: var(--text-primary);
+}
+
+.install-guide strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.install-guide p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 @media (max-width: 768px) {
   .settings-container {
     padding: 0 16px;
@@ -357,6 +389,10 @@ onBeforeUnmount(() => {
 
   .item-action {
     align-self: flex-end;
+  }
+
+  .install-guide {
+    margin: -4px 20px 4px;
   }
 
   .item-action-row {
@@ -399,6 +435,11 @@ onBeforeUnmount(() => {
   .action-btn {
     padding: 8px 16px;
     font-size: 13px;
+  }
+
+  .install-guide {
+    margin: -2px 16px 4px;
+    padding: 12px;
   }
 }
 </style>
