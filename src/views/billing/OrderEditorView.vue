@@ -6,7 +6,7 @@ import AppIcon from '../../components/icons/AppIcon.vue'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { useCustomerStore } from '../../stores/customer'
 import { useFabricStore } from '../../stores/fabric'
-import { readJson, writeJson, removeItem } from '../../utils/storage'
+import { removeItem } from '../../utils/storage'
 import { createCanvasTableColumns, drawCanvasTableGrid, getCanvasBlockStartY, getCanvasCenterTextY, getCanvasTableWidth } from '../../utils/canvas-table'
 import { getCanvasWrappedRowHeight, wrapCanvasText } from '../../utils/canvas-text'
 import { multiplyMoney, addMoney, formatMoney } from '../../utils/money'
@@ -201,9 +201,27 @@ const fillForm = (record) => {
   rows.value = [makeRow()]
 }
 
-watch(currentRecord, (record) => {
-  if (!record) return
-  fillForm(record)
+const resetEditor = () => {
+  form.partnerId = ''
+  form.partnerName = ''
+  form.note = ''
+  form.settlementAmount = 0
+  form.unsettledAmount = 0
+  form.firstWeight = 0
+  form.lastWeight = 0
+  form.netWeight = 0
+  partnerKeyword.value = ''
+  rows.value = [makeRow()]
+}
+
+watch([isEditing, currentRecord], ([editing, record]) => {
+  if (editing) {
+    if (record) fillForm(record)
+    return
+  }
+
+  resetEditor()
+  clearDraft()
 }, { immediate: true })
 
 // 深度监听 rows 数组变化，确保计算属性能正确响应
@@ -293,47 +311,6 @@ const removeRow = (index) => {
 
 const clearDraft = () => {
   removeItem(DRAFT_STORAGE_KEY.value)
-}
-
-const getDraftKey = (prefix) => {
-  return `draft-${prefix}-${props.type}`
-}
-
-const saveDraft = () => {
-  const draft = {
-    form: {
-      partnerId: form.partnerId,
-      partnerName: form.partnerName,
-      note: form.note,
-      settlementAmount: form.settlementAmount,
-      unsettledAmount: form.unsettledAmount,
-      firstWeight: form.firstWeight,
-      lastWeight: form.lastWeight,
-      netWeight: form.netWeight,
-    },
-    rows: rows.value,
-  }
-  writeJson(DRAFT_STORAGE_KEY.value, draft)
-}
-
-const loadDraft = () => {
-  const draft = readJson(DRAFT_STORAGE_KEY.value, null)
-  if (!draft) return
-
-  if (draft.form) {
-    form.partnerId = draft.form.partnerId || ''
-    form.partnerName = draft.form.partnerName || ''
-    form.note = draft.form.note || ''
-    form.settlementAmount = Number(draft.form.settlementAmount || 0)
-    form.unsettledAmount = Number(draft.form.unsettledAmount || 0)
-    form.firstWeight = Number(draft.form.firstWeight || 0)
-    form.lastWeight = Number(draft.form.lastWeight || 0)
-    form.netWeight = Number(draft.form.netWeight || 0)
-  }
-
-  if (Array.isArray(draft.rows) && draft.rows.length > 0) {
-    rows.value = draft.rows
-  }
 }
 
 const saveBill = async () => {
@@ -475,22 +452,12 @@ onMounted(() => {
   // 注册主数据变化事件
   window.addEventListener(MASTER_DATA_CHANGED_EVENT, onDataChanged)
 
-  // 加载草稿
-  if (!isEditing.value) {
-    loadDraft()
-  } else {
-    clearDraft()
-  }
+  if (!isEditing.value) clearDraft()
 })
 
 onUnmounted(() => {
   window.removeEventListener(MASTER_DATA_CHANGED_EVENT, onDataChanged)
 })
-
-// 自动保存草稿
-const draftTimer = setInterval(() => {
-  saveDraft()
-}, 30000)
 
 const buildExportRows = () => {
   return rowViews.value.filter((item) => {
@@ -881,9 +848,6 @@ const exportImage = () => {
   }, 'image/png')
 }
 
-onUnmounted(() => {
-  clearInterval(draftTimer)
-})
 </script>
 
 <template>
