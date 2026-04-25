@@ -53,6 +53,12 @@ const totalWeightLabel = computed(() => '总重量')
 const roundAmount = (value) => Math.round(Number(value) || 0)
 const hasWeighing = computed(() => Number(form.firstWeight || 0) > 0 || Number(form.lastWeight || 0) > 0)
 const formatKg = (value) => `${Number(value || 0).toFixed(2)} 公斤`
+const KG_TO_JIN = 2
+const formatJinInput = (value) => {
+  const number = Number(value || 0)
+  if (!Number.isFinite(number) || number <= 0) return ''
+  return Number(number.toFixed(2)).toString()
+}
 
 const form = reactive({
   partnerId: '',
@@ -66,6 +72,8 @@ const form = reactive({
 })
 
 const netWeight = computed(() => Math.max(Number(form.firstWeight) - Number(form.lastWeight), 0))
+const netWeightJin = computed(() => Number((netWeight.value * KG_TO_JIN).toFixed(2)))
+const netWeightInput = computed(() => formatJinInput(netWeightJin.value))
 
 watch(netWeight, (value) => {
   form.netWeight = Number(value || 0)
@@ -139,15 +147,23 @@ const parseWeightExpression = (input) => {
 }
 
 const rows = ref([makeRow()])
+const lastAutoWeightInput = ref('')
 
 const partners = computed(() => customerStore.activeCustomers)
 const fabrics = computed(() => fabricStore.activeFabrics)
+const primaryRow = computed(() => rows.value[0] || null)
 customerPriceStore.init()
 
 const selectFabric = (row) => {
   const selected = fabrics.value.find((item) => item.id === row.fabricId)
   row.fabricName = selected?.name || ''
   if (selected) row.unitPrice = getPreferredUnitPrice(selected)
+}
+
+const selectPrimaryFabric = () => {
+  if (!rows.value.length) rows.value = [makeRow()]
+  selectFabric(rows.value[0])
+  applyNetWeightToPrimaryRow()
 }
 
 const syncRowFabric = (row) => {
@@ -204,6 +220,7 @@ const resetEditor = () => {
   form.firstWeight = 0
   form.lastWeight = 0
   form.netWeight = 0
+  lastAutoWeightInput.value = ''
   rows.value = [makeRow()]
 }
 
@@ -289,6 +306,36 @@ const totalAmount = computed(() => {
   })
   return roundAmount(addMoney(safeAmounts))
 })
+
+const primaryAmount = computed(() => {
+  const row = primaryRow.value
+  if (!row) return 0
+  return multiplyMoney(parseWeightExpression(row.quantityInput ?? row.quantity), Number(row.unitPrice || 0))
+})
+
+const canAutoUseNetWeight = (row) => {
+  const currentInput = String(row?.quantityInput || '').trim()
+  return !currentInput || currentInput === lastAutoWeightInput.value
+}
+
+const applyNetWeightToPrimaryRow = ({ force = false } = {}) => {
+  const nextInput = netWeightInput.value
+  if (!nextInput) return false
+
+  if (!rows.value.length) rows.value = [makeRow()]
+
+  const row = rows.value[0]
+  if (!force && !canAutoUseNetWeight(row)) return false
+
+  row.quantityInput = nextInput
+  row.quantity = netWeightJin.value
+  lastAutoWeightInput.value = nextInput
+  return true
+}
+
+watch(netWeightInput, () => {
+  applyNetWeightToPrimaryRow()
+})
 // 未结金额计算 - 支持手动输入
 const unsettledAmount = computed({
   get() {
@@ -318,6 +365,16 @@ const removeRow = (index) => {
     return
   }
   rows.value.splice(index, 1)
+}
+
+const handleUseNetWeight = () => {
+  if (!netWeightInput.value) {
+    showToast('请先输入过磅总重量和车皮重量')
+    return
+  }
+
+  applyNetWeightToPrimaryRow({ force: true })
+  showToast('已按净重量填入第一行')
 }
 
 const saveBill = async () => {
@@ -925,12 +982,12 @@ const exportImage = () => {
       <div class="panel-title-row">
         <h3 class="title-with-icon">
           <AppIcon name="layers" size="18" />
-          <span>货品明细</span>
+          <span>明细补充</span>
         </h3>
         <button type="button" class="btn-ghost" @click="addRow">
           <span class="btn-content">
             <AppIcon name="plus" size="16" />
-            <span>新增明细</span>
+            <span>加一个品种</span>
           </span>
         </button>
       </div>
@@ -958,10 +1015,10 @@ const exportImage = () => {
                 rows="3"
                 class="weight-detail-input"
                 autocomplete="off"
-                placeholder="示例：10+10+10 / 10 10 10 / 10.10.10 / 10×3"
+                :placeholder="idx === 0 && netWeightInput ? `已过磅：${netWeightInput} 斤` : '示例：10+10+10 / 10 10 10 / 10×3'"
               ></textarea>
               <small class="field-tip">
-                支持 `10+10+10`、`10 10 10`、`10.10.10`、`10×3` 自动计算
+                {{ idx === 0 && netWeightInput ? `来自过磅净重：${formatKg(form.netWeight)}，折合 ${netWeightInput} 斤` : '支持多次重量相加和 10×3 自动计算' }}
               </small>
             </label>
 
@@ -989,7 +1046,7 @@ const exportImage = () => {
       </div>
     </section>
 
-    <section class="panel weighing-panel">
+    <section class="panel weighing-panel weighing-card">
       <div class="panel-title-row">
         <h3 class="title-with-icon">
           <AppIcon name="scale" size="18" />
@@ -997,6 +1054,31 @@ const exportImage = () => {
         </h3>
       </div>
       <div class="weighing-grid">
+        <label class="field">
+          <span>过磅品种</span>
+          <select
+            v-if="primaryRow"
+            v-model="primaryRow.fabricId"
+            @change="selectPrimaryFabric"
+          >
+            <option value="">请选择品种</option>
+            <option v-for="item in fabrics" :key="item.id" :value="item.id">
+              {{ item.name }}
+            </option>
+          </select>
+        </label>
+        <label class="field">
+          <span>{{ priceLabel }}（元/斤）</span>
+          <input
+            v-if="primaryRow"
+            v-model.number="primaryRow.unitPrice"
+            type="number"
+            min="0"
+            step="0.01"
+            autocomplete="off"
+          />
+          <small v-if="primaryRow" class="field-tip">{{ getPriceSourceText(primaryRow) }}</small>
+        </label>
         <label class="field">
           <span>过磅总重量（公斤）</span>
           <input
@@ -1021,6 +1103,21 @@ const exportImage = () => {
           <span>净重量（公斤）</span>
           <input :value="formatKg(form.netWeight)" type="text" readonly />
         </label>
+        <label class="field readonly-field">
+          <span>结算重量（斤）</span>
+          <input :value="`${netWeightJin.toFixed(2)} 斤`" type="text" readonly />
+        </label>
+        <label class="field readonly-field amount-field">
+          <span>过磅金额</span>
+          <input :value="formatMoney(primaryAmount)" type="text" readonly />
+        </label>
+        <div class="weighing-action">
+          <button type="button" class="btn-ghost compact" @click="handleUseNetWeight">使用净重</button>
+        </div>
+      </div>
+      <div class="single-weight-tip">
+        <strong>默认按一个品种结算</strong>
+        <span>选好品种和单价后，系统会用净重量折算成斤，并同步到第一行明细计算金额。</span>
       </div>
     </section>
 
@@ -1127,6 +1224,40 @@ const exportImage = () => {
 .settlement-bar {
   padding: 24px;
 }
+.purchase-theme {
+  --weighing-accent: #167c63;
+  --weighing-accent-strong: #0f654f;
+  --weighing-accent-soft: rgba(35, 180, 140, 0.12);
+  --weighing-accent-line: rgba(35, 120, 98, 0.2);
+  --weighing-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(235, 248, 244, 0.92));
+  --weighing-shadow: rgba(35, 120, 98, 0.1);
+}
+.sale-theme {
+  --weighing-accent: #c65a19;
+  --weighing-accent-strong: #a94710;
+  --weighing-accent-soft: rgba(240, 143, 45, 0.13);
+  --weighing-accent-line: rgba(198, 90, 25, 0.22);
+  --weighing-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 244, 232, 0.92));
+  --weighing-shadow: rgba(198, 90, 25, 0.11);
+}
+.weighing-card {
+  border: 1px solid var(--weighing-accent-line);
+  background: var(--weighing-card-bg);
+  box-shadow: 0 18px 42px var(--weighing-shadow);
+}
+.weighing-card .panel-title-row {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--weighing-accent-line);
+}
+.weighing-card .title-with-icon {
+  color: var(--weighing-accent-strong);
+}
+.weighing-card .field input:focus,
+.weighing-card .field select:focus,
+.weighing-card .field textarea:focus {
+  border-color: var(--weighing-accent);
+  box-shadow: 0 0 0 4px var(--weighing-accent-soft);
+}
 .panel-title-row {
   display: flex;
   justify-content: space-between;
@@ -1150,7 +1281,8 @@ const exportImage = () => {
   gap: 16px;
 }
 .weighing-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
 }
 .field {
   display: flex;
@@ -1194,6 +1326,42 @@ const exportImage = () => {
 }
 .full-span {
   grid-column: 1 / -1;
+}
+
+.amount-field input {
+  color: var(--weighing-accent-strong);
+}
+.weighing-action {
+  display: flex;
+  align-items: flex-end;
+  min-height: 70px;
+}
+.btn-ghost.compact {
+  width: 100%;
+  padding: 12px 14px;
+  border-color: var(--weighing-accent-line);
+  color: var(--weighing-accent-strong);
+  background: rgba(255, 255, 255, 0.48);
+}
+.btn-ghost.compact:hover {
+  background: var(--weighing-accent-soft);
+}
+.single-weight-tip {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--weighing-accent-line);
+  border-radius: 14px;
+  background: var(--weighing-accent-soft);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.single-weight-tip strong {
+  flex: 0 0 auto;
+  color: var(--weighing-accent-strong);
 }
 
 .detail-list {
@@ -1319,6 +1487,13 @@ const exportImage = () => {
   .detail-grid,
   .weighing-grid {
     grid-template-columns: 1fr;
+  }
+  .weighing-action {
+    min-height: auto;
+  }
+  .single-weight-tip {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .action-toolbar {
     width: 100%;
