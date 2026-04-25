@@ -297,7 +297,7 @@ onUnmounted(() => {
       <article class="panel stat-panel">
         <div class="panel-head">
           <div class="panel-title-group">
-            <h2>布料构成分析 <span class="badge">Distribution</span></h2>
+            <h2>品种构成分析 <span class="badge">Distribution</span></h2>
             <span v-if="byFabric.length > 0" class="panel-count">{{ byFabric.length }} 个品类</span>
           </div>
           <div v-if="byFabric.length > 0" class="pager-inline">

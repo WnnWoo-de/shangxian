@@ -210,7 +210,7 @@ onMounted(async () => {
         </div>
         <div class="stat-item">
           <span class="stat-value">{{ stats.fabrics }}</span>
-          <span class="stat-label">布料</span>
+          <span class="stat-label">品种</span>
         </div>
       </div>
     </section>
@@ -227,7 +227,7 @@ onMounted(async () => {
           <li>在另一台设备上，点击「立即同步」按钮即可上传本地改动并拉取最新数据</li>
           <li>或开启「自动同步」，系统每30秒自动执行一次“先上传后拉取”</li>
         </ol>
-        <p><strong>支持同步的数据：</strong>单据、客户、布料</p>
+        <p><strong>支持同步的数据：</strong>单据、客户、品种</p>
       </div>
     </section>
   </div>

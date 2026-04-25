@@ -496,7 +496,7 @@ onUnmounted(() => {
       <article class="panel fabric-panel">
         <div class="panel-head panel-head--stack">
           <div class="panel-title-group">
-            <h2>布料金额分布</h2>
+            <h2>品种金额分布</h2>
             <div class="panel-meta">
               <span class="panel-tip">Fabric Distribution</span>
               <span v-if="expenseByFabric.length > 0" class="panel-count">{{ expenseByFabric.length }} 个品类</span>
@@ -520,7 +520,7 @@ onUnmounted(() => {
 
         <div class="fabric-chart">
           <div v-if="loading" class="empty">加载中...</div>
-          <div v-else-if="expenseByFabric.length === 0" class="empty">暂无布料数据</div>
+          <div v-else-if="expenseByFabric.length === 0" class="empty">暂无品种数据</div>
           <div v-for="item in pagedFabrics" :key="item.fabricName" class="fabric-row">
             <div class="fabric-topline">
               <div class="fabric-title-group">

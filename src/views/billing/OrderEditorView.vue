@@ -332,7 +332,7 @@ const saveBill = async () => {
     const quantity = parseWeightExpression(row.quantityInput ?? row.quantity)
 
     if (!row.fabricId) {
-      showToast(`第${i + 1}行：请选择布料`)
+      showToast(`第${i + 1}行：请选择品种`)
       return
     }
 
@@ -507,7 +507,7 @@ const exportTable = async () => {
     ]
 
     metaRows.forEach((row) => worksheet.addRow(row))
-    const headerRow = worksheet.addRow(['布料', '数量 / 重量', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
+    const headerRow = worksheet.addRow(['品种', '数量 / 重量', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
 
     // 填充数据
     exportRows.forEach((item) => {
@@ -654,7 +654,7 @@ const exportImage = () => {
 
   const tableLeft = 48
   const columns = createCanvasTableColumns(tableLeft, [
-    { key: 'fabricName', label: '布料', width: 180 },
+    { key: 'fabricName', label: '品种', width: 180 },
     { key: 'quantityText', label: '数量 / 重量', width: 360 },
     { key: 'totalWeight', label: '总重量(斤)', width: 170, align: 'center' },
     { key: 'unitPrice', label: '单价(元/斤)', width: 170, align: 'center' },
@@ -950,12 +950,12 @@ const exportImage = () => {
         <article v-for="(rowView, idx) in rowViews" :key="rowView.id" class="detail-item">
           <div class="detail-grid">
             <label class="field">
-              <span>布料</span>
+              <span>品种</span>
               <select
                 v-model="rows[idx].fabricId"
                 @change="selectFabric(rows[idx])"
               >
-                <option value="">请选择布料</option>
+                <option value="">请选择品种</option>
                 <option v-for="item in fabrics" :key="item.id" :value="item.id">
                   {{ item.name }}
                 </option>

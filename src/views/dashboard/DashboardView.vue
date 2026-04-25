@@ -33,7 +33,7 @@ const shortcuts = [
   { label: '进货记录', route: '/purchase/list', icon: IconList, color: '#d4a76a' },
   { label: '出货记录', route: '/sale/list', icon: IconReport, color: '#62c29a' },
   { label: '客户管理', route: '/customer', icon: IconCustomer, color: '#9ecfc2' },
-  { label: '布料管理', route: '/fabric', icon: IconFabric, color: '#e67e22' },
+  { label: '品种管理', route: '/fabric', icon: IconFabric, color: '#e67e22' },
 ]
 
 // 获取日期范围

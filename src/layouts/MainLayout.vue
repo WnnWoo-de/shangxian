@@ -48,7 +48,7 @@ const menuItems = [
     label: '资料',
     children: [
       { label: '客户管理', route: '/customer', note: '客户档案', icon: IconCustomer },
-      { label: '布料管理', route: '/fabric', note: '库存基础信息', icon: IconFabric }
+      { label: '品种管理', route: '/fabric', note: '库存基础信息', icon: IconFabric }
     ]
   },
   {

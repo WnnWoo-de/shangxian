@@ -39,30 +39,30 @@ const confirmDelete = async () => {
   if (!deletingId.value) return
   try {
     const success = await fabricStore.deleteFabric(deletingId.value)
-    if (success) showToast('布料删除成功')
+    if (success) showToast('品种删除成功')
     else showToast('删除失败', 'error')
   } catch (error) {
-    console.error('删除布料异常:', error)
+    console.error('删除品种异常:', error)
     showToast('删除失败，请重试', 'error')
   }
   cancelDelete()
 }
 
 const submit = async () => {
-  if (!form.name.trim()) return showToast('请输入布料名称', 'error')
-  if (!form.code.trim()) return showToast('请输入布料编号', 'error')
+  if (!form.name.trim()) return showToast('请输入品种名称', 'error')
+  if (!form.code.trim()) return showToast('请输入品种编号', 'error')
   const payload = { name: form.name.trim(), code: form.code.trim(), status: form.status, defaultPurchasePrice: Number(form.defaultPurchasePrice || 0), defaultSalePrice: Number(form.defaultSalePrice || 0) }
   try {
     if (mode.value === 'create') {
       await fabricStore.addFabric(payload)
-      showToast('布料新增成功')
+      showToast('品种新增成功')
     } else {
       await fabricStore.updateFabric(editingId.value, payload)
-      showToast('布料信息已更新')
+      showToast('品种信息已更新')
     }
     showModal.value = false
   } catch (error) {
-    console.error('保存布料失败:', error)
+    console.error('保存品种失败:', error)
     showToast(error.message || '保存失败，请重试', 'error')
   }
 }
@@ -73,11 +73,11 @@ const submit = async () => {
     <header class="inner-page__hero">
       <div>
         <p class="inner-page__eyebrow">Fabric Catalog</p>
-        <h1 class="inner-page__title">布料管理</h1>
-        <p class="inner-page__desc">统一维护布料编号与默认进出货价格，方便后续开单时一键带出。</p>
+        <h1 class="inner-page__title">品种管理</h1>
+        <p class="inner-page__desc">统一维护品种编号与默认进出货价格，方便后续开单时一键带出。</p>
       </div>
       <div class="inner-page__hero-stats">
-        <div class="hero-stat"><span>布料总数</span><strong>{{ list.length }}</strong><small>筛选结果</small></div>
+        <div class="hero-stat"><span>品种总数</span><strong>{{ list.length }}</strong><small>筛选结果</small></div>
       </div>
     </header>
 
@@ -85,24 +85,24 @@ const submit = async () => {
       <div class="inner-page__toolbar-group">
         <div class="inner-page__search">
           <AppIcon name="search" />
-          <input v-model="keyword" placeholder="搜索布料名称 / 编号" />
+          <input v-model="keyword" placeholder="搜索品种名称 / 编号" />
         </div>
       </div>
-      <button type="button" class="inner-page__btn" @click="openCreate">新增布料</button>
+      <button type="button" class="inner-page__btn" @click="openCreate">新增品种</button>
     </section>
 
     <section class="inner-page__stats-grid">
-      <article class="inner-page__stat-card"><span>启用布料</span><strong>{{ list.filter(item => item.status === 'active').length }}</strong></article>
+      <article class="inner-page__stat-card"><span>启用品种</span><strong>{{ list.filter(item => item.status === 'active').length }}</strong></article>
       <article class="inner-page__stat-card"><span>分页页数</span><strong>{{ totalPages }}</strong></article>
       <article class="inner-page__stat-card"><span>含进货价</span><strong>{{ list.filter(item => Number(item.defaultPurchasePrice || 0) > 0).length }}</strong></article>
       <article class="inner-page__stat-card"><span>含出货价</span><strong>{{ list.filter(item => Number(item.defaultSalePrice || 0) > 0).length }}</strong></article>
     </section>
 
     <section class="inner-page__panel inner-page__desktop-only">
-      <div class="inner-page__panel-title"><h3>布料列表</h3><span class="inner-page__panel-tip">第 {{ currentPage }} / {{ totalPages }} 页</span></div>
+      <div class="inner-page__panel-title"><h3>品种列表</h3><span class="inner-page__panel-tip">第 {{ currentPage }} / {{ totalPages }} 页</span></div>
       <div class="inner-page__table-wrap">
         <table class="inner-page__table">
-          <thead><tr><th>布料名称</th><th>布料编号</th><th>进货价</th><th>出货价</th><th>状态</th><th>操作</th></tr></thead>
+          <thead><tr><th>品种名称</th><th>品种编号</th><th>进货价</th><th>出货价</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="item in paginatedList" :key="item.id">
               <td><strong>{{ item.name }}</strong></td>
@@ -118,7 +118,7 @@ const submit = async () => {
       </div>
       <div class="pagination-bar" v-if="list.length > 0">
         <button type="button" class="inner-page__btn-ghost pagination-bar__btn" :disabled="currentPage === 1" @click="prevPage">上一页</button>
-        <span>共 {{ list.length }} 种布料，第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <span>共 {{ list.length }} 个品种，第 {{ currentPage }} / {{ totalPages }} 页</span>
         <button type="button" class="inner-page__btn-ghost pagination-bar__btn" :disabled="currentPage === totalPages" @click="nextPage">下一页</button>
       </div>
     </section>
@@ -139,10 +139,10 @@ const submit = async () => {
     <Transition name="fade">
       <div v-if="showModal" class="inner-page__modal-mask" @click.self="showModal = false">
         <div class="inner-page__modal">
-          <h3>{{ mode === 'create' ? '新增布料' : '编辑布料' }}</h3>
+          <h3>{{ mode === 'create' ? '新增品种' : '编辑品种' }}</h3>
           <div class="inner-page__form-grid">
-            <div class="inner-page__field"><span>布料名称</span><input v-model="form.name" type="text" placeholder="例如：X灰条" /></div>
-            <div class="inner-page__field"><span>布料编号</span><input v-model="form.code" type="text" /></div>
+            <div class="inner-page__field"><span>品种名称</span><input v-model="form.name" type="text" placeholder="例如：X灰条" /></div>
+            <div class="inner-page__field"><span>品种编号</span><input v-model="form.code" type="text" /></div>
             <div class="inner-page__field"><span>进货价 (元/斤)</span><input v-model.number="form.defaultPurchasePrice" type="number" step="0.01" min="0" /></div>
             <div class="inner-page__field"><span>出货价 (元/斤)</span><input v-model.number="form.defaultSalePrice" type="number" step="0.01" min="0" /></div>
             <div class="inner-page__field"><span>状态</span><select v-model="form.status"><option value="active">启用</option><option value="disabled">停用</option></select></div>
@@ -156,7 +156,7 @@ const submit = async () => {
       <div v-if="showDeleteConfirm" class="inner-page__modal-mask" @click.self="cancelDelete">
         <div class="inner-page__modal">
           <h3>确认删除</h3>
-          <p>您确定要删除布料“{{ deletingName }}”吗？</p>
+          <p>您确定要删除品种“{{ deletingName }}”吗？</p>
           <p class="inner-page__warning">此操作无法撤销，请谨慎操作。</p>
           <footer class="inner-page__modal-actions"><button type="button" class="inner-page__btn-ghost" @click="cancelDelete">取消</button><button type="button" class="inner-page__btn-danger" @click="confirmDelete">确认删除</button></footer>
         </div>

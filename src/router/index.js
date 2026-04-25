@@ -80,7 +80,7 @@ const router = createRouter({
       component: FabricView,
       meta: {
         requiresAuth: true,
-        title: '布料管理 - 皖盛布碎资源结算系统',
+        title: '品种管理 - 皖盛布碎资源结算系统',
         icon: 'fabric'
       }
     },

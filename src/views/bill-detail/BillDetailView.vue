@@ -232,7 +232,7 @@ const exportToExcel = async () => {
     ]
 
     metaRows.forEach((row) => worksheet.addRow(row))
-    const headerRow = worksheet.addRow(['布料', '数量 / 重量', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
+    const headerRow = worksheet.addRow(['品种', '数量 / 重量', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
 
     exportRows.forEach((item) => {
       const quantityText = formatExcelWrapText(item.quantityInput || '-', { maxCharsPerLine: 16 })
@@ -447,7 +447,7 @@ const exportImage = () => {
 
   const tableLeft = 48
   const columns = createCanvasTableColumns(tableLeft, [
-    { key: 'fabricName', label: '布料', width: 180 },
+    { key: 'fabricName', label: '品种', width: 180 },
     { key: 'quantityText', label: '数量 / 重量', width: 360 },
     { key: 'totalWeight', label: '总重量(斤)', width: 170, align: 'center' },
     { key: 'unitPrice', label: '单价(元/斤)', width: 170, align: 'center' },
@@ -717,7 +717,7 @@ const exportImage = () => {
         <table>
           <thead>
             <tr>
-              <th>布料</th>
+              <th>品种</th>
               <th>数量 / 重量</th>
               <th>总重量(斤)</th>
               <th>单价(元/斤)</th>
@@ -739,7 +739,7 @@ const exportImage = () => {
                       <input
                         v-model="item.fabricName"
                         type="text"
-                        placeholder="输入或选择布料"
+                        placeholder="输入或选择品种"
                         class="cell-input"
                       />
                       <div class="arrow" @mousedown.stop="toggleFabricOptions(item.id)">
@@ -756,7 +756,7 @@ const exportImage = () => {
                           </li>
                         </ul>
                         <div v-else-if="showFabricOptionsForRow[item.id] && item.fabricName" class="dropdown-list no-res">
-                          未找到该布料
+                          未找到该品种
                         </div>
                       </Transition>
                     </div>
@@ -804,13 +804,13 @@ const exportImage = () => {
           </div>
 
           <label class="mobile-field">
-            <span>布料</span>
+            <span>品种</span>
             <div class="category-picker">
               <div class="custom-select category-select">
                 <input
                   v-model="item.fabricName"
                   type="text"
-                  placeholder="输入或选择布料"
+                  placeholder="输入或选择品种"
                   class="cell-input"
                 />
                 <div class="arrow" @mousedown.stop="toggleFabricOptions(item.id)">
@@ -827,7 +827,7 @@ const exportImage = () => {
                     </li>
                   </ul>
                   <div v-else-if="showFabricOptionsForRow[item.id] && item.fabricName" class="dropdown-list no-res">
-                    未找到该布料
+                    未找到该品种
                   </div>
                 </Transition>
               </div>
