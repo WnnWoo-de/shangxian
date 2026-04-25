@@ -1750,14 +1750,6 @@ const exportImage = () => {
     word-break: break-word;
   }
 
-  .settlement-bar {
-    position: sticky;
-    bottom: calc(8px + var(--safe-area-inset-bottom));
-    z-index: 10;
-    box-shadow: 0 20px 36px rgba(187, 161, 130, 0.18);
-    backdrop-filter: blur(16px);
-  }
-
   .actions,
   .action-toolbar {
     width: 100%;
@@ -1805,10 +1797,6 @@ const exportImage = () => {
   .weighing-panel,
   .settlement-bar {
     padding: 14px !important;
-  }
-
-  .settlement-bar {
-    bottom: calc(6px + var(--safe-area-inset-bottom));
   }
 
   .action-toolbar button,
