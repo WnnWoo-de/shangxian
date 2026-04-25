@@ -51,6 +51,7 @@ const partnerLabel = computed(() => (isPurchase.value ? '供货方' : '客户'))
 const quantityLabel = computed(() => '数量 / 重量')
 const totalWeightLabel = computed(() => '总重量')
 const amountSummaryLabel = computed(() => (isPurchase.value ? '进货总额' : '出货总额'))
+const roundAmount = (value) => Math.round(Number(value) || 0)
 
 const form = reactive({
   partnerId: '',
@@ -285,7 +286,7 @@ const totalAmount = computed(() => {
   const safeAmounts = rowViews.value.map(row => {
     return isNaN(row.amount) ? 0 : row.amount
   })
-  return addMoney(safeAmounts)
+  return roundAmount(addMoney(safeAmounts))
 })
 // 未结金额计算 - 支持手动输入
 const unsettledAmount = computed({
