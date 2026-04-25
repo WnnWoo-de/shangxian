@@ -1127,4 +1127,104 @@ const recentPartners = computed(() => {
     }
   }
 }
+
+@media (max-width: 768px) {
+  .stats-section {
+    margin-bottom: 16px;
+  }
+
+  .stats-section .stats-grid {
+    gap: 10px;
+  }
+
+  .stats-section .stat-card {
+    padding: 14px 12px;
+  }
+
+  .stats-section .stat-card .stat-value {
+    font-size: 20px;
+    overflow-wrap: anywhere;
+  }
+
+  .filter-section,
+  .list-section {
+    margin-bottom: 16px;
+  }
+
+  .filter-section .filter-grid,
+  .list-section .list-container {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .filter-section .filter-group .date-range {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-section .filter-group .date-range .date-separator {
+    display: none;
+  }
+
+  .filter-section .filter-actions {
+    width: 100%;
+  }
+
+  .filter-section .filter-actions .btn-secondary,
+  .filter-section .filter-actions .btn-ghost {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 42px;
+  }
+
+  .list-section .list-container .list-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .list-section .list-container .table-wrap {
+    margin-inline: -6px;
+    padding-inline: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .list-section .list-container .pagination-bar {
+    justify-content: center;
+  }
+
+  .list-section .list-container .page-size-control,
+  .list-section .list-container .page-summary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .list-section .list-container .pagination-actions {
+    width: 100%;
+  }
+
+  .list-section .list-container .page-btn {
+    min-width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-section .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-section .filter-actions .btn-secondary,
+  .filter-section .filter-actions .btn-ghost {
+    flex-basis: 100%;
+  }
+
+  .filter-section .filter-group .recent-partners {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .list-section .list-container {
+    padding: 12px;
+  }
+}
 </style>

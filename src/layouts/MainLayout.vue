@@ -84,7 +84,7 @@ const updateTime = () => {
 }
 
 let timer = null
-const handleResize = () => { if (window.innerWidth >= 768) mobileMenuOpen.value = false }
+const handleResize = () => { if (window.innerWidth > 1024) mobileMenuOpen.value = false }
 const handleLogout = async () => {
   try {
     await authStore.logout()
@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
   background:rgba(255,250,243,.66);
   backdrop-filter:blur(4px);
   z-index:40;
-  @include respond-from(md){display:none}
+  @media (min-width: 1025px){display:none}
 }
 .sidebar{
   width:320px;
@@ -260,7 +260,7 @@ onBeforeUnmount(() => {
   flex:0 0 320px;
   position:relative;
   z-index:50;
-  @include respond-to(md){
+  @include respond-to(lg){
     position:fixed;
     inset:0 auto 0 0;
     width:min(86vw,320px);
@@ -271,7 +271,7 @@ onBeforeUnmount(() => {
   }
 }
 .sidebar.mobile-open{
-  @include respond-to(md){transform:translateX(0)}
+  @include respond-to(lg){transform:translateX(0)}
 }
 .sidebar-shell{
   position:relative;
@@ -521,6 +521,12 @@ onBeforeUnmount(() => {
   flex-direction:column;
   padding:18px;
   @include respond-to(md){padding:16px}
+  @include respond-to(sm){
+    padding:10px;
+    padding-top:calc(10px + var(--safe-area-inset-top));
+    padding-left:calc(10px + var(--safe-area-inset-left));
+    padding-right:calc(10px + var(--safe-area-inset-right));
+  }
 }
 .top-bar{
   display:flex;
@@ -538,6 +544,12 @@ onBeforeUnmount(() => {
     padding:14px 16px;
     border-radius:22px;
     align-items:flex-start
+  }
+  @include respond-to(sm){
+    gap:12px;
+    min-height:auto;
+    padding:12px;
+    border-radius:18px
   }
 }
 .menu-toggle{
@@ -557,9 +569,14 @@ onBeforeUnmount(() => {
     background:$text-primary;
     border-radius:999px
   }
-  @include respond-to(md){
+  @include respond-to(lg){
     display:block;
     flex-shrink:0
+  }
+  @include respond-to(sm){
+    width:40px;
+    height:40px;
+    border-radius:12px
   }
 }
 .top-copy{
@@ -571,7 +588,8 @@ onBeforeUnmount(() => {
   font-size:12px;
   letter-spacing:.08em;
   text-transform:uppercase;
-  color:$text-secondary
+  color:$text-secondary;
+  @include respond-to(sm){margin-bottom:6px;font-size:11px}
 }
 .page-title-row{
   display:flex;
@@ -585,6 +603,7 @@ onBeforeUnmount(() => {
   font-size:28px;
   line-height:1.05;
   @include respond-to(md){font-size:22px}
+  @include respond-to(sm){font-size:20px}
 }
 .title-badge{
   padding:6px 10px;
@@ -597,7 +616,16 @@ onBeforeUnmount(() => {
 .page-subtitle{
   margin:8px 0 0;
   font-size:14px;
-  color:$text-secondary
+  color:$text-secondary;
+  @include respond-to(sm){
+    margin-top:6px;
+    font-size:12px;
+    line-height:1.45;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden
+  }
 }
 .top-actions{
   display:flex;
@@ -631,5 +659,93 @@ onBeforeUnmount(() => {
   overflow-y:auto;
   @include scrollbar-beautiful;
   @include respond-to(md){margin-top:12px}
+  @include respond-to(sm){
+    margin-top:10px;
+    padding-bottom:var(--safe-area-inset-bottom)
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: 288px;
+    flex-basis: 288px;
+  }
+
+  .sidebar-shell {
+    padding: 18px 14px 16px;
+    border-radius: 0 24px 24px 0;
+  }
+
+  .sidebar-title {
+    font-size: 24px;
+  }
+
+  .brand-mark {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+  }
+
+  .menu-item {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .menu-note {
+    display: none;
+  }
+
+  .main-content {
+    padding: 14px;
+  }
+
+  .top-bar {
+    min-height: 92px;
+    border-radius: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-overlay {
+    background: rgba(45, 36, 28, .2);
+  }
+
+  .sidebar {
+    width: min(92vw, 316px);
+  }
+
+  .sidebar-shell {
+    border-radius: 0 22px 22px 0;
+    gap: 12px;
+    padding-left: 14px;
+    padding-right: 12px;
+  }
+
+  .sidebar-panel {
+    padding: 14px 10px;
+    border-radius: 20px;
+  }
+
+  .sidebar-title {
+    font-size: 24px;
+  }
+
+  .brand-kicker,
+  .brand-desc,
+  .menu-note {
+    display: none;
+  }
+
+  .menu-group {
+    margin-bottom: 12px;
+  }
+
+  .menu-item.single {
+    margin-bottom: 12px;
+  }
+
+  .user-card {
+    margin-bottom: 8px;
+  }
 }
 </style>

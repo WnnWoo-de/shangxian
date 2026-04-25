@@ -12,6 +12,71 @@
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
 }
 
+html {
+  width: 100%;
+  min-width: 320px;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  width: 100%;
+  min-width: 320px;
+  overscroll-behavior-y: none;
+}
+
+#app {
+  min-width: 0;
+}
+
+button,
+[role='button'],
+a,
+input,
+select,
+textarea,
+.el-button {
+  touch-action: manipulation;
+}
+
+input,
+select,
+textarea,
+.el-input__inner,
+.el-textarea__inner {
+  font-size: 16px;
+}
+
+.el-overlay {
+  padding: var(--safe-area-inset-top) var(--safe-area-inset-right) var(--safe-area-inset-bottom) var(--safe-area-inset-left);
+}
+
+.el-message {
+  max-width: calc(100vw - 24px);
+  min-width: 0;
+}
+
+.el-popper {
+  max-width: calc(100vw - 20px);
+}
+
+.el-select-dropdown,
+.el-picker__popper,
+.el-cascader__dropdown {
+  max-width: calc(100vw - 20px);
+}
+
+.el-table {
+  max-width: 100%;
+}
+
+.el-table__body-wrapper,
+.el-table__header-wrapper,
+.el-scrollbar__wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
 // 超小屏幕 (360px以下)
 @include respond-to(xs) {
   html {
@@ -40,6 +105,10 @@
 @include respond-to(sm) {
   html {
     font-size: 15px;
+  }
+
+  body {
+    position: relative;
   }
 
   // 页面内边距
@@ -175,15 +244,63 @@
   .input {
     height: 44px;
     padding: 0 $spacing-md;
-    font-size: 15px;
+    font-size: 16px;
     border-radius: 12px;
   }
 
   .textarea {
     min-height: 88px;
     padding: $spacing-md;
-    font-size: 15px;
+    font-size: 16px;
     border-radius: 12px;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px);
+    margin: max(12px, var(--safe-area-inset-top)) auto max(12px, var(--safe-area-inset-bottom)) !important;
+    border-radius: 18px;
+  }
+
+  .el-dialog__header,
+  .el-dialog__body,
+  .el-dialog__footer {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .el-dialog__body {
+    max-height: calc(100dvh - 168px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .el-drawer {
+    width: min(92vw, 420px) !important;
+  }
+
+  .el-form-item {
+    margin-bottom: 14px;
+  }
+
+  .el-form-item__label {
+    line-height: 1.35;
+  }
+
+  .el-button {
+    min-height: 42px;
+    white-space: normal;
+  }
+
+  .el-button + .el-button {
+    margin-left: 0;
+  }
+
+  .el-date-editor,
+  .el-select,
+  .el-input,
+  .el-input-number {
+    width: 100% !important;
   }
 }
 
@@ -230,6 +347,14 @@
   // 抽屉
   .drawer {
     width: 400px;
+  }
+
+  .el-dialog {
+    width: min(92vw, 720px) !important;
+  }
+
+  .el-message-box {
+    width: min(92vw, 420px) !important;
   }
 }
 

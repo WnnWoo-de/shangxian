@@ -224,7 +224,9 @@
 }
 
 .inner-page__table-wrap {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   border-radius: 20px;
   border: 1px solid rgba(28, 43, 51, 0.06);
   background: rgba(255, 250, 241, 0.65);
@@ -232,6 +234,7 @@
 
 .inner-page__table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
 }
 
@@ -450,6 +453,10 @@
     padding: 20px;
   }
 
+  .inner-page__desc {
+    max-width: none;
+  }
+
   .inner-page__hero-stats,
   .inner-page__stats-grid,
   .inner-page__form-grid {
@@ -458,6 +465,28 @@
 
   .inner-page__toolbar {
     align-items: stretch;
+  }
+
+  .inner-page__toolbar-group,
+  .inner-page__search {
+    min-width: 0;
+  }
+
+  .inner-page__table {
+    min-width: 680px;
+  }
+
+  .inner-page__modal-mask {
+    align-items: flex-end;
+    padding: 12px;
+    padding-bottom: max(12px, var(--safe-area-inset-bottom));
+  }
+
+  .inner-page__modal {
+    width: 100%;
+    max-height: calc(100dvh - 24px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .inner-page__mobile-only { display: block; }
@@ -481,6 +510,10 @@
     font-size: 24px;
   }
 
+  .inner-page__desc {
+    line-height: 1.65;
+  }
+
   .inner-page__hero-stats,
   .inner-page__stats-grid,
   .inner-page__form-grid {
@@ -492,10 +525,31 @@
     align-items: stretch;
   }
 
+  .inner-page__search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .inner-page__panel-title {
+    gap: 8px;
+  }
+
   .inner-page__btn,
   .inner-page__btn-ghost,
   .inner-page__btn-danger {
     width: 100%;
+  }
+
+  .inner-page__actions {
+    width: 100%;
+  }
+
+  .inner-page__actions > * {
+    flex: 1 1 auto;
+  }
+
+  .inner-page__table {
+    min-width: 640px;
   }
 }
 
@@ -676,5 +730,57 @@
   .not-found-container {
     border-radius: 20px !important;
     padding: 16px !important;
+  }
+
+  .page-container,
+  .order-list-page,
+  .order-editor,
+  .income-expense-page,
+  .stats-page,
+  .settings-container,
+  .data-management-container,
+  .not-found-page {
+    gap: 14px;
+  }
+
+  .order-list-page .filters,
+  .page-container .toolbar,
+  .order-list-page .toolbar {
+    align-items: stretch !important;
+  }
+
+  .page-container .toolbar > *,
+  .order-list-page .toolbar > *,
+  .order-list-page .filters > * {
+    min-width: 0;
+  }
+
+  .settings-panel,
+  .status-panel,
+  .sync-panel,
+  .stats-panel,
+  .actions-panel {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-container .toolbar,
+  .order-list-page .toolbar,
+  .settings-panel,
+  .status-panel,
+  .sync-panel,
+  .stats-panel,
+  .actions-panel,
+  .order-editor .form-panel,
+  .order-editor .detail-panel,
+  .order-editor .settlement-bar,
+  .income-expense-page .panel,
+  .stats-page .panel,
+  .order-list-page .panel,
+  .page-container .panel,
+  .not-found-container {
+    border-radius: 18px !important;
+    padding: 14px !important;
   }
 }

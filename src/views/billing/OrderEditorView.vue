@@ -1190,6 +1190,7 @@ onUnmounted(() => {
 .field select,
 .field textarea {
   width: 100%;
+  min-width: 0;
   border: 1px solid var(--panel-line);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.9);
@@ -1428,9 +1429,120 @@ onUnmounted(() => {
   .field input,
   .field select,
   .field textarea {
+    min-height: 46px;
     height: 46px;
     font-size: 16px;
     padding: 12px 14px;
+  }
+
+  .field textarea,
+  .field textarea.weight-detail-input {
+    height: auto;
+    min-height: 112px;
+  }
+
+  .weight-panel {
+    padding: 14px;
+  }
+
+  .weight-inputs {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .detail-item {
+    padding: 14px;
+  }
+
+  .row-note-box {
+    flex-direction: column;
+  }
+
+  .row-note-box .btn-text {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .settlement-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+
+  .settlement-summary div {
+    padding: 12px;
+  }
+
+  .settlement-summary strong {
+    font-size: 18px;
+    word-break: break-word;
+  }
+
+  .actions,
+  .action-toolbar {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .action-toolbar button,
+  .actions button {
+    flex: 1 1 calc(50% - 5px);
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .order-editor {
+    gap: 12px;
+  }
+
+  .hero {
+    padding: 16px !important;
+    text-align: left;
+  }
+
+  .hero h2 {
+    font-size: 23px;
+  }
+
+  .desc {
+    line-height: 1.55;
+  }
+
+  .hero-metrics,
+  .settlement-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-card {
+    padding: 14px;
+  }
+
+  .metric-card strong {
+    font-size: 22px;
+  }
+
+  .panel-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .form-panel,
+  .detail-panel,
+  .settlement-bar {
+    padding: 14px !important;
+  }
+
+  .action-toolbar button,
+  .actions button {
+    flex-basis: 100%;
+  }
+
+  .btn-content {
+    justify-content: center;
+    width: 100%;
   }
 }
 </style>
