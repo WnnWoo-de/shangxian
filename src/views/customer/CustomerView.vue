@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import AppIcon from '../../components/icons/AppIcon.vue'
 import { useCustomerStore } from '../../stores/customer'
 import { showToast } from '../../utils/toast'
@@ -35,6 +35,37 @@ const list = computed(() => {
 
 const activeCount = computed(() => list.value.filter((item) => item.status === 'active').length)
 const disabledCount = computed(() => list.value.filter((item) => item.status !== 'active').length)
+
+const pageSizeOptions = [10, 20, 50]
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalPages = computed(() => Math.max(1, Math.ceil(list.value.length / pageSize.value)))
+const paginationStart = computed(() => list.value.length ? (currentPage.value - 1) * pageSize.value + 1 : 0)
+const paginationEnd = computed(() => Math.min(currentPage.value * pageSize.value, list.value.length))
+const paginatedList = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return list.value.slice(start, start + pageSize.value)
+})
+const visiblePages = computed(() => {
+  const count = Math.min(5, totalPages.value)
+  let start = Math.max(1, currentPage.value - Math.floor(count / 2))
+  let end = Math.min(totalPages.value, start + count - 1)
+  start = Math.max(1, end - count + 1)
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+})
+
+const goToPage = (page) => {
+  currentPage.value = Math.min(Math.max(Number(page) || 1, 1), totalPages.value)
+}
+
+watch(keyword, () => {
+  currentPage.value = 1
+})
+
+watch([() => list.value.length, pageSize], () => {
+  goToPage(currentPage.value)
+})
 
 const resetForm = () => {
   form.name = ''
@@ -170,7 +201,7 @@ const submit = async () => {
     <section class="inner-page__panel inner-page__desktop-only">
       <div class="inner-page__panel-title">
         <h3>客户列表</h3>
-        <span class="inner-page__panel-tip">共 {{ list.length }} 条记录</span>
+        <span class="inner-page__panel-tip">共 {{ list.length }} 条，当前显示 {{ paginationStart }}-{{ paginationEnd }} 条</span>
       </div>
       <div class="inner-page__table-wrap">
         <table class="inner-page__table">
@@ -184,7 +215,7 @@ const submit = async () => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in list" :key="item.id">
+            <tr v-for="item in paginatedList" :key="item.id">
               <td><strong>{{ item.name }}</strong></td>
               <td>{{ item.contact || item.contactPerson || '-' }}</td>
               <td>{{ item.phone || '-' }}</td>
@@ -206,11 +237,36 @@ const submit = async () => {
           </tbody>
         </table>
       </div>
+      <div v-if="list.length > 0" class="customer-pagination">
+        <div class="customer-pagination__size">
+          <span>每页</span>
+          <select v-model.number="pageSize">
+            <option v-for="option in pageSizeOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+          <span>条</span>
+        </div>
+        <div class="customer-pagination__actions">
+          <button type="button" :disabled="currentPage <= 1" @click="goToPage(1)">首页</button>
+          <button type="button" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">上一页</button>
+          <button
+            v-for="page in visiblePages"
+            :key="page"
+            type="button"
+            :class="{ active: page === currentPage }"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+          <button type="button" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一页</button>
+          <button type="button" :disabled="currentPage >= totalPages" @click="goToPage(totalPages)">末页</button>
+        </div>
+        <div class="customer-pagination__summary">第 {{ currentPage }} / {{ totalPages }} 页</div>
+      </div>
     </section>
 
     <section class="inner-page__cards inner-page__mobile-only">
       <article v-if="list.length === 0" class="inner-page__card inner-page__empty">暂无相关数据</article>
-      <article v-for="item in list" :key="item.id" class="inner-page__card">
+      <article v-for="item in paginatedList" :key="item.id" class="inner-page__card">
         <div class="customer-card__top">
           <div>
             <h3>{{ item.name }}</h3>
@@ -225,6 +281,20 @@ const submit = async () => {
           <button type="button" class="inner-page__btn-text inner-page__btn-text--danger" @click="openDelete(item)">删除</button>
         </div>
       </article>
+      <div v-if="list.length > 0" class="customer-pagination customer-pagination--mobile">
+        <div class="customer-pagination__size">
+          <span>每页</span>
+          <select v-model.number="pageSize">
+            <option v-for="option in pageSizeOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+          <span>条</span>
+        </div>
+        <div class="customer-pagination__actions">
+          <button type="button" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">上一页</button>
+          <button type="button" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一页</button>
+        </div>
+        <div class="customer-pagination__summary">第 {{ currentPage }} / {{ totalPages }} 页，共 {{ list.length }} 条</div>
+      </div>
     </section>
 
     <Transition name="fade">
@@ -298,5 +368,82 @@ const submit = async () => {
 
 .customer-card__actions {
   margin-top: 14px;
+}
+
+.customer-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(139, 125, 112, 0.12);
+}
+
+.customer-pagination__size,
+.customer-pagination__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.customer-pagination__size select {
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border: 1px solid rgba(139, 125, 112, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text-normal);
+  font-weight: 700;
+  outline: none;
+}
+
+.customer-pagination__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.customer-pagination__actions button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(139, 125, 112, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--text-normal);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.customer-pagination__actions button:hover:not(:disabled) {
+  background: rgba(35, 120, 98, 0.1);
+  border-color: rgba(35, 120, 98, 0.28);
+  color: #167c63;
+}
+
+.customer-pagination__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.customer-pagination__actions button.active {
+  background: #167c63;
+  border-color: #167c63;
+  color: #fff;
+}
+
+.customer-pagination--mobile {
+  justify-content: center;
+  padding: 14px;
 }
 </style>

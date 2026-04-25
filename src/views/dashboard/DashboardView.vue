@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCustomerStore } from '@/stores/customer'
@@ -93,7 +93,33 @@ const stats = computed(() => {
 const recentBills = computed(() => {
   return [...billRecordStore.records]
     .sort((a, b) => new Date(b.createdAt || b.billDate) - new Date(a.createdAt || a.billDate))
-    .slice(0, 5)
+})
+
+const recentPageSizeOptions = [5, 10, 20]
+const recentCurrentPage = ref(1)
+const recentPageSize = ref(5)
+const recentTotalPages = computed(() => Math.max(1, Math.ceil(recentBills.value.length / recentPageSize.value)))
+const recentPaginationStart = computed(() => recentBills.value.length ? (recentCurrentPage.value - 1) * recentPageSize.value + 1 : 0)
+const recentPaginationEnd = computed(() => Math.min(recentCurrentPage.value * recentPageSize.value, recentBills.value.length))
+const paginatedRecentBills = computed(() => {
+  const start = (recentCurrentPage.value - 1) * recentPageSize.value
+  return recentBills.value.slice(start, start + recentPageSize.value)
+})
+const recentVisiblePages = computed(() => {
+  const count = Math.min(5, recentTotalPages.value)
+  let start = Math.max(1, recentCurrentPage.value - Math.floor(count / 2))
+  let end = Math.min(recentTotalPages.value, start + count - 1)
+  start = Math.max(1, end - count + 1)
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+})
+
+const goToRecentPage = (page) => {
+  recentCurrentPage.value = Math.min(Math.max(Number(page) || 1, 1), recentTotalPages.value)
+}
+
+watch([() => recentBills.value.length, recentPageSize], () => {
+  goToRecentPage(recentCurrentPage.value)
 })
 
 // 快捷提示
@@ -245,12 +271,14 @@ onUnmounted(() => {
     <!-- 最近单据 -->
     <section class="recent-section" v-if="!loading && recentBills.length > 0">
       <div class="section-header">
-        <h2 class="section-title">最近单据</h2>
-        <button class="see-more-btn" @click="navigateTo('/purchase/list')">查看全部 →</button>
+        <div>
+          <h2 class="section-title">最近单据</h2>
+          <p class="section-subtitle">共 {{ recentBills.length }} 条，当前显示 {{ recentPaginationStart }}-{{ recentPaginationEnd }} 条</p>
+        </div>
       </div>
       <div class="recent-list">
         <article
-          v-for="bill in recentBills"
+          v-for="bill in paginatedRecentBills"
           :key="bill.id"
           class="recent-item"
           @click="viewBill(bill)"
@@ -270,6 +298,31 @@ onUnmounted(() => {
             ¥ {{ Number(bill.totalAmount || 0).toFixed(2) }}
           </div>
         </article>
+      </div>
+      <div class="recent-pagination">
+        <div class="recent-page-size">
+          <span>每页</span>
+          <select v-model.number="recentPageSize">
+            <option v-for="option in recentPageSizeOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+          <span>条</span>
+        </div>
+        <div class="recent-page-actions">
+          <button type="button" :disabled="recentCurrentPage <= 1" @click="goToRecentPage(1)">首页</button>
+          <button type="button" :disabled="recentCurrentPage <= 1" @click="goToRecentPage(recentCurrentPage - 1)">上一页</button>
+          <button
+            v-for="page in recentVisiblePages"
+            :key="page"
+            type="button"
+            :class="{ active: page === recentCurrentPage }"
+            @click="goToRecentPage(page)"
+          >
+            {{ page }}
+          </button>
+          <button type="button" :disabled="recentCurrentPage >= recentTotalPages" @click="goToRecentPage(recentCurrentPage + 1)">下一页</button>
+          <button type="button" :disabled="recentCurrentPage >= recentTotalPages" @click="goToRecentPage(recentTotalPages)">末页</button>
+        </div>
+        <div class="recent-page-summary">第 {{ recentCurrentPage }} / {{ recentTotalPages }} 页</div>
       </div>
     </section>
 
@@ -479,6 +532,13 @@ onUnmounted(() => {
   margin: 0 0 14px;
 }
 
+.section-subtitle {
+  margin: -8px 0 0;
+  color: #8b7d70;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .shortcuts-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -542,22 +602,6 @@ onUnmounted(() => {
   margin-bottom: 14px;
 }
 
-.see-more-btn {
-  padding: 6px 14px;
-  background: transparent;
-  border: none;
-  color: #9b7e5c;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 999px;
-  transition: background 0.2s ease;
-
-  &:hover {
-    background: rgba(227, 187, 122, 0.15);
-  }
-}
-
 .recent-list {
   display: flex;
   flex-direction: column;
@@ -618,6 +662,78 @@ onUnmounted(() => {
   font-weight: 700;
   color: #231f1c;
   flex-shrink: 0;
+}
+
+.recent-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(139, 125, 112, 0.12);
+}
+
+.recent-page-size,
+.recent-page-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #8b7d70;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.recent-page-size select {
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border: 1px solid rgba(139, 125, 112, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #231f1c;
+  font-weight: 700;
+  outline: none;
+}
+
+.recent-page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.recent-page-actions button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(139, 125, 112, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #6a5d52;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(227, 187, 122, 0.16);
+    border-color: rgba(212, 167, 106, 0.42);
+    color: #7f633f;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  &.active {
+    background: #1a915c;
+    border-color: #1a915c;
+    color: #fff;
+  }
 }
 
 /* 空状态 */

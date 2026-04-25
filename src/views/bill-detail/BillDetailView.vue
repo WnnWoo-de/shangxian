@@ -764,12 +764,12 @@ const exportImage = () => {
                 </div>
               </td>
               <td>
-                <input
+                <textarea
                   v-model="item.quantityInput"
-                  type="text"
+                  rows="3"
                   placeholder="10+10+10 / 10 10 10 / 10.10.10"
-                  class="cell-input"
-                />
+                  class="cell-input weight-detail-input"
+                ></textarea>
               </td>
               <td>
                 <div class="cell-stack align-with-category">
@@ -1087,6 +1087,15 @@ tbody tr:hover {
   border-radius: 6px;
   background: #fff;
   font-size: 14px;
+}
+
+.weight-detail-input {
+  min-height: 88px;
+  line-height: 1.55;
+  resize: vertical;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .btn-delete {

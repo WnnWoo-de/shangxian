@@ -105,6 +105,34 @@ const getRecordTotalAmount = (record = {}) => {
   }, 0)
 }
 
+const getRecordWeightDetails = (record = {}) => {
+  const items = Array.isArray(record.items)
+    ? record.items
+    : Array.isArray(record.details)
+      ? record.details
+      : []
+
+  return items
+    .map((item, index) => {
+      const fabricName = String(item.fabricName || item.fabric_name || '').trim()
+      const quantityText = String(item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? '').trim()
+      const weight = getItemWeight(item)
+      const tokens = quantityText
+        .replace(/[，,、；;]/g, ' ')
+        .split(/\s+/)
+        .map((token) => token.trim())
+        .filter(Boolean)
+
+      return {
+        fabricName: fabricName || `明细${index + 1}`,
+        quantityText: quantityText || weight.toFixed(2),
+        tokens,
+        totalWeight: weight,
+      }
+    })
+    .filter((item) => item.quantityText)
+}
+
 const list = computed(() => {
   let filtered = billRecordStore.getRecordsByType(isPurchase.value ? 'purchase' : 'sale')
 
@@ -131,6 +159,37 @@ const list = computed(() => {
   }
 
   return filtered
+})
+
+const pageSizeOptions = [10, 20, 50]
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalPages = computed(() => Math.max(1, Math.ceil(list.value.length / pageSize.value)))
+const paginationStart = computed(() => list.value.length ? (currentPage.value - 1) * pageSize.value + 1 : 0)
+const paginationEnd = computed(() => Math.min(currentPage.value * pageSize.value, list.value.length))
+const paginatedList = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return list.value.slice(start, start + pageSize.value)
+})
+const visiblePages = computed(() => {
+  const count = Math.min(5, totalPages.value)
+  let start = Math.max(1, currentPage.value - Math.floor(count / 2))
+  let end = Math.min(totalPages.value, start + count - 1)
+  start = Math.max(1, end - count + 1)
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+})
+
+const goToPage = (page) => {
+  currentPage.value = Math.min(Math.max(Number(page) || 1, 1), totalPages.value)
+}
+
+watch(() => [filters.partnerName, filters.dateStart, filters.dateEnd, filters.status, props.type], () => {
+  currentPage.value = 1
+})
+
+watch([() => list.value.length, pageSize], () => {
+  goToPage(currentPage.value)
 })
 
 const totals = computed(() => list.value.reduce((acc, cur) => {
@@ -293,7 +352,7 @@ const recentPartners = computed(() => {
       <div class="list-container">
         <div class="list-header">
           <h3>单据列表</h3>
-          <span class="list-tip">支持查看、编辑、删除</span>
+          <span class="list-tip">共 {{ list.length }} 条，当前显示 {{ paginationStart }}-{{ paginationEnd }} 条</span>
         </div>
 
         <div class="table-wrap">
@@ -303,6 +362,7 @@ const recentPartners = computed(() => {
                 <th>单号</th>
                 <th>日期</th>
                 <th>客户</th>
+                <th>重量明细</th>
                 <th>重量</th>
                 <th>{{ amountLabel }}</th>
                 <th>{{ settlementLabel }}</th>
@@ -312,10 +372,31 @@ const recentPartners = computed(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in list" :key="item.id" class="table-row">
+              <tr v-for="item in paginatedList" :key="item.id" class="table-row">
                 <td class="bill-no">{{ item.billNo }}</td>
                 <td class="bill-date">{{ item.billDate }}</td>
                 <td class="partner-name">{{ item.partnerName }}</td>
+                <td class="weight-details">
+                  <div class="weight-detail-meta">
+                    <span>滑动/滚动查看</span>
+                    <button type="button" class="detail-link" @click="viewBill(item.id)">完整明细</button>
+                  </div>
+                  <div class="weight-detail-list">
+                    <article v-for="(detail, detailIndex) in getRecordWeightDetails(item)" :key="detailIndex" class="weight-detail-card">
+                      <div class="weight-detail-head">
+                        <span class="fabric-name">{{ detail.fabricName }}</span>
+                        <span class="detail-total">{{ detail.totalWeight.toFixed(2) }} 斤</span>
+                      </div>
+                      <div v-if="detail.tokens.length" class="weight-token-wrap">
+                        <span v-for="(token, tokenIndex) in detail.tokens" :key="tokenIndex" class="weight-token">
+                          {{ token }}
+                        </span>
+                      </div>
+                      <p v-else class="weight-raw">{{ detail.quantityText }}</p>
+                    </article>
+                    <span v-if="getRecordWeightDetails(item).length === 0">-</span>
+                  </div>
+                </td>
                 <td class="total-weight">{{ getRecordTotalWeight(item).toFixed(2) }} 斤</td>
                 <td class="total-amount">{{ formatMoney(getRecordTotalAmount(item)) }}</td>
                 <td class="settlement-amount">{{ formatMoney(isPurchase ? item.paidAmount : item.receivedAmount) }}</td>
@@ -339,7 +420,7 @@ const recentPartners = computed(() => {
                 </td>
               </tr>
               <tr v-if="list.length === 0" class="empty-row">
-                <td colspan="9">
+                <td colspan="10">
                   <div class="empty-state">
                     <div class="empty-icon">
                       <AppIcon name="inbox" size="52" />
@@ -351,6 +432,37 @@ const recentPartners = computed(() => {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <div v-if="list.length > 0" class="pagination-bar">
+          <div class="page-size-control">
+            <span>每页</span>
+            <select v-model.number="pageSize" class="page-size-select">
+              <option v-for="option in pageSizeOptions" :key="option" :value="option">{{ option }}</option>
+            </select>
+            <span>条</span>
+          </div>
+
+          <div class="pagination-actions">
+            <button type="button" class="page-btn" :disabled="currentPage <= 1" @click="goToPage(1)">首页</button>
+            <button type="button" class="page-btn" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">上一页</button>
+            <button
+              v-for="page in visiblePages"
+              :key="page"
+              type="button"
+              class="page-btn number"
+              :class="{ active: page === currentPage }"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+            <button type="button" class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">下一页</button>
+            <button type="button" class="page-btn" :disabled="currentPage >= totalPages" @click="goToPage(totalPages)">末页</button>
+          </div>
+
+          <div class="page-summary">
+            第 {{ currentPage }} / {{ totalPages }} 页
+          </div>
         </div>
       </div>
     </section>
@@ -648,6 +760,7 @@ const recentPartners = computed(() => {
 
       .data-table {
         width: 100%;
+        min-width: 1180px;
         border-collapse: separate;
         border-spacing: 0;
 
@@ -663,6 +776,7 @@ const recentPartners = computed(() => {
               letter-spacing: 0.06em;
               text-transform: uppercase;
               border-bottom: 1px solid rgba(139, 125, 112, 0.1);
+              white-space: nowrap;
             }
           }
         }
@@ -680,31 +794,45 @@ const recentPartners = computed(() => {
               border-bottom: 1px solid rgba(139, 125, 112, 0.08);
               font-size: 14px;
               color: #231f1c;
+              vertical-align: middle;
 
               &.bill-no {
                 font-weight: 600;
+                white-space: nowrap;
               }
 
               &.bill-date {
                 color: #6a5d52;
+                white-space: nowrap;
               }
 
               &.partner-name {
                 font-weight: 500;
+                white-space: nowrap;
+              }
+
+              &.weight-details {
+                width: 360px;
+                min-width: 320px;
+                color: #3f352d;
+                vertical-align: top;
               }
 
               &.total-weight {
                 color: #8b7d70;
+                white-space: nowrap;
               }
 
               &.total-amount {
                 color: #1a915c;
                 font-weight: 600;
+                white-space: nowrap;
               }
 
               &.settlement-amount {
                 color: #2c3e50;
                 font-weight: 600;
+                white-space: nowrap;
               }
 
               &.unsettled-amount {
@@ -769,6 +897,124 @@ const recentPartners = computed(() => {
                   }
                 }
               }
+
+              .weight-detail-meta {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                margin-bottom: 8px;
+                color: #9b8d80;
+                font-size: 12px;
+                font-weight: 700;
+              }
+
+              .detail-link {
+                border: none;
+                background: transparent;
+                color: #1a915c;
+                font-size: 12px;
+                font-weight: 800;
+                cursor: pointer;
+                padding: 0;
+
+                &:hover {
+                  color: #137348;
+                  text-decoration: underline;
+                }
+              }
+
+              .weight-detail-list {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                max-height: 132px;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                padding-right: 6px;
+
+                &::-webkit-scrollbar {
+                  width: 6px;
+                }
+
+                &::-webkit-scrollbar-track {
+                  background: rgba(139, 125, 112, 0.08);
+                  border-radius: 999px;
+                }
+
+                &::-webkit-scrollbar-thumb {
+                  background: rgba(139, 125, 112, 0.32);
+                  border-radius: 999px;
+                }
+
+                &::-webkit-scrollbar-thumb:hover {
+                  background: rgba(139, 125, 112, 0.48);
+                }
+
+                .weight-detail-card {
+                  padding: 8px 10px;
+                  border: 1px solid rgba(139, 125, 112, 0.12);
+                  border-radius: 10px;
+                  background: rgba(255, 255, 255, 0.58);
+                }
+
+                .weight-detail-head {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 10px;
+                  margin-bottom: 6px;
+                }
+
+                .fabric-name {
+                  min-width: 0;
+                  color: #2d251f;
+                  font-size: 13px;
+                  font-weight: 700;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                }
+
+                .detail-total {
+                  flex: 0 0 auto;
+                  padding: 2px 8px;
+                  border-radius: 999px;
+                  background: rgba(26, 145, 92, 0.1);
+                  color: #1a915c;
+                  font-size: 12px;
+                  font-weight: 700;
+                  white-space: nowrap;
+                }
+
+                .weight-token-wrap {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 6px;
+                }
+
+                .weight-token {
+                  display: inline-flex;
+                  align-items: center;
+                  min-height: 22px;
+                  padding: 1px 7px;
+                  border-radius: 7px;
+                  background: rgba(139, 125, 112, 0.08);
+                  color: #2f2a25;
+                  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                  font-size: 13px;
+                  line-height: 1.35;
+                }
+
+                .weight-raw {
+                  margin: 0;
+                  color: #2f2a25;
+                  line-height: 1.55;
+                  white-space: pre-wrap;
+                  word-break: break-word;
+                  overflow-wrap: anywhere;
+                }
+              }
             }
           }
 
@@ -801,6 +1047,82 @@ const recentPartners = computed(() => {
             }
           }
         }
+      }
+    }
+
+    .pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding-top: 16px;
+      margin-top: 14px;
+      border-top: 1px solid rgba(139, 125, 112, 0.1);
+    }
+
+    .page-size-control,
+    .page-summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #7b6e62;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .page-size-select {
+      height: 34px;
+      padding: 0 28px 0 10px;
+      border: 1px solid rgba(139, 125, 112, 0.18);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      color: #231f1c;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .pagination-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .page-btn {
+      min-width: 36px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid rgba(139, 125, 112, 0.18);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #6a5d52;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+
+      &:hover:not(:disabled) {
+        background: rgba(227, 187, 122, 0.16);
+        border-color: rgba(212, 167, 106, 0.42);
+        color: #7f633f;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+
+      &.number {
+        padding: 0;
+      }
+
+      &.active {
+        background: #1a915c;
+        border-color: #1a915c;
+        color: #fff;
       }
     }
   }

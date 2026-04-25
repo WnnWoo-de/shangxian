@@ -1000,11 +1000,12 @@ onUnmounted(() => {
 
             <label class="field">
               <span>{{ quantityLabel }}</span>
-              <input
+              <textarea
                 v-model="rows[idx].quantityInput"
-                type="text"
+                rows="3"
+                class="weight-detail-input"
                 placeholder="示例：10+10+10 / 10 10 10 / 10.10.10 / 10×3"
-              />
+              ></textarea>
               <small class="field-tip">
                 支持 `10+10+10`、`10 10 10`、`10.10.10`、`10×3` 自动计算
               </small>
@@ -1195,6 +1196,14 @@ onUnmounted(() => {
   padding: 12px 14px;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.field textarea.weight-detail-input {
+  min-height: 96px;
+  line-height: 1.55;
+  resize: vertical;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .field input:focus,
 .field select:focus,
