@@ -48,7 +48,6 @@ const pageTitle = computed(() => (isSale.value ? '出货单据' : '进货单据'
 const currentPartnerLabel = computed(() => (isSale.value ? '当前客户' : '当前供应商'))
 const returnRoute = computed(() => (isSale.value ? '/sale/list' : '/purchase/list'))
 const exportTitle = computed(() => (isSale.value ? '出货单据明细' : '进货单据明细'))
-const exportFilePrefix = computed(() => (isSale.value ? '出货单据' : '进货单据'))
 
 const recordId = computed(() => String(route.params.id || ''))
 const currentRecord = computed(() => billRecordStore.getById(recordId.value))
@@ -65,7 +64,6 @@ const form = reactive({
 })
 
 const rows = ref([])
-const saving = ref(false)
 const deleting = ref(false)
 const isEditing = computed(() => Boolean(recordId.value))
 
@@ -83,7 +81,7 @@ const fillForm = (record) => {
   if (!record) return
 
   form.orderNo = record.billNo
-  form.createdAt = record.createdAt
+  form.createdAt = record.billDate || String(record.createdAt || '').slice(0, 10)
   form.supplier = record.partnerName
   form.note = record.note
   form.firstWeight = Number(record.firstWeight || 0)
@@ -144,9 +142,73 @@ const handleMasterDataChange = () => {
   console.log('数据已更新，重新加载')
 }
 
+const parseWeightExpression = (input) => {
+  const raw = String(input || '').trim()
+  if (!raw) return 0
+
+  const normalized = raw
+    .replace(/[，,、；;]/g, ' ')
+    .replace(/[＋]/g, '+')
+    .replace(/[×xX]/g, '*')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!normalized) return 0
+
+  try {
+    let value = 0
+    const addParts = normalized.split('+')
+    for (const part of addParts) {
+      const multiplyParts = part.split('*')
+      if (multiplyParts.length === 2) {
+        const left = Number(multiplyParts[0])
+        const right = Number(multiplyParts[1])
+        if (!isNaN(left) && !isNaN(right)) {
+          value += left * right
+        }
+        continue
+      }
+
+      if (part.includes(' ')) {
+        const spaceParts = part.split(' ')
+        for (const numStr of spaceParts) {
+          const num = Number(numStr)
+          if (!isNaN(num)) value += num
+        }
+        continue
+      }
+
+      const num = Number(part)
+      if (!isNaN(num)) value += num
+    }
+    return isNaN(value) ? 0 : value
+  } catch (error) {
+    console.error('解析重量表达式失败:', error)
+    return 0
+  }
+}
+
+const rowViews = computed(() => {
+  return rows.value.map((row) => {
+    const quantity = parseWeightExpression(row.quantityInput ?? row.quantity)
+    const unitPrice = Number(row.unitPrice || 0)
+    return {
+      ...row,
+      quantity,
+      quantityInput: String(row.quantityInput ?? row.quantity ?? ''),
+      unitPrice,
+      amount: quantity * unitPrice,
+    }
+  })
+})
+
 // 导出为 Excel
 const exportToExcel = async () => {
-  if (!currentRecord.value) return
+  const exportRows = buildExportRows()
+  if (!exportRows.length) {
+    showToast('暂无可导出的明细数据', 'error')
+    return
+  }
 
   try {
     const ExcelJS = await loadExcelJS()
@@ -156,58 +218,33 @@ const exportToExcel = async () => {
     const metaRows = [
       ['单据日期', form.createdAt || new Date().toISOString().slice(0, 10)],
       [isSale.value ? '客户' : '供应商', form.supplier.trim() || '-'],
-      ['单号', form.orderNo || '-'],
       ['备注', form.note.trim() || '-'],
-      [isSale.value ? '出货方式' : '进货方式', '按重量出货'],
+      ['出货方式', '按重量出货'],
     ]
 
-    const detailRows = rows.value
-      .filter((item) => item && (item.fabricName?.trim() || Number(item.quantity) > 0 || Number(item.unitPrice) > 0))
-      .map((item) => {
-        const quantity = Number(item.quantity || 0)
-        const unitPrice = Number(item.unitPrice || 0)
-        return {
-          fabricName: item.fabricName || '-',
-          quantityText: item.quantityInput || '-',
-          totalWeight: quantity,
-          unitPrice,
-          amount: quantity * unitPrice,
-          note: item.note || '-',
-        }
-      })
-
-    const normalizedRows = detailRows.length ? detailRows : [{
-      fabricName: '-',
-      quantityText: '-',
-      totalWeight: 0,
-      unitPrice: 0,
-      amount: 0,
-      note: '-',
-    }]
-
     worksheet.columns = [
-      { width: 22 },
-      { width: 30 },
-      { width: 14 },
-      { width: 14 },
-      { width: 16 },
-      { width: 16 },
+      { key: 'fabric', width: 22 },
+      { key: 'quantity', width: 24 },
+      { key: 'totalWeight', width: 14 },
+      { key: 'unitPrice', width: 14 },
+      { key: 'amount', width: 16 },
+      { key: 'note', width: 18 },
     ]
 
     metaRows.forEach((row) => worksheet.addRow(row))
-    const headerRow = worksheet.addRow(['布料', '明细重量输入', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
+    const headerRow = worksheet.addRow(['布料', '数量 / 重量', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
 
-    normalizedRows.forEach((row) => {
-      const quantityText = formatExcelWrapText(row.quantityText, { maxCharsPerLine: 16 })
-      const noteText = formatExcelWrapText(row.note, { maxCharsPerLine: 14, breakPattern: /([\s,，、;；/]+)/ })
-      const detailRow = worksheet.addRow([
-        row.fabricName,
-        quantityText,
-        row.totalWeight,
-        row.unitPrice,
-        row.amount,
-        noteText,
-      ])
+    exportRows.forEach((item) => {
+      const quantityText = formatExcelWrapText(item.quantityInput || '-', { maxCharsPerLine: 16 })
+      const noteText = formatExcelWrapText(item.note || '-', { maxCharsPerLine: 18, breakPattern: /([\s,，、;；/]+)/ })
+      const detailRow = worksheet.addRow({
+        fabric: item.fabricName || '-',
+        quantity: quantityText,
+        totalWeight: Number(item.quantity || 0),
+        unitPrice: Number(item.unitPrice || 0),
+        amount: Number(item.amount || 0),
+        note: noteText,
+      })
 
       detailRowMeta.push({
         rowNumber: detailRow.number,
@@ -215,26 +252,30 @@ const exportToExcel = async () => {
       })
     })
 
-    const totalWeightNumber = normalizedRows.reduce((sum, item) => sum + Number(item.totalWeight || 0), 0)
-    const totalAmountNumber = normalizedRows.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const totalWeightRow = worksheet.addRow(['总重量', '', Number(totalWeight.value || 0), '', '', ''])
+    const totalAmountRow = worksheet.addRow(['总金额', '', '', '', Number(totalAmount.value || 0), ''])
 
-    const totalWeightRow = worksheet.addRow(['', '总重量', totalWeightNumber, '', '', ''])
-    const totalAmountRow = worksheet.addRow(['', '总金额', '', '', totalAmountNumber, ''])
-    const totalWeightRowIndex = totalWeightRow.number
-    const totalAmountRowIndex = totalAmountRow.number
+    worksheet.getColumn('C').numFmt = '0.00'
+    worksheet.getColumn('D').numFmt = '¥#,##0.00'
+    worksheet.getColumn('E').numFmt = '¥#,##0.00'
 
-    for (let i = 1; i <= metaRows.length; i += 1) {
+    headerRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } }
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF409EFF' }
+    }
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
+
+    for (let i = 1; i <= metaRows.length; i++) {
       worksheet.getCell(`A${i}`).font = { bold: true }
     }
-    headerRow.font = { bold: true }
 
     detailRowMeta.forEach(({ rowNumber, lineCount }, index) => {
       const row = worksheet.getRow(rowNumber)
-      row.getCell(3).numFmt = '0.00'
-      row.getCell(4).numFmt = '¥#,##0.00'
-      row.getCell(5).numFmt = '¥#,##0.00'
-      row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
-      row.getCell(6).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+      row.alignment = { vertical: 'middle', horizontal: 'left' }
+      row.getCell('B').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
+      row.getCell('F').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
       row.height = getExcelWrappedRowHeight(lineCount)
       if (index % 2 === 0) {
         row.eachCell((cell) => {
@@ -247,16 +288,50 @@ const exportToExcel = async () => {
       }
     })
 
-    worksheet.getCell(`C${totalWeightRowIndex}`).numFmt = '0.00'
-    worksheet.getCell(`E${totalAmountRowIndex}`).numFmt = '¥#,##0.00'
+    worksheet.mergeCells(`A${totalWeightRow.number}:B${totalWeightRow.number}`)
+    totalWeightRow.getCell('A').value = '总重量'
+    totalWeightRow.getCell('A').font = { bold: true, size: 12 }
+    totalWeightRow.getCell('A').alignment = { vertical: 'middle', horizontal: 'center' }
+    totalWeightRow.getCell('A').fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE6F7FF' }
+    }
+    totalWeightRow.getCell('C').font = { bold: true, size: 12 }
+    totalWeightRow.getCell('C').alignment = { vertical: 'middle', horizontal: 'right' }
+    totalWeightRow.getCell('C').fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE6F7FF' }
+    }
 
-    worksheet.getCell(`B${totalWeightRowIndex}`).font = { bold: true }
-    worksheet.getCell(`C${totalWeightRowIndex}`).font = { bold: true }
-    worksheet.getCell(`B${totalAmountRowIndex}`).font = { bold: true }
-    worksheet.getCell(`E${totalAmountRowIndex}`).font = { bold: true }
+    worksheet.mergeCells(`A${totalAmountRow.number}:D${totalAmountRow.number}`)
+    totalAmountRow.getCell('A').value = '总金额'
+    totalAmountRow.getCell('A').font = { bold: true, size: 12 }
+    totalAmountRow.getCell('A').alignment = { vertical: 'middle', horizontal: 'center' }
+    totalAmountRow.getCell('A').fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE6F7FF' }
+    }
+    totalAmountRow.getCell('E').font = { bold: true, size: 12 }
+    totalAmountRow.getCell('E').alignment = { vertical: 'middle', horizontal: 'right' }
+    totalAmountRow.getCell('E').fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE6F7FF' }
+    }
 
-    worksheet.mergeCells(`B${totalAmountRowIndex}:D${totalAmountRowIndex}`)
-    worksheet.getCell(`B${totalAmountRowIndex}`).alignment = { horizontal: 'center', vertical: 'middle' }
+    worksheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+          left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+          bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+          right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+        }
+      })
+    })
 
     // 导出
     const buffer = await workbook.xlsx.writeBuffer()
@@ -264,7 +339,7 @@ const exportToExcel = async () => {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${exportFilePrefix.value}${currentRecord.value.billDate}_${currentRecord.value.billNo}.xlsx`
+    a.download = `${getExportFileBase()}.xlsx`
     a.click()
     window.URL.revokeObjectURL(url)
 
@@ -287,11 +362,11 @@ const handleDelete = async () => {
   }
 }
 const totalWeight = computed(() => {
-  return rows.value.reduce((sum, row) => sum + Number(row.quantity || 0), 0)
+  return rowViews.value.reduce((sum, row) => sum + Number(row.quantity || 0), 0)
 })
 
 const totalAmount = computed(() => {
-  return rows.value.reduce((sum, row) => sum + (Number(row.quantity || 0) * Number(row.unitPrice || 0)), 0)
+  return rowViews.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
 })
 
 const toggleFabricOptions = (rowId) => {
@@ -338,7 +413,7 @@ const makeRow = () => ({
 })
 
 const buildExportRows = () => {
-  return rows.value.filter((item) => {
+  return rowViews.value.filter((item) => {
     if (!item) return false
     return item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) > 0
   })
@@ -373,7 +448,7 @@ const exportImage = () => {
   const tableLeft = 48
   const columns = createCanvasTableColumns(tableLeft, [
     { key: 'fabricName', label: '布料', width: 180 },
-    { key: 'quantityText', label: '明细重量输入', width: 360 },
+    { key: 'quantityText', label: '数量 / 重量', width: 360 },
     { key: 'totalWeight', label: '总重量(斤)', width: 170, align: 'center' },
     { key: 'unitPrice', label: '单价(元/斤)', width: 170, align: 'center' },
     { key: 'amount', label: '金额(元)', width: 210, align: 'center' },
@@ -385,7 +460,6 @@ const exportImage = () => {
   const noteLineHeight = 30
   const noteTop = 228
   const noteHeight = Math.max(noteLineHeight, noteLines.length * noteLineHeight)
-  const saleModeText = '出货方式：按重量出货'
   const tableTop = noteTop + noteHeight + 40
 
   ctx.font = '16px "SimSun", serif'
@@ -410,7 +484,7 @@ const exportImage = () => {
       quantityText: item.quantityInput || '-',
       totalWeight: Number(item.quantity || 0).toFixed(2),
       unitPrice: Number(item.unitPrice || 0).toFixed(2),
-      amount: Number(item.quantity || 0) * Number(item.unitPrice || 0),
+      amount: item.amount || 0,
     }
 
     const wrappedFabricLines = wrapCanvasText(ctx, rowData.fabricName, columns[0].width - 20)
@@ -644,7 +718,7 @@ const exportImage = () => {
           <thead>
             <tr>
               <th>布料</th>
-              <th>明细重量输入</th>
+              <th>数量 / 重量</th>
               <th>总重量(斤)</th>
               <th>单价(元/斤)</th>
               <th>金额(元)</th>
@@ -699,7 +773,7 @@ const exportImage = () => {
               </td>
               <td>
                 <div class="cell-stack align-with-category">
-                  <span class="num">{{ Number(item.quantity || 0).toFixed(2) }}</span>
+                  <span class="num">{{ parseWeightExpression(item.quantityInput ?? item.quantity).toFixed(2) }}</span>
                 </div>
               </td>
               <td>
@@ -709,7 +783,7 @@ const exportImage = () => {
               </td>
               <td>
                 <div class="cell-stack align-with-category">
-                  <span class="num amount">{{ formatMoney(Number(item.quantity || 0) * Number(item.unitPrice || 0)) }}</span>
+                  <span class="num amount">{{ formatMoney(parseWeightExpression(item.quantityInput ?? item.quantity) * Number(item.unitPrice || 0)) }}</span>
                 </div>
               </td>
               <td>
