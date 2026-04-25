@@ -199,6 +199,16 @@ const submit = async () => {
     showToast(error.message || '保存失败，请重试', 'error')
   }
 }
+
+const canMoveCustomer = (item, direction) => {
+  const index = customerStore.customers.findIndex((customer) => customer.id === item.id)
+  return direction === 'up' ? index > 0 : index >= 0 && index < customerStore.customers.length - 1
+}
+
+const moveCustomer = async (item, direction) => {
+  const moved = await customerStore.moveCustomer(item.id, direction)
+  if (moved) showToast('客户顺序已调整')
+}
 </script>
 
 <template>
@@ -265,6 +275,7 @@ const submit = async () => {
               <th>联系人</th>
               <th>联系电话</th>
               <th>状态</th>
+              <th>顺序</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -279,6 +290,12 @@ const submit = async () => {
                 </span>
               </td>
               <td>
+                <div class="inner-page__actions order-actions">
+                  <button type="button" class="inner-page__btn-text" :disabled="!canMoveCustomer(item, 'up')" @click="moveCustomer(item, 'up')">上移</button>
+                  <button type="button" class="inner-page__btn-text" :disabled="!canMoveCustomer(item, 'down')" @click="moveCustomer(item, 'down')">下移</button>
+                </div>
+              </td>
+              <td>
                 <div class="inner-page__actions">
                   <button type="button" class="inner-page__btn-text" @click="openPriceSettings(item)">价格</button>
                   <button type="button" class="inner-page__btn-text" @click="openEdit(item)">编辑</button>
@@ -287,7 +304,7 @@ const submit = async () => {
               </td>
             </tr>
             <tr v-if="list.length === 0">
-              <td colspan="5" class="inner-page__empty">暂无相关数据</td>
+              <td colspan="6" class="inner-page__empty">暂无相关数据</td>
             </tr>
           </tbody>
         </table>
@@ -332,6 +349,8 @@ const submit = async () => {
           </span>
         </div>
         <div class="inner-page__actions customer-card__actions">
+          <button type="button" class="inner-page__btn-text" :disabled="!canMoveCustomer(item, 'up')" @click="moveCustomer(item, 'up')">上移</button>
+          <button type="button" class="inner-page__btn-text" :disabled="!canMoveCustomer(item, 'down')" @click="moveCustomer(item, 'down')">下移</button>
           <button type="button" class="inner-page__btn-text" @click="openPriceSettings(item)">价格</button>
           <button type="button" class="inner-page__btn-text" @click="openEdit(item)">编辑</button>
           <button type="button" class="inner-page__btn-text inner-page__btn-text--danger" @click="openDelete(item)">删除</button>
@@ -536,6 +555,12 @@ const submit = async () => {
 .customer-pagination--mobile {
   justify-content: center;
   padding: 14px;
+}
+
+.order-actions .inner-page__btn-text:disabled,
+.customer-card__actions .inner-page__btn-text:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .customer-price-modal {

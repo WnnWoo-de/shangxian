@@ -66,6 +66,16 @@ const submit = async () => {
     showToast(error.message || '保存失败，请重试', 'error')
   }
 }
+
+const canMoveFabric = (item, direction) => {
+  const index = fabricStore.fabrics.findIndex((fabric) => fabric.id === item.id)
+  return direction === 'up' ? index > 0 : index >= 0 && index < fabricStore.fabrics.length - 1
+}
+
+const moveFabric = async (item, direction) => {
+  const moved = await fabricStore.moveFabric(item.id, direction)
+  if (moved) showToast('品种顺序已调整')
+}
 </script>
 
 <template>
@@ -102,7 +112,7 @@ const submit = async () => {
       <div class="inner-page__panel-title"><h3>品种列表</h3><span class="inner-page__panel-tip">第 {{ currentPage }} / {{ totalPages }} 页</span></div>
       <div class="inner-page__table-wrap">
         <table class="inner-page__table">
-          <thead><tr><th>品种名称</th><th>品种编号</th><th>进货价</th><th>出货价</th><th>状态</th><th>操作</th></tr></thead>
+          <thead><tr><th>品种名称</th><th>品种编号</th><th>进货价</th><th>出货价</th><th>状态</th><th>顺序</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="item in paginatedList" :key="item.id">
               <td><strong>{{ item.name }}</strong></td>
@@ -110,9 +120,10 @@ const submit = async () => {
               <td>¥ {{ Number(item.defaultPurchasePrice || 0).toFixed(2) }}</td>
               <td>¥ {{ Number(item.defaultSalePrice || 0).toFixed(2) }}</td>
               <td><span :class="['inner-page__status', item.status === 'active' ? 'inner-page__status--active' : 'inner-page__status--disabled']">{{ item.status === 'active' ? '启用' : '停用' }}</span></td>
+              <td><div class="inner-page__actions order-actions"><button type="button" class="inner-page__btn-text" :disabled="!canMoveFabric(item, 'up')" @click="moveFabric(item, 'up')">上移</button><button type="button" class="inner-page__btn-text" :disabled="!canMoveFabric(item, 'down')" @click="moveFabric(item, 'down')">下移</button></div></td>
               <td><div class="inner-page__actions"><button type="button" class="inner-page__btn-text" @click="openEdit(item)">编辑</button><button type="button" class="inner-page__btn-text inner-page__btn-text--danger" @click="openDelete(item)">删除</button></div></td>
             </tr>
-            <tr v-if="list.length === 0"><td colspan="6" class="inner-page__empty">暂无相关数据</td></tr>
+            <tr v-if="list.length === 0"><td colspan="7" class="inner-page__empty">暂无相关数据</td></tr>
           </tbody>
         </table>
       </div>
@@ -131,7 +142,7 @@ const submit = async () => {
           <span :class="['inner-page__status', item.status === 'active' ? 'inner-page__status--active' : 'inner-page__status--disabled']">{{ item.status === 'active' ? '启用' : '停用' }}</span>
         </div>
         <div class="fabric-card__price-grid"><div><span>进货价</span><strong>¥ {{ Number(item.defaultPurchasePrice || 0).toFixed(2) }}</strong></div><div><span>出货价</span><strong>¥ {{ Number(item.defaultSalePrice || 0).toFixed(2) }}</strong></div></div>
-        <div class="inner-page__actions fabric-card__actions"><button type="button" class="inner-page__btn-text" @click="openEdit(item)">编辑</button><button type="button" class="inner-page__btn-text inner-page__btn-text--danger" @click="openDelete(item)">删除</button></div>
+        <div class="inner-page__actions fabric-card__actions"><button type="button" class="inner-page__btn-text" :disabled="!canMoveFabric(item, 'up')" @click="moveFabric(item, 'up')">上移</button><button type="button" class="inner-page__btn-text" :disabled="!canMoveFabric(item, 'down')" @click="moveFabric(item, 'down')">下移</button><button type="button" class="inner-page__btn-text" @click="openEdit(item)">编辑</button><button type="button" class="inner-page__btn-text inner-page__btn-text--danger" @click="openDelete(item)">删除</button></div>
       </article>
       <div class="pagination-bar" v-if="list.length > 0"><button type="button" class="inner-page__btn-ghost pagination-bar__btn" :disabled="currentPage === 1" @click="prevPage">上一页</button><span>{{ currentPage }} / {{ totalPages }}</span><button type="button" class="inner-page__btn-ghost pagination-bar__btn" :disabled="currentPage === totalPages" @click="nextPage">下一页</button></div>
     </section>
@@ -172,4 +183,6 @@ const submit = async () => {
 .fabric-card__top h3{margin:0;font-size:18px}.fabric-card__top p{margin:8px 0 0;color:var(--text-soft);line-height:1.6}
 .fabric-card__price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.fabric-card__price-grid div{padding:14px;border-radius:16px;background:rgba(255,255,255,.46)}.fabric-card__price-grid span{display:block;font-size:12px;color:var(--text-soft)}.fabric-card__price-grid strong{display:block;margin-top:8px;font-size:18px;color:var(--text-normal)}
 .fabric-card__actions{margin-top:14px}
+.order-actions .inner-page__btn-text:disabled,
+.fabric-card__actions .inner-page__btn-text:disabled{cursor:not-allowed;opacity:.42}
 </style>

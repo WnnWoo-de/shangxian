@@ -67,6 +67,8 @@ const MOCK_CUSTOMERS = [
 ]
 
 const saveLocal = (list) => storage.set(STORAGE_KEY, list)
+const orderList = (list) => [...list].sort((a, b) => Number(a.sortOrder ?? 999999) - Number(b.sortOrder ?? 999999))
+const withSortOrder = (list) => list.map((item, index) => ({ ...item, sortOrder: Number(item.sortOrder ?? index) }))
 
 export const useCustomerStore = defineStore('customer', () => {
   const customers = ref([])
@@ -87,9 +89,9 @@ export const useCustomerStore = defineStore('customer', () => {
     try {
       const cloudCustomers = await fetchCustomersApi()
       if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
-        customers.value = cloudCustomers
+        customers.value = orderList(withSortOrder(cloudCustomers))
       } else if (ENABLE_DEMO_SEED) {
-        customers.value = await seedCloudIfEmpty()
+        customers.value = orderList(withSortOrder(await seedCloudIfEmpty()))
       } else {
         customers.value = []
       }
@@ -98,9 +100,9 @@ export const useCustomerStore = defineStore('customer', () => {
       console.error('Load customers from cloud failed:', error)
       const saved = storage.get(STORAGE_KEY)
       if (saved && saved.length > 0) {
-        customers.value = saved
+        customers.value = orderList(withSortOrder(saved))
       } else if (ENABLE_DEMO_SEED) {
-        customers.value = [...MOCK_CUSTOMERS]
+        customers.value = orderList(withSortOrder(MOCK_CUSTOMERS))
         saveLocal(customers.value)
       } else {
         customers.value = []
@@ -147,6 +149,7 @@ export const useCustomerStore = defineStore('customer', () => {
       const draft = {
         id: `cust-${Date.now().toString().slice(-6)}`,
         status: 'active',
+        sortOrder: customers.value.length,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         ...data
@@ -234,6 +237,29 @@ export const useCustomerStore = defineStore('customer', () => {
 
     const newStatus = customer.status === 'active' ? 'inactive' : 'active'
     return await updateCustomer(id, { status: newStatus })
+  }
+
+  async function moveCustomer(id, direction) {
+    const index = customers.value.findIndex(c => c.id === id)
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (index < 0 || targetIndex < 0 || targetIndex >= customers.value.length) return false
+
+    const next = [...customers.value]
+    const [item] = next.splice(index, 1)
+    next.splice(targetIndex, 0, item)
+    const now = new Date().toISOString()
+    customers.value = next.map((customer, sortOrder) => ({ ...customer, sortOrder, updatedAt: now }))
+    saveLocal(customers.value)
+
+    const changed = [customers.value[index], customers.value[targetIndex]].filter(Boolean)
+    await Promise.all(changed.map(async (customer) => {
+      try {
+        await updateCustomerApi(customer.id, customer)
+      } catch (error) {
+        enqueueSyncOperation('customers', 'upsert', customer.id, customer, customer.updatedAt)
+      }
+    }))
+    return true
   }
 
   function searchCustomers(keyword) {
@@ -346,6 +372,7 @@ export const useCustomerStore = defineStore('customer', () => {
     updateCustomer,
     deleteCustomer,
     toggleCustomerStatus,
+    moveCustomer,
     searchCustomers,
     filterByType,
     filterByStatus,

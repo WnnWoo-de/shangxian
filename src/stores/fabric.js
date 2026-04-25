@@ -9,6 +9,8 @@ const STORAGE_KEY = StorageTypes.FABRICS
 const ENABLE_DEMO_SEED = String(import.meta.env.VITE_ENABLE_DEMO_SEED || '').trim() === '1'
 
 const saveLocal = (list) => storage.set(STORAGE_KEY, list)
+const orderList = (list) => [...list].sort((a, b) => Number(a.sortOrder ?? 999999) - Number(b.sortOrder ?? 999999))
+const withSortOrder = (list) => list.map((item, index) => ({ ...item, sortOrder: Number(item.sortOrder ?? index) }))
 
 export const useFabricStore = defineStore('fabric', () => {
   const fabrics = ref([])
@@ -17,7 +19,7 @@ export const useFabricStore = defineStore('fabric', () => {
   const filterStatus = ref('all')
 
   async function seedCloudIfEmpty() {
-    const seeds = [...initFabrics]
+    const seeds = withSortOrder(initFabrics)
     await Promise.all(seeds.map(item => createFabricApi(item)))
     return seeds
   }
@@ -28,9 +30,9 @@ export const useFabricStore = defineStore('fabric', () => {
     try {
       const cloudFabrics = await fetchFabricsApi()
       if (Array.isArray(cloudFabrics) && cloudFabrics.length > 0) {
-        fabrics.value = cloudFabrics
+        fabrics.value = orderList(withSortOrder(cloudFabrics))
       } else if (ENABLE_DEMO_SEED) {
-        fabrics.value = await seedCloudIfEmpty()
+        fabrics.value = orderList(withSortOrder(await seedCloudIfEmpty()))
       } else {
         fabrics.value = []
       }
@@ -39,9 +41,9 @@ export const useFabricStore = defineStore('fabric', () => {
       console.error('Load fabrics from cloud failed:', error)
       const saved = storage.get(STORAGE_KEY)
       if (saved && saved.length > 0) {
-        fabrics.value = saved
+        fabrics.value = orderList(withSortOrder(saved))
       } else if (ENABLE_DEMO_SEED) {
-        fabrics.value = [...initFabrics]
+        fabrics.value = orderList(withSortOrder(initFabrics))
         saveLocal(fabrics.value)
       } else {
         fabrics.value = []
@@ -104,6 +106,7 @@ export const useFabricStore = defineStore('fabric', () => {
         id: `fab-${Date.now().toString().slice(-6)}`,
         code: `FAB${Date.now().toString().slice(-4)}`,
         status: 'active',
+        sortOrder: fabrics.value.length,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         ...data
@@ -194,6 +197,29 @@ export const useFabricStore = defineStore('fabric', () => {
     return await updateFabric(id, { status: newStatus })
   }
 
+  async function moveFabric(id, direction) {
+    const index = fabrics.value.findIndex(f => f.id === id)
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (index < 0 || targetIndex < 0 || targetIndex >= fabrics.value.length) return false
+
+    const next = [...fabrics.value]
+    const [item] = next.splice(index, 1)
+    next.splice(targetIndex, 0, item)
+    const now = new Date().toISOString()
+    fabrics.value = next.map((fabric, sortOrder) => ({ ...fabric, sortOrder, updatedAt: now }))
+    saveLocal(fabrics.value)
+
+    const changed = [fabrics.value[index], fabrics.value[targetIndex]].filter(Boolean)
+    await Promise.all(changed.map(async (fabric) => {
+      try {
+        await updateFabricApi(fabric.id, fabric)
+      } catch (error) {
+        enqueueSyncOperation('fabrics', 'upsert', fabric.id, fabric, fabric.updatedAt)
+      }
+    }))
+    return true
+  }
+
   function searchFabrics(keyword) {
     searchKeyword.value = keyword
   }
@@ -244,6 +270,7 @@ export const useFabricStore = defineStore('fabric', () => {
     updateFabric,
     deleteFabric,
     toggleFabricStatus,
+    moveFabric,
     searchFabrics,
     filterByStatus,
     resetFilters,
