@@ -32,6 +32,79 @@ watch(selectedDate, (value) => {
   filters.dateEnd = value
 }, { immediate: true })
 
+const toFiniteNumber = (value, fallback = 0) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+const parseWeightExpression = (input) => {
+  const raw = String(input || '').trim()
+  if (!raw) return 0
+
+  const normalized = raw
+    .replace(/[，,、；;]/g, ' ')
+    .replace(/[＋]/g, '+')
+    .replace(/[×xX]/g, '*')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!normalized) return 0
+
+  let value = 0
+  normalized.split('+').forEach((part) => {
+    const multiplyParts = part.split('*')
+    if (multiplyParts.length === 2) {
+      const left = Number(multiplyParts[0])
+      const right = Number(multiplyParts[1])
+      if (Number.isFinite(left) && Number.isFinite(right)) value += left * right
+      return
+    }
+
+    part.split(' ').forEach((numStr) => {
+      const number = Number(numStr)
+      if (Number.isFinite(number)) value += number
+    })
+  })
+
+  return Number.isFinite(value) ? value : 0
+}
+
+const getItemWeight = (item = {}) => {
+  const direct = toFiniteNumber(item.totalWeight ?? item.quantity ?? item.weight, NaN)
+  if (Number.isFinite(direct) && direct > 0) return direct
+  return parseWeightExpression(item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText)
+}
+
+const getRecordTotalWeight = (record = {}) => {
+  const direct = toFiniteNumber(record.totalWeight ?? record.netWeight, NaN)
+  if (Number.isFinite(direct) && direct > 0) return direct
+
+  const items = Array.isArray(record.items)
+    ? record.items
+    : Array.isArray(record.details)
+      ? record.details
+      : []
+
+  return items.reduce((sum, item) => sum + getItemWeight(item), 0)
+}
+
+const getRecordTotalAmount = (record = {}) => {
+  const direct = toFiniteNumber(record.totalAmount ?? record.totalPrice, NaN)
+  if (Number.isFinite(direct) && direct > 0) return direct
+
+  const items = Array.isArray(record.items)
+    ? record.items
+    : Array.isArray(record.details)
+      ? record.details
+      : []
+
+  return items.reduce((sum, item) => {
+    const unitPrice = toFiniteNumber(item.unitPrice ?? item.unit_price, 0)
+    const amount = toFiniteNumber(item.amount, NaN)
+    return sum + (Number.isFinite(amount) && amount > 0 ? amount : getItemWeight(item) * unitPrice)
+  }, 0)
+}
+
 const list = computed(() => {
   let filtered = billRecordStore.getRecordsByType(isPurchase.value ? 'purchase' : 'sale')
 
@@ -61,9 +134,9 @@ const list = computed(() => {
 })
 
 const totals = computed(() => list.value.reduce((acc, cur) => {
-  acc.weight += Number(cur.totalWeight || 0)
-  acc.amount += Number(cur.totalAmount || 0)
-  acc.settlement += Number(isPurchase.value ? cur.paidAmount || 0 : cur.receivedAmount || 0)
+  acc.weight += getRecordTotalWeight(cur)
+  acc.amount += getRecordTotalAmount(cur)
+  acc.settlement += toFiniteNumber(isPurchase.value ? cur.paidAmount : cur.receivedAmount, 0)
   return acc
 }, { weight: 0, amount: 0, settlement: 0 }))
 
@@ -243,8 +316,8 @@ const recentPartners = computed(() => {
                 <td class="bill-no">{{ item.billNo }}</td>
                 <td class="bill-date">{{ item.billDate }}</td>
                 <td class="partner-name">{{ item.partnerName }}</td>
-                <td class="total-weight">{{ Number(item.totalWeight || 0).toFixed(2) }} 斤</td>
-                <td class="total-amount">{{ formatMoney(item.totalAmount) }}</td>
+                <td class="total-weight">{{ getRecordTotalWeight(item).toFixed(2) }} 斤</td>
+                <td class="total-amount">{{ formatMoney(getRecordTotalAmount(item)) }}</td>
                 <td class="settlement-amount">{{ formatMoney(isPurchase ? item.paidAmount : item.receivedAmount) }}</td>
                 <td class="unsettled-amount" :class="{ negative: item.unsettledAmount > 0 }">
                   {{ formatMoney(item.unsettledAmount) }}

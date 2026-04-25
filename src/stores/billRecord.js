@@ -12,10 +12,51 @@ const ENABLE_DEMO_SEED = String(import.meta.env.VITE_ENABLE_DEMO_SEED || '').tri
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
+const toFiniteNumber = (value, fallback = 0) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+const parseWeightExpression = (input) => {
+  const raw = String(input || '').trim()
+  if (!raw) return 0
+
+  const normalized = raw
+    .replace(/[，,、；;]/g, ' ')
+    .replace(/[＋]/g, '+')
+    .replace(/[×xX]/g, '*')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!normalized) return 0
+
+  let value = 0
+  normalized.split('+').forEach((part) => {
+    const multiplyParts = part.split('*')
+    if (multiplyParts.length === 2) {
+      const left = Number(multiplyParts[0])
+      const right = Number(multiplyParts[1])
+      if (Number.isFinite(left) && Number.isFinite(right)) value += left * right
+      return
+    }
+
+    part.split(' ').forEach((numStr) => {
+      const number = Number(numStr)
+      if (Number.isFinite(number)) value += number
+    })
+  })
+
+  return Number.isFinite(value) ? value : 0
+}
+
 const normalizeItem = (item = {}, index = 0) => {
-  const quantity = Number(item.quantity ?? item.totalWeight ?? item.total_weight ?? 0)
-  const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
-  const amount = Number(item.amount ?? quantity * unitPrice)
+  const quantityInput = String((item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.totalWeight ?? '') || '')
+  const parsedQuantity = parseWeightExpression(quantityInput)
+  const quantityNumber = toFiniteNumber(item.quantity ?? item.totalWeight ?? item.total_weight, NaN)
+  const quantity = Number.isFinite(quantityNumber) && quantityNumber > 0 ? quantityNumber : parsedQuantity
+  const unitPrice = toFiniteNumber(item.unitPrice ?? item.unit_price, 0)
+  const amountNumber = toFiniteNumber(item.amount, NaN)
+  const amount = Number.isFinite(amountNumber) && amountNumber > 0 ? amountNumber : quantity * unitPrice
 
   return {
     id: item.id || `item-${Date.now()}-${index}`,
@@ -23,10 +64,10 @@ const normalizeItem = (item = {}, index = 0) => {
     fabricName: item.fabricName || item.fabric_name || '',
     quantity,
     weightInput: String((item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.quantityInput ?? item.totalWeight ?? '') || ''),
-    quantityInput: String((item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.totalWeight ?? '') || ''),
-    totalWeight: Number(item.totalWeight ?? item.total_weight ?? quantity),
-    packCount: Number(item.packCount ?? item.pack_count ?? 0),
-    packWeight: Number(item.packWeight ?? item.pack_weight ?? 0),
+    quantityInput,
+    totalWeight: quantity,
+    packCount: toFiniteNumber(item.packCount ?? item.pack_count, 0),
+    packWeight: toFiniteNumber(item.packWeight ?? item.pack_weight, 0),
     unit: item.unit || '斤',
     unitPrice,
     amount,
@@ -42,22 +83,18 @@ const normalizeRecord = (record = {}) => {
       : []
 
   const items = itemsSource.map((item, index) => normalizeItem(item, index))
-  const totalWeight = Number(
-    record.totalWeight
-    ?? record.netWeight
-    ?? items.reduce((sum, item) => sum + Number(item.totalWeight || item.quantity || 0), 0)
-  )
-  const totalAmount = Number(
-    record.totalAmount
-    ?? record.totalPrice
-    ?? items.reduce((sum, item) => sum + Number(item.amount || 0), 0)
-  )
-  const paidAmount = Number(record.paidAmount || 0)
-  const receivedAmount = Number(record.receivedAmount || 0)
-  const unsettledAmount = Number(
-    record.unsettledAmount
-    ?? Math.max(totalAmount - (record.type === 'sale' ? receivedAmount : paidAmount), 0)
-  )
+  const itemTotalWeight = items.reduce((sum, item) => sum + toFiniteNumber(item.totalWeight || item.quantity, 0), 0)
+  const itemTotalAmount = items.reduce((sum, item) => sum + toFiniteNumber(item.amount, 0), 0)
+  const totalWeightNumber = toFiniteNumber(record.totalWeight ?? record.netWeight, NaN)
+  const totalAmountNumber = toFiniteNumber(record.totalAmount ?? record.totalPrice, NaN)
+  const totalWeight = Number.isFinite(totalWeightNumber) && totalWeightNumber > 0 ? totalWeightNumber : itemTotalWeight
+  const totalAmount = Number.isFinite(totalAmountNumber) && totalAmountNumber > 0 ? totalAmountNumber : itemTotalAmount
+  const paidAmount = toFiniteNumber(record.paidAmount, 0)
+  const receivedAmount = toFiniteNumber(record.receivedAmount, 0)
+  const unsettledAmountNumber = toFiniteNumber(record.unsettledAmount, NaN)
+  const unsettledAmount = Number.isFinite(unsettledAmountNumber)
+    ? unsettledAmountNumber
+    : Math.max(totalAmount - (record.type === 'sale' ? receivedAmount : paidAmount), 0)
   const partnerName = record.partnerName || record.customerName || record.supplier || ''
   const billDate = record.billDate || record.date?.slice?.(0, 10) || new Date().toISOString().slice(0, 10)
 
@@ -82,9 +119,9 @@ const normalizeRecord = (record = {}) => {
     paidAmount,
     receivedAmount,
     unsettledAmount,
-    firstWeight: Number(record.firstWeight || 0),
-    lastWeight: Number(record.lastWeight || 0),
-    netWeight: Number(record.netWeight ?? totalWeight),
+    firstWeight: toFiniteNumber(record.firstWeight, 0),
+    lastWeight: toFiniteNumber(record.lastWeight, 0),
+    netWeight: toFiniteNumber(record.netWeight, totalWeight),
   }
 }
 
