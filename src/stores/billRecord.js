@@ -72,6 +72,27 @@ const normalizeItem = (item = {}, index = 0) => {
     unitPrice,
     amount,
     note: item.note || '',
+    source: item.source || '',
+    weighingId: item.weighingId || item.weighing_id || '',
+  }
+}
+
+const normalizeWeighingDetail = (item = {}, index = 0) => {
+  const firstWeight = toFiniteNumber(item.firstWeight ?? item.first_weight, 0)
+  const lastWeight = toFiniteNumber(item.lastWeight ?? item.last_weight, 0)
+  const netWeightNumber = toFiniteNumber(item.netWeight ?? item.net_weight, NaN)
+  const netWeight = Number.isFinite(netWeightNumber)
+    ? netWeightNumber
+    : Math.max(firstWeight - lastWeight, 0)
+
+  return {
+    id: item.id || `weigh-${Date.now()}-${index}`,
+    fabricId: item.fabricId || item.fabric_id || '',
+    fabricName: item.fabricName || item.fabric_name || '',
+    unitPrice: toFiniteNumber(item.unitPrice ?? item.unit_price, 0),
+    firstWeight,
+    lastWeight,
+    netWeight,
   }
 }
 
@@ -97,6 +118,9 @@ const normalizeRecord = (record = {}) => {
     : Math.max(totalAmount - (record.type === 'sale' ? receivedAmount : paidAmount), 0)
   const partnerName = record.partnerName || record.customerName || record.supplier || ''
   const billDate = record.billDate || record.date?.slice?.(0, 10) || new Date().toISOString().slice(0, 10)
+  const weighingDetails = Array.isArray(record.weighingDetails)
+    ? record.weighingDetails.map((item, index) => normalizeWeighingDetail(item, index))
+    : []
 
   return {
     id: String(record.id || `bill-${Date.now()}`),
@@ -122,6 +146,7 @@ const normalizeRecord = (record = {}) => {
     firstWeight: toFiniteNumber(record.firstWeight, 0),
     lastWeight: toFiniteNumber(record.lastWeight, 0),
     netWeight: toFiniteNumber(record.netWeight, 0),
+    weighingDetails,
   }
 }
 

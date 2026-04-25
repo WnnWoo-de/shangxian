@@ -51,7 +51,11 @@ const partnerLabel = computed(() => (isPurchase.value ? '供货方' : '客户'))
 const quantityLabel = computed(() => '数量 / 重量')
 const totalWeightLabel = computed(() => '总重量')
 const roundAmount = (value) => Math.round(Number(value) || 0)
-const hasWeighing = computed(() => Number(form.firstWeight || 0) > 0 || Number(form.lastWeight || 0) > 0)
+const hasWeighing = computed(() => {
+  return Number(form.firstWeight || 0) > 0 ||
+    Number(form.lastWeight || 0) > 0 ||
+    weighingRows.value.some((row) => Number(row.firstWeight || 0) > 0 || Number(row.lastWeight || 0) > 0)
+})
 const formatKg = (value) => `${Number(value || 0).toFixed(2)} 公斤`
 const KG_TO_JIN = 2
 const formatJinInput = (value) => {
@@ -71,7 +75,27 @@ const form = reactive({
   netWeight: 0,
 })
 
-const netWeight = computed(() => Math.max(Number(form.firstWeight) - Number(form.lastWeight), 0))
+const makeWeighingRow = () => ({
+  id: `weigh-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+  fabricId: '',
+  fabricName: '',
+  unitPrice: 0,
+  firstWeight: 0,
+  lastWeight: 0,
+  note: '',
+})
+
+const weighingRows = ref([])
+const getWeighingNet = (row) => Math.max(Number(row?.firstWeight || 0) - Number(row?.lastWeight || 0), 0)
+const getWeighingJin = (row) => Number((getWeighingNet(row) * KG_TO_JIN).toFixed(2))
+const getWeighingAmount = (row) => multiplyMoney(getWeighingJin(row), Number(row?.unitPrice || 0))
+const primaryNetWeight = computed(() => getWeighingNet(form))
+const primaryNetWeightJin = computed(() => Number((primaryNetWeight.value * KG_TO_JIN).toFixed(2)))
+const primaryNetWeightInput = computed(() => formatJinInput(primaryNetWeightJin.value))
+const totalFirstWeight = computed(() => Number((Number(form.firstWeight || 0) + weighingRows.value.reduce((sum, row) => sum + Number(row.firstWeight || 0), 0)).toFixed(2)))
+const totalLastWeight = computed(() => Number((Number(form.lastWeight || 0) + weighingRows.value.reduce((sum, row) => sum + Number(row.lastWeight || 0), 0)).toFixed(2)))
+const extraNetWeight = computed(() => weighingRows.value.reduce((sum, row) => sum + getWeighingNet(row), 0))
+const netWeight = computed(() => Number((primaryNetWeight.value + extraNetWeight.value).toFixed(2)))
 const netWeightJin = computed(() => Number((netWeight.value * KG_TO_JIN).toFixed(2)))
 const netWeightInput = computed(() => formatJinInput(netWeightJin.value))
 
@@ -172,6 +196,10 @@ const selectPrimaryFabric = () => {
   applyNetWeightToPrimaryRow()
 }
 
+const selectWeighingFabric = (row) => {
+  selectFabric(row)
+}
+
 const syncRowFabric = (row) => {
   const keyword = row.fabricName.trim()
   const matched = fabrics.value.find((item) => item.name === keyword)
@@ -182,6 +210,11 @@ const syncRowFabric = (row) => {
 const refreshRowPricesForPartner = () => {
   if (isEditing.value) return
   rows.value.forEach((row) => {
+    if (!row.fabricId) return
+    const selected = fabrics.value.find((item) => item.id === row.fabricId)
+    if (selected) row.unitPrice = getPreferredUnitPrice(selected)
+  })
+  weighingRows.value.forEach((row) => {
     if (!row.fabricId) return
     const selected = fabrics.value.find((item) => item.id === row.fabricId)
     if (selected) row.unitPrice = getPreferredUnitPrice(selected)
@@ -199,9 +232,20 @@ const fillForm = (record) => {
   form.firstWeight = Number(record.firstWeight || 0)
   form.lastWeight = Number(record.lastWeight || 0)
   form.netWeight = Number(record.netWeight || Math.max(form.firstWeight - form.lastWeight, 0))
+  weighingRows.value = Array.isArray(record.weighingDetails)
+    ? record.weighingDetails.map((item) => ({
+        id: item.id || `weigh-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        fabricId: item.fabricId || '',
+        fabricName: item.fabricName || '',
+        unitPrice: Number(item.unitPrice || 0),
+        firstWeight: Number(item.firstWeight || 0),
+        lastWeight: Number(item.lastWeight || 0),
+        note: item.note || '',
+      }))
+    : []
 
   if (Array.isArray(record.items) && record.items.length) {
-    rows.value = record.items.map((item) => ({
+    rows.value = record.items.filter((item) => item.source !== 'weighing' && !item.weighingId).map((item) => ({
       ...makeRow(),
       id: item.id || `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
       fabricId: item.fabricId || '',
@@ -226,6 +270,7 @@ const resetEditor = () => {
   form.firstWeight = 0
   form.lastWeight = 0
   form.netWeight = 0
+  weighingRows.value = []
   lastAutoWeightInput.value = ''
   rows.value = [makeRow()]
 }
@@ -299,15 +344,32 @@ const rowViews = computed(() => {
   })
 })
 
+const weighingItemViews = computed(() => {
+  return weighingRows.value.map((row) => {
+    const fabric = fabrics.value.find((item) => item.id === row.fabricId)
+    const quantity = getWeighingJin(row)
+    const unitPrice = Number(row.unitPrice || 0)
+    return {
+      ...row,
+      fabric,
+      fabricName: row.fabricName || fabric?.name || '',
+      quantity,
+      quantityInput: formatJinInput(quantity),
+      unit: '斤',
+      amount: multiplyMoney(quantity, unitPrice),
+    }
+  })
+})
+
 const totalWeight = computed(() => {
-  return rowViews.value.reduce((sum, row) => {
+  return [...rowViews.value, ...weighingItemViews.value].reduce((sum, row) => {
     const safeQuantity = isNaN(row.quantity) ? 0 : row.quantity
     return sum + safeQuantity
   }, 0)
 })
 
 const totalAmount = computed(() => {
-  const safeAmounts = rowViews.value.map(row => {
+  const safeAmounts = [...rowViews.value, ...weighingItemViews.value].map(row => {
     return isNaN(row.amount) ? 0 : row.amount
   })
   return roundAmount(addMoney(safeAmounts))
@@ -318,6 +380,12 @@ const primaryAmount = computed(() => {
   if (!row) return 0
   return multiplyMoney(parseWeightExpression(row.quantityInput ?? row.quantity), Number(row.unitPrice || 0))
 })
+const weighingTotalAmount = computed(() => {
+  return addMoney([
+    primaryAmount.value,
+    ...weighingRows.value.map((row) => getWeighingAmount(row)),
+  ])
+})
 
 const canAutoUseNetWeight = (row) => {
   const currentInput = String(row?.quantityInput || '').trim()
@@ -325,7 +393,7 @@ const canAutoUseNetWeight = (row) => {
 }
 
 const applyNetWeightToPrimaryRow = ({ force = false } = {}) => {
-  const nextInput = netWeightInput.value
+  const nextInput = primaryNetWeightInput.value
   if (!nextInput) return false
 
   if (!rows.value.length) rows.value = [makeRow()]
@@ -334,12 +402,12 @@ const applyNetWeightToPrimaryRow = ({ force = false } = {}) => {
   if (!force && !canAutoUseNetWeight(row)) return false
 
   row.quantityInput = nextInput
-  row.quantity = netWeightJin.value
+  row.quantity = primaryNetWeightJin.value
   lastAutoWeightInput.value = nextInput
   return true
 }
 
-watch(netWeightInput, () => {
+watch(primaryNetWeightInput, () => {
   applyNetWeightToPrimaryRow()
 })
 // 未结金额计算 - 支持手动输入
@@ -363,6 +431,14 @@ const unsettledAmount = computed({
 
 const addRow = () => {
   rows.value.push(makeRow())
+}
+
+const addWeighingDetail = () => {
+  weighingRows.value.push(makeWeighingRow())
+}
+
+const removeWeighingDetail = (index) => {
+  weighingRows.value.splice(index, 1)
 }
 
 const removeRow = (index) => {
@@ -417,6 +493,26 @@ const saveBill = async () => {
     }
   }
 
+  for (let i = 0; i < weighingRows.value.length; i++) {
+    const row = weighingRows.value[i]
+    const quantity = getWeighingJin(row)
+
+    if (!row.fabricId) {
+      showToast(`过磅明细第${i + 1}行：请选择品种`)
+      return
+    }
+
+    if (!quantity) {
+      showToast(`过磅明细第${i + 1}行：请输入过磅总重量和车皮重量`)
+      return
+    }
+
+    if (!row.unitPrice) {
+      showToast(`过磅明细第${i + 1}行：请输入单价`)
+      return
+    }
+  }
+
   saving.value = true
   try {
     const partnerName = form.partnerName.trim()
@@ -435,6 +531,15 @@ const saveBill = async () => {
       }
     }
 
+    const itemRows = [
+      ...rows.value,
+      ...weighingItemViews.value.map((row) => ({
+        ...row,
+        id: `item-${row.id}`,
+        source: 'weighing',
+        weighingId: row.id,
+      })),
+    ]
     const payload = {
       type: props.type,
       billNo: isEditing.value ? currentRecord.value.billNo : `B${Date.now()}`,
@@ -443,22 +548,26 @@ const saveBill = async () => {
       partnerName: form.partnerName,
       note: '',
       status: unsettledAmount.value <= 0 ? 'settled' : 'confirmed',
-      items: rows.value.map(row => ({
+      items: itemRows.map(row => ({
         id: row.id,
         fabricId: row.fabricId,
         fabricName: row.fabricName,
         quantityInput: row.quantityInput,
         quantity: parseWeightExpression(row.quantityInput ?? row.quantity),
         unitPrice: Number(row.unitPrice || 0),
+        source: row.source || '',
+        weighingId: row.weighingId || '',
         note: '',
       })),
-      details: rows.value.map(row => ({
+      details: itemRows.map(row => ({
         id: row.id,
         fabricId: row.fabricId,
         fabricName: row.fabricName,
         quantityInput: row.quantityInput,
         quantity: parseWeightExpression(row.quantityInput ?? row.quantity),
         unitPrice: Number(row.unitPrice || 0),
+        source: row.source || '',
+        weighingId: row.weighingId || '',
         note: '',
       })),
       totalWeight: totalWeight.value,
@@ -469,6 +578,15 @@ const saveBill = async () => {
       firstWeight: form.firstWeight,
       lastWeight: form.lastWeight,
       netWeight: form.netWeight,
+      weighingDetails: weighingRows.value.map((row) => ({
+        id: row.id,
+        fabricId: row.fabricId,
+        fabricName: row.fabricName,
+        unitPrice: Number(row.unitPrice || 0),
+        firstWeight: Number(row.firstWeight || 0),
+        lastWeight: Number(row.lastWeight || 0),
+        netWeight: getWeighingNet(row),
+      })),
     }
 
     if (isEditing.value) {
@@ -554,7 +672,7 @@ onUnmounted(() => {
 })
 
 const buildExportRows = () => {
-  return rowViews.value.filter((item) => {
+  return [...rowViews.value, ...weighingItemViews.value].filter((item) => {
     if (!item) return false
     return item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) > 0
   })
@@ -586,8 +704,8 @@ const buildExportMetaRows = () => {
 
   if (hasWeighing.value) {
     rows.push(
-      ['过磅总重量', formatKg(form.firstWeight)],
-      ['车皮重量', formatKg(form.lastWeight)],
+      ['过磅总重量', formatKg(totalFirstWeight.value)],
+      ['车皮重量', formatKg(totalLastWeight.value)],
       ['净重量', formatKg(form.netWeight)]
     )
   }
@@ -1030,10 +1148,10 @@ const exportImage = () => {
                 rows="3"
                 class="weight-detail-input"
                 autocomplete="off"
-                :placeholder="idx === 0 && netWeightInput ? `已过磅：${netWeightInput} 斤` : '示例：10+10+10 / 10 10 10 / 10×3'"
+                :placeholder="idx === 0 && primaryNetWeightInput ? `已过磅：${primaryNetWeightInput} 斤` : '示例：10+10+10 / 10 10 10 / 10×3'"
               ></textarea>
               <small class="field-tip">
-                {{ idx === 0 && netWeightInput ? `来自过磅净重：${formatKg(form.netWeight)}，折合 ${netWeightInput} 斤` : '支持多次重量相加和 10×3 自动计算' }}
+                {{ idx === 0 && primaryNetWeightInput ? `来自主磅净重：${formatKg(primaryNetWeight)}，折合 ${primaryNetWeightInput} 斤` : '支持多次重量相加和 10×3 自动计算' }}
               </small>
             </label>
 
@@ -1067,6 +1185,12 @@ const exportImage = () => {
           <AppIcon name="scale" size="18" />
           <span>过磅信息</span>
         </h3>
+        <button type="button" class="btn-ghost weighing-add-btn" @click="addWeighingDetail">
+          <span class="btn-content">
+            <AppIcon name="plus" size="16" />
+            <span>添加明细</span>
+          </span>
+        </button>
       </div>
       <div class="weighing-grid">
         <label class="field">
@@ -1115,24 +1239,59 @@ const exportImage = () => {
           />
         </label>
         <label class="field readonly-field">
-          <span>净重量（公斤）</span>
-          <input :value="formatKg(form.netWeight)" type="text" readonly />
+          <span>主磅净重（公斤）</span>
+          <input :value="formatKg(primaryNetWeight)" type="text" readonly />
         </label>
         <label class="field readonly-field">
-          <span>结算重量（斤）</span>
+          <span>结算总重量（斤）</span>
           <input :value="`${netWeightJin.toFixed(2)} 斤`" type="text" readonly />
         </label>
         <label class="field readonly-field amount-field">
-          <span>过磅金额</span>
-          <input :value="formatMoney(primaryAmount)" type="text" readonly />
+          <span>过磅总金额</span>
+          <input :value="formatMoney(weighingTotalAmount)" type="text" readonly />
         </label>
         <div class="weighing-action">
           <button type="button" class="btn-ghost compact" @click="handleUseNetWeight">使用净重</button>
         </div>
       </div>
+      <div v-if="weighingRows.length" class="weighing-detail-list">
+        <article v-for="(row, index) in weighingRows" :key="row.id" class="weighing-detail-row">
+          <div class="weighing-detail-index">过磅明细 #{{ index + 1 }}</div>
+          <label class="field">
+            <span>品种</span>
+            <select v-model="row.fabricId" @change="selectWeighingFabric(row)">
+              <option value="">请选择品种</option>
+              <option v-for="item in fabrics" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>{{ priceLabel }}（元/斤）</span>
+            <input v-model.number="row.unitPrice" type="number" min="0" step="0.01" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>过磅总重量（公斤）</span>
+            <input v-model.number="row.firstWeight" type="number" min="0" step="0.01" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>车皮重量（公斤）</span>
+            <input v-model.number="row.lastWeight" type="number" min="0" step="0.01" autocomplete="off" />
+          </label>
+          <label class="field readonly-field">
+            <span>净重量（公斤）</span>
+            <input :value="formatKg(getWeighingNet(row))" type="text" readonly />
+          </label>
+          <label class="field readonly-field amount-field">
+            <span>金额</span>
+            <input :value="formatMoney(getWeighingAmount(row))" type="text" readonly />
+          </label>
+          <button type="button" class="btn-text danger weighing-remove-btn" @click="removeWeighingDetail(index)">删除</button>
+        </article>
+      </div>
       <div class="single-weight-tip">
         <strong>默认按一个品种结算</strong>
-        <span>选好品种和单价后，系统会用净重量折算成斤，并同步到第一行明细计算金额。</span>
+        <span>右上角添加的是带品种的过磅明细；每条明细按自己的品种、单价和净重计算，下面“明细补充”只用于手动补录货品。</span>
       </div>
     </section>
 
@@ -1170,12 +1329,6 @@ const exportImage = () => {
         </div>
       </div>
       <div class="actions action-toolbar">
-        <button type="button" class="btn-ghost" @click="addRow">
-          <span class="btn-content">
-            <AppIcon name="plus" size="16" />
-            <span>新增明细</span>
-          </span>
-        </button>
         <button type="button" class="btn-ghost" @click="handleClearEditor">
           <span class="btn-content">
             <AppIcon name="trash" size="16" />
@@ -1267,6 +1420,15 @@ const exportImage = () => {
 .weighing-card .title-with-icon {
   color: var(--weighing-accent-strong);
 }
+.weighing-add-btn {
+  flex: 0 0 auto;
+  border-color: var(--weighing-accent-line);
+  color: var(--weighing-accent-strong);
+  background: rgba(255, 255, 255, 0.58);
+}
+.weighing-add-btn:hover {
+  background: var(--weighing-accent-soft);
+}
 .weighing-card .field input:focus,
 .weighing-card .field select:focus,
 .weighing-card .field textarea:focus {
@@ -1345,6 +1507,32 @@ const exportImage = () => {
 
 .amount-field input {
   color: var(--weighing-accent-strong);
+}
+.weighing-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.weighing-detail-row {
+  display: grid;
+  grid-template-columns: 130px repeat(4, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--weighing-accent-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.52);
+}
+.weighing-detail-index {
+  align-self: center;
+  color: var(--weighing-accent-strong);
+  font-weight: 700;
+}
+.weighing-remove-btn {
+  align-self: end;
+  min-height: 44px;
+  padding-inline: 14px;
 }
 .weighing-action {
   display: flex;
@@ -1505,6 +1693,19 @@ const exportImage = () => {
   }
   .weighing-action {
     min-height: auto;
+  }
+  .weighing-detail-row {
+    grid-template-columns: 1fr;
+  }
+  .weighing-remove-btn {
+    width: 100%;
+  }
+  .weighing-card .panel-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .weighing-add-btn {
+    width: 100%;
   }
   .single-weight-tip {
     align-items: flex-start;
