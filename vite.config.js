@@ -13,6 +13,7 @@ export default defineConfig({
     VitePWA({
       injectRegister: false,
       includeAssets: [
+        'logo.png',
         'favicon.ico',
         'pwa-192x192.png',
         'pwa-512x512.png',
@@ -60,9 +61,9 @@ export default defineConfig({
             purpose: 'maskable',
           },
           {
-            src: '/favicon.ico',
-            sizes: 'any',
-            type: 'image/x-icon',
+            src: '/logo.png',
+            sizes: '794x795',
+            type: 'image/png',
           },
         ],
       },

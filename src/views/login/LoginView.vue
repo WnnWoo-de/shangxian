@@ -6,7 +6,7 @@ import { useCustomerStore } from '../../stores/customer'
 import { useFabricStore } from '../../stores/fabric'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { showToast } from '../../utils/toast'
-import logoUrl from '../../assets/logo.svg'
+import logoUrl from '../../assets/logo.png'
 
 const router = useRouter()
 const authStore = useAuthStore()

@@ -46,7 +46,6 @@ const pageTitle = computed(() => {
 const priceLabel = computed(() => (isPurchase.value ? '进货单价' : '出货单价'))
 const settlementLabel = computed(() => (isPurchase.value ? '已付款' : '已收款'))
 const pageClass = computed(() => (isPurchase.value ? 'purchase-theme' : 'sale-theme'))
-const draftText = computed(() => (isPurchase.value ? '进货草稿' : '出货草稿'))
 const exportTitle = computed(() => (isPurchase.value ? '进货单据明细' : '出货单据明细'))
 const partnerLabel = computed(() => (isPurchase.value ? '供货方' : '客户'))
 const quantityLabel = computed(() => '数量 / 重量')
@@ -69,8 +68,6 @@ const netWeight = computed(() => Math.max(Number(form.firstWeight) - Number(form
 watch(netWeight, (value) => {
   form.netWeight = Number(value || 0)
 }, { immediate: true })
-
-const partnerKeyword = ref('')
 
 const syncPartnerSelection = () => {
   const keyword = form.partnerName.trim()
@@ -145,17 +142,6 @@ const partners = computed(() => customerStore.activeCustomers)
 const fabrics = computed(() => fabricStore.activeFabrics)
 customerPriceStore.init()
 
-const filteredPartners = computed(() => {
-  const keyword = partnerKeyword.value.trim()
-  if (!keyword) return partners.value
-  return partners.value.filter((item) => {
-    const name = String(item.name || '')
-    const contact = String(item.contact || item.contactPerson || '')
-    const phone = String(item.phone || '')
-    return name.includes(keyword) || contact.includes(keyword) || phone.includes(keyword)
-  })
-})
-
 const selectFabric = (row) => {
   const selected = fabrics.value.find((item) => item.id === row.fabricId)
   row.fabricName = selected?.name || ''
@@ -216,8 +202,22 @@ const resetEditor = () => {
   form.firstWeight = 0
   form.lastWeight = 0
   form.netWeight = 0
-  partnerKeyword.value = ''
   rows.value = [makeRow()]
+}
+
+const clearDraft = () => {
+  removeItem(DRAFT_STORAGE_KEY.value)
+  removeItem('draft_bill')
+}
+
+const prepareBlankEditor = () => {
+  resetEditor()
+  clearDraft()
+}
+
+const handleClearEditor = () => {
+  prepareBlankEditor()
+  showToast('开单页面已清空')
 }
 
 watch([isEditing, currentRecord], ([editing, record]) => {
@@ -318,14 +318,10 @@ const removeRow = (index) => {
   rows.value.splice(index, 1)
 }
 
-const clearDraft = () => {
-  removeItem(DRAFT_STORAGE_KEY.value)
-}
-
 const saveBill = async () => {
   // 验证必填项
   if (!form.partnerName.trim()) {
-    showToast('请输入客户名称')
+    showToast(`请输入${partnerLabel.value}名称`)
     return
   }
 
@@ -380,7 +376,7 @@ const saveBill = async () => {
       billDate: new Date().toISOString().slice(0, 10),
       partnerId: form.partnerId,
       partnerName: form.partnerName,
-      note: form.note,
+      note: '',
       status: unsettledAmount.value <= 0 ? 'settled' : 'confirmed',
       items: rows.value.map(row => ({
         id: row.id,
@@ -389,7 +385,7 @@ const saveBill = async () => {
         quantityInput: row.quantityInput,
         quantity: parseWeightExpression(row.quantityInput ?? row.quantity),
         unitPrice: Number(row.unitPrice || 0),
-        note: row.note,
+        note: '',
       })),
       details: rows.value.map(row => ({
         id: row.id,
@@ -398,7 +394,7 @@ const saveBill = async () => {
         quantityInput: row.quantityInput,
         quantity: parseWeightExpression(row.quantityInput ?? row.quantity),
         unitPrice: Number(row.unitPrice || 0),
-        note: row.note,
+        note: '',
       })),
       totalWeight: totalWeight.value,
       totalAmount: totalAmount.value,
@@ -439,7 +435,7 @@ const handleDelete = async () => {
     await billRecordStore.deleteRecord(currentRecord.value.id)
     clearDraft()
     showToast('删除成功')
-    router.push('/purchase/list')
+    router.push(props.type === 'purchase' ? '/purchase/list' : '/sale/list')
   } catch (error) {
     console.error('删除失败:', error)
     showToast(error.message || '删除失败，请重试')
@@ -453,15 +449,26 @@ const handleFormKeyDown = (event) => {
   }
 }
 
+watch(() => [route.fullPath, props.type], () => {
+  if (!isEditing.value) prepareBlankEditor()
+})
+
 const onDataChanged = () => {
   console.log('主数据变化，重新加载')
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 注册主数据变化事件
   window.addEventListener(MASTER_DATA_CHANGED_EVENT, onDataChanged)
 
-  if (!isEditing.value) clearDraft()
+  await Promise.all([
+    billRecordStore.init(),
+    customerStore.init(),
+    fabricStore.init(),
+    customerPriceStore.init(),
+  ])
+
+  if (!isEditing.value) prepareBlankEditor()
 })
 
 const getPreferredUnitPrice = (fabric) => {
@@ -515,7 +522,6 @@ const exportTable = async () => {
     const metaRows = [
       ['单据日期', new Date().toISOString().slice(0, 10)],
       [partnerLabel.value, form.partnerName.trim() || '-'],
-      ['备注', form.note.trim() || '-'],
       ['出货方式', '按重量出货'],
     ]
 
@@ -525,33 +531,30 @@ const exportTable = async () => {
       { key: 'totalWeight', width: 14 },
       { key: 'unitPrice', width: 14 },
       { key: 'amount', width: 16 },
-      { key: 'note', width: 18 },
     ]
 
     metaRows.forEach((row) => worksheet.addRow(row))
-    const headerRow = worksheet.addRow(['品种', '数量 / 重量', '总重量(斤)', '单价(元/斤)', '金额(元)', '备注'])
+    const headerRow = worksheet.addRow(['品种', '数量 / 重量', '总重量(斤)', '单价(元/斤)', '金额(元)'])
 
     // 填充数据
     exportRows.forEach((item) => {
       const quantityText = formatExcelWrapText(item.quantityInput || '-', { maxCharsPerLine: 16 })
-      const noteText = formatExcelWrapText(item.note || '-', { maxCharsPerLine: 18, breakPattern: /([\s,，、;；/]+)/ })
       const row = worksheet.addRow({
         fabric: item.fabricName || '-',
         quantity: quantityText,
         totalWeight: Number(item.quantity || 0),
         unitPrice: Number(item.unitPrice || 0),
         amount: Number(item.amount || 0),
-        note: noteText,
       })
 
       detailRowMeta.push({
         rowNumber: row.number,
-        lineCount: Math.max(countExcelTextLines(quantityText), countExcelTextLines(noteText)),
+        lineCount: countExcelTextLines(quantityText),
       })
     })
 
-    const totalWeightRow = worksheet.addRow(['总重量', '', Number(totalWeight.value || 0), '', '', ''])
-    const totalAmountRow = worksheet.addRow(['总金额', '', '', '', Number(totalAmount.value || 0), ''])
+    const totalWeightRow = worksheet.addRow(['总重量', '', Number(totalWeight.value || 0), '', ''])
+    const totalAmountRow = worksheet.addRow(['总金额', '', '', '', Number(totalAmount.value || 0)])
 
     // 格式化列
     worksheet.getColumn('C').numFmt = '0.00'
@@ -577,7 +580,6 @@ const exportTable = async () => {
       const row = worksheet.getRow(rowNumber)
       row.alignment = { vertical: 'middle', horizontal: 'left' }
       row.getCell('B').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
-      row.getCell('F').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
       row.height = getExcelWrappedRowHeight(lineCount)
       if (index % 2 === 0) {
         row.eachCell((cell) => {
@@ -684,13 +686,7 @@ const exportImage = () => {
   ])
   const tableWidth = getCanvasTableWidth(columns)
 
-  ctx.font = '22px "SimSun", serif'
-  const noteLines = wrapCanvasText(ctx, `备注：${form.note.trim() || '-'}`, width - 96)
-  const noteLineHeight = 30
-  const noteTop = 228
-  const noteHeight = Math.max(noteLineHeight, noteLines.length * noteLineHeight)
-  const saleModeText = '出货方式：按重量出货'
-  const tableTop = noteTop + noteHeight + 40
+  const tableTop = 228
 
   ctx.font = '16px "SimSun", serif'
   const preparedRows = exportRows.map((item) => {
@@ -755,12 +751,6 @@ const exportImage = () => {
   ctx.fillStyle = '#4e6b86'
   ctx.fillText(`日期：${new Date().toISOString().slice(0, 10)}`, 48, 148)
   ctx.fillText(`${partnerLabel.value}：${form.partnerName.trim() || '-'}`, 48, 180)
-
-  noteLines.forEach((line, index) => {
-    ctx.fillText(line, 48, noteTop + index * noteLineHeight)
-  })
-
-  ctx.fillText(`出货方式：按重量出货`, 48, noteTop + noteHeight + 22)
 
   ctx.fillStyle = '#f2f7fc'
   ctx.fillRect(tableLeft, tableTop, tableWidth, rowBaseHeight)
@@ -873,7 +863,7 @@ const exportImage = () => {
 </script>
 
 <template>
-  <section class="order-editor" :class="pageClass">
+  <section class="order-editor" :class="pageClass" :key="`${props.type}-${recordId || 'create'}`">
     <header class="hero panel">
       <div>
         <p class="eyebrow">{{ isPurchase ? '采购录单' : '销售录单' }}</p>
@@ -908,49 +898,18 @@ const exportImage = () => {
             v-model.trim="form.partnerName"
             list="partner-options"
             type="text"
+            autocomplete="off"
             placeholder="可直接填写，也可从已有对象中选择"
             @change="syncPartnerSelection"
             @blur="syncPartnerSelection"
           />
           <datalist id="partner-options">
-            <option v-for="item in filteredPartners" :key="item.id" :value="item.name">
+            <option v-for="item in partners" :key="item.id" :value="item.name">
               {{ item.contact || item.contactPerson || '' }} {{ item.phone || '' }}
             </option>
           </datalist>
-          <input v-model="partnerKeyword" type="text" placeholder="按名称 / 联系人筛选已有对象" />
         </label>
 
-        <label class="field">
-          <span>{{ settlementLabel }}（元）</span>
-          <input v-model.number="form.settlementAmount" type="number" min="0" step="0.01" />
-        </label>
-
-        <label class="field">
-          <span>未结金额（元）</span>
-          <input v-model.number="unsettledAmount" type="number" min="0" step="0.01" />
-        </label>
-
-        <label class="field full-span">
-          <span>备注</span>
-          <textarea v-model="form.note" rows="3" placeholder="可填写本次业务说明"></textarea>
-        </label>
-
-        <div class="weight-panel">
-          <div class="weight-inputs">
-            <label class="field">
-              <span>初磅 (斤)</span>
-              <input v-model.number="form.firstWeight" type="number" step="0.01" placeholder="输入地磅初重" />
-            </label>
-            <label class="field">
-              <span>次磅 (斤)</span>
-              <input v-model.number="form.lastWeight" type="number" step="0.01" placeholder="输入地磅次重" />
-            </label>
-            <label class="field">
-              <span>净重 (斤)</span>
-              <input :value="netWeight.toFixed(2)" type="text" readonly placeholder="自动计算净重" />
-            </label>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -990,6 +949,7 @@ const exportImage = () => {
                 v-model="rows[idx].quantityInput"
                 rows="3"
                 class="weight-detail-input"
+                autocomplete="off"
                 placeholder="示例：10+10+10 / 10 10 10 / 10.10.10 / 10×3"
               ></textarea>
               <small class="field-tip">
@@ -999,7 +959,7 @@ const exportImage = () => {
 
             <label class="field">
               <span>{{ priceLabel }}</span>
-              <input v-model.number="rows[idx].unitPrice" type="number" min="0" step="0.01" />
+              <input v-model.number="rows[idx].unitPrice" type="number" min="0" step="0.01" autocomplete="off" />
               <small class="field-tip">{{ getPriceSourceText(rows[idx]) }}</small>
             </label>
 
@@ -1008,18 +968,14 @@ const exportImage = () => {
               <input :value="formatMoney(rowView.amount)" type="text" readonly />
             </label>
 
-            <label class="field full-span">
-              <span>明细备注</span>
-              <div class="row-note-box">
-                <input v-model="rows[idx].note" type="text" placeholder="选填" />
-                <button type="button" class="btn-text danger" @click="removeRow(idx)">
-                  <span class="btn-content">
-                    <AppIcon name="trash" size="16" />
-                    <span>删除</span>
-                  </span>
-                </button>
-              </div>
-            </label>
+            <div class="detail-actions full-span">
+              <button type="button" class="btn-text danger" @click="removeRow(idx)">
+                <span class="btn-content">
+                  <AppIcon name="trash" size="16" />
+                  <span>删除</span>
+                </span>
+              </button>
+            </div>
           </div>
         </article>
       </div>
@@ -1036,12 +992,26 @@ const exportImage = () => {
           <strong>{{ formatMoney(totalAmount) }}</strong>
         </div>
         <div>
-          <span>{{ settlementLabel }}</span>
-          <strong>{{ formatMoney(form.settlementAmount) }}</strong>
+          <span>{{ settlementLabel }}（元）</span>
+          <input
+            v-model.number="form.settlementAmount"
+            class="settlement-input"
+            type="number"
+            min="0"
+            step="0.01"
+            autocomplete="off"
+          />
         </div>
         <div>
-          <span>未结金额</span>
-          <strong>{{ formatMoney(unsettledAmount) }}</strong>
+          <span>结余金额（元）</span>
+          <input
+            v-model.number="unsettledAmount"
+            class="settlement-input"
+            type="number"
+            min="0"
+            step="0.01"
+            autocomplete="off"
+          />
         </div>
       </div>
       <div class="actions action-toolbar">
@@ -1051,10 +1021,10 @@ const exportImage = () => {
             <span>新增明细</span>
           </span>
         </button>
-        <button type="button" class="btn-ghost" @click="saveDraft">
+        <button type="button" class="btn-ghost" @click="handleClearEditor">
           <span class="btn-content">
-            <AppIcon name="save" size="16" />
-            <span>保存草稿</span>
+            <AppIcon name="trash" size="16" />
+            <span>清空页面</span>
           </span>
         </button>
         <button type="button" class="btn-ghost" @click="exportTable">
@@ -1203,49 +1173,6 @@ const exportImage = () => {
   grid-column: 1 / -1;
 }
 
-.weight-panel {
-  background: linear-gradient(135deg, rgba(240, 248, 255, 0.9), rgba(255, 255, 255, 0.9));
-  border: 1px solid rgba(144, 202, 249, 0.3);
-  border-radius: 16px;
-  padding: 18px;
-  margin: 14px 0;
-}
-
-.weight-inputs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  align-items: end;
-}
-
-.weight-inputs .field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.weight-inputs label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #4a6fa5;
-}
-
-.weight-inputs input {
-  height: 48px;
-  border-radius: 12px;
-  border: 1px solid #9ec1e6;
-  background: #fff;
-  padding: 0 14px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.weight-inputs input:read-only {
-  background: linear-gradient(135deg, rgba(102, 187, 106, 0.1), rgba(144, 238, 144, 0.1));
-  border-color: #81c784;
-  color: #2e7d32;
-}
 .detail-list {
   display: flex;
   flex-direction: column;
@@ -1257,12 +1184,9 @@ const exportImage = () => {
   padding: 16px;
   background: rgba(255, 255, 255, 0.55);
 }
-.row-note-box {
+.detail-actions {
   display: flex;
-  gap: 12px;
-}
-.row-note-box input {
-  flex: 1;
+  justify-content: flex-end;
 }
 .settlement-bar {
   display: flex;
@@ -1291,6 +1215,23 @@ const exportImage = () => {
 }
 .settlement-summary strong {
   font-size: 20px;
+}
+.settlement-input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0 10px;
+  color: var(--text-normal);
+  font-size: 18px;
+  font-weight: 700;
+  outline: none;
+}
+.settlement-input:focus {
+  border-color: rgba(35, 120, 98, 0.55);
+  box-shadow: 0 0 0 4px rgba(35, 120, 98, 0.08);
 }
 .actions {
   display: flex;
@@ -1428,24 +1369,11 @@ const exportImage = () => {
     min-height: 112px;
   }
 
-  .weight-panel {
-    padding: 14px;
-  }
-
-  .weight-inputs {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
   .detail-item {
     padding: 14px;
   }
 
-  .row-note-box {
-    flex-direction: column;
-  }
-
-  .row-note-box .btn-text {
+  .detail-actions .btn-text {
     width: 100%;
     min-height: 42px;
   }

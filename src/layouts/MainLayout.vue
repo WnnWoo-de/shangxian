@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores'
-import logoUrl from '@/assets/logo.svg'
+import logoUrl from '@/assets/logo.png'
 import { ElMessage } from 'element-plus'
 import IconDashboard from '@/components/icons/IconDashboard.vue'
 import IconPurchase from '@/components/icons/IconPurchase.vue'
