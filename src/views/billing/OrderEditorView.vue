@@ -1046,7 +1046,7 @@ const exportImage = () => {
           />
         </div>
         <div>
-          <span>结余金额（元）</span>
+          <span>未付金额（元）</span>
           <input
             v-model.number="unsettledAmount"
             class="settlement-input"
