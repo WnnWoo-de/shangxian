@@ -862,7 +862,7 @@ const exportImage = () => {
   ctx.fillText(weightText, tableLeft + 40, currentY + 30)
 
   // 绘制总金额，在总重量右侧有适当间距
-  ctx.fillStyle = '#c9485b'
+  ctx.fillStyle = '#000000'
   ctx.fillText(`总金额：${formatMoney(totalAmount.value)}`, tableLeft + 40 + weightWidth + 80, currentY + 30)
 
   ctx.textAlign = 'left'
