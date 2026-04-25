@@ -26,6 +26,7 @@ const priceRows = ref([])
 
 const form = reactive({
   name: '',
+  contact: '',
   phone: '',
   status: 'active',
 })
@@ -35,8 +36,9 @@ const list = computed(() => {
   if (!kw) return customerStore.customers
   return customerStore.customers.filter((item) => {
     const name = String(item.name || '')
+    const contact = String(item.contact || item.contactPerson || '')
     const phone = String(item.phone || '')
-    return name.includes(kw) || phone.includes(kw)
+    return name.includes(kw) || contact.includes(kw) || phone.includes(kw)
   })
 })
 
@@ -76,6 +78,7 @@ watch([() => list.value.length, pageSize], () => {
 
 const resetForm = () => {
   form.name = ''
+  form.contact = ''
   form.phone = ''
   form.status = 'active'
 }
@@ -91,6 +94,7 @@ const openEdit = (item) => {
   mode.value = 'edit'
   editingId.value = item.id
   form.name = item.name
+  form.contact = item.contact || item.contactPerson || ''
   form.phone = item.phone || ''
   form.status = item.status
   showModal.value = true
@@ -170,12 +174,12 @@ const savePriceSettings = () => {
 
 const submit = async () => {
   if (!form.name.trim()) return showToast('请输入客户名称', 'error')
+  if (!form.contact.trim()) return showToast('请输入联系人', 'error')
   if (!form.phone.trim()) return showToast('请输入联系电话', 'error')
 
   const payload = {
     name: form.name.trim(),
-    contact: '',
-    contactPerson: '',
+    contact: form.contact.trim(),
     phone: form.phone.trim(),
     status: form.status,
   }
@@ -213,7 +217,7 @@ const moveCustomer = async (item, direction) => {
       <div>
         <p class="inner-page__eyebrow">Customer Ledger</p>
         <h1 class="inner-page__title">客户管理</h1>
-        <p class="inner-page__desc">集中维护往来客户与电话，让采购和出货开单时能直接选择，减少重复录入。</p>
+        <p class="inner-page__desc">集中维护往来客户、联系人与电话，让采购和出货开单时能直接选择，减少重复录入。</p>
       </div>
       <div class="inner-page__hero-stats">
         <div class="hero-stat">
@@ -233,7 +237,7 @@ const moveCustomer = async (item, direction) => {
       <div class="inner-page__toolbar-group">
         <div class="inner-page__search">
           <AppIcon name="search" />
-          <input v-model="keyword" placeholder="搜索客户名 / 电话" />
+          <input v-model="keyword" placeholder="搜索客户名 / 联系人 / 电话" />
         </div>
       </div>
       <button type="button" class="inner-page__btn" @click="openCreate">新增客户</button>
@@ -247,6 +251,10 @@ const moveCustomer = async (item, direction) => {
       <article class="inner-page__stat-card">
         <span>停用</span>
         <strong>{{ disabledCount }}</strong>
+      </article>
+      <article class="inner-page__stat-card">
+        <span>联系人覆盖</span>
+        <strong>{{ list.filter(item => item.contact).length }}</strong>
       </article>
       <article class="inner-page__stat-card">
         <span>电话覆盖</span>
@@ -264,6 +272,7 @@ const moveCustomer = async (item, direction) => {
           <thead>
             <tr>
               <th>客户名称</th>
+              <th>联系人</th>
               <th>联系电话</th>
               <th>状态</th>
               <th>顺序</th>
@@ -273,6 +282,7 @@ const moveCustomer = async (item, direction) => {
           <tbody>
             <tr v-for="item in paginatedList" :key="item.id">
               <td><strong>{{ item.name }}</strong></td>
+              <td>{{ item.contact || item.contactPerson || '-' }}</td>
               <td>{{ item.phone || '-' }}</td>
               <td>
                 <span :class="['inner-page__status', item.status === 'active' ? 'inner-page__status--active' : 'inner-page__status--disabled']">
@@ -294,7 +304,7 @@ const moveCustomer = async (item, direction) => {
               </td>
             </tr>
             <tr v-if="list.length === 0">
-              <td colspan="5" class="inner-page__empty">暂无相关数据</td>
+              <td colspan="6" class="inner-page__empty">暂无相关数据</td>
             </tr>
           </tbody>
         </table>
@@ -332,7 +342,7 @@ const moveCustomer = async (item, direction) => {
         <div class="customer-card__top">
           <div>
             <h3>{{ item.name }}</h3>
-            <p>{{ item.phone || '-' }}</p>
+            <p>{{ item.contact || item.contactPerson || '-' }} · {{ item.phone || '-' }}</p>
           </div>
           <span :class="['inner-page__status', item.status === 'active' ? 'inner-page__status--active' : 'inner-page__status--disabled']">
             {{ item.status === 'active' ? '启用' : '停用' }}
@@ -370,6 +380,10 @@ const moveCustomer = async (item, direction) => {
             <div class="inner-page__field">
               <span>客户名称</span>
               <input v-model="form.name" type="text" />
+            </div>
+            <div class="inner-page__field">
+              <span>联系人</span>
+              <input v-model="form.contact" type="text" />
             </div>
             <div class="inner-page__field">
               <span>联系电话</span>
