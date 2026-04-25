@@ -854,7 +854,7 @@ const exportImage = () => {
   ctx.textAlign = 'left'
 
   // 先计算总重量文本宽度
-  ctx.fillStyle = '#2f506d'
+  ctx.fillStyle = '#000000'
   const weightText = `总重量：${totalWeight.value.toFixed(2)} 斤`
   const weightWidth = ctx.measureText(weightText).width
 
