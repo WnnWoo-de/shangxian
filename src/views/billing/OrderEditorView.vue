@@ -50,7 +50,6 @@ const exportTitle = computed(() => (isPurchase.value ? '进货单据明细' : '�
 const partnerLabel = computed(() => (isPurchase.value ? '供货方' : '客户'))
 const quantityLabel = computed(() => '数量 / 重量')
 const totalWeightLabel = computed(() => '总重量')
-const amountSummaryLabel = computed(() => (isPurchase.value ? '进货总额' : '出货总额'))
 const roundAmount = (value) => Math.round(Number(value) || 0)
 
 const form = reactive({
@@ -871,18 +870,6 @@ const exportImage = () => {
         <h2>{{ pageTitle }}</h2>
         <span class="desc">{{ isPurchase ? '用于记录我方向往来对象进货的单据' : '用于记录我方向往来对象出货的单据' }}</span>
       </div>
-      <div class="hero-metrics">
-        <div class="metric-card">
-          <span>{{ totalWeightLabel }}</span>
-          <strong>{{ totalWeight.toFixed(2) }}</strong>
-          <small>斤</small>
-        </div>
-        <div class="metric-card accent">
-          <span>{{ amountSummaryLabel }}</span>
-          <strong>{{ formatMoney(totalAmount) }}</strong>
-          <small>{{ isPurchase ? '应付' : '应收' }}</small>
-        </div>
-      </div>
     </header>
 
     <section class="panel form-panel">
@@ -1079,31 +1066,6 @@ const exportImage = () => {
   margin-top: 8px;
   color: var(--text-muted);
 }
-.hero-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(140px, 1fr));
-  gap: 14px;
-  min-width: 320px;
-}
-.metric-card {
-  border-radius: 18px;
-  padding: 18px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.metric-card span,
-.metric-card small {
-  color: var(--text-muted);
-}
-.metric-card strong {
-  font-size: 28px;
-}
-.metric-card.accent strong {
-  font-size: 24px;
-}
 .form-panel,
 .detail-panel,
 .settlement-bar {
@@ -1292,7 +1254,6 @@ const exportImage = () => {
   .settlement-bar {
     flex-direction: column;
   }
-  .hero-metrics,
   .settlement-summary,
   .base-grid,
   .detail-grid {
@@ -1320,25 +1281,6 @@ const exportImage = () => {
 
   .hero h2 {
     font-size: 26px;
-  }
-
-  .hero-metrics {
-    grid-template-columns: repeat(2, 1fr);
-    min-width: 100%;
-    gap: 12px;
-    margin-top: 16px;
-  }
-
-  .metric-card {
-    padding: 16px;
-  }
-
-  .metric-card strong {
-    font-size: 26px;
-  }
-
-  .metric-card.accent strong {
-    font-size: 22px;
   }
 
   .form-panel,
@@ -1426,17 +1368,8 @@ const exportImage = () => {
     line-height: 1.55;
   }
 
-  .hero-metrics,
   .settlement-summary {
     grid-template-columns: 1fr;
-  }
-
-  .metric-card {
-    padding: 14px;
-  }
-
-  .metric-card strong {
-    font-size: 22px;
   }
 
   .panel-title-row {
