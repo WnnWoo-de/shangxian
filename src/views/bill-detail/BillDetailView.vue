@@ -796,6 +796,71 @@ const exportImage = () => {
         </table>
       </div>
 
+      <div class="mobile-detail-list">
+        <article v-for="(item, idx) in rows" :key="`mobile-${item.id}`" class="mobile-detail-card">
+          <div class="mobile-detail-head">
+            <span class="mobile-row-index">#{{ idx + 1 }}</span>
+            <button type="button" class="mobile-delete" @click="removeRow(item.id)">删除</button>
+          </div>
+
+          <label class="mobile-field">
+            <span>布料</span>
+            <div class="category-picker">
+              <div class="custom-select category-select">
+                <input
+                  v-model="item.fabricName"
+                  type="text"
+                  placeholder="输入或选择布料"
+                  class="cell-input"
+                />
+                <div class="arrow" @mousedown.stop="toggleFabricOptions(item.id)">
+                  <AppIcon name="chevron-down" size="18" />
+                </div>
+                <Transition name="fade-pop">
+                  <ul v-if="showFabricOptionsForRow[item.id] && getFilteredFabrics(item.fabricName).length" class="dropdown-list">
+                    <li
+                      v-for="option in getFilteredFabrics(item.fabricName)"
+                      :key="option.id"
+                      @mousedown.stop="selectFabric(item.id, option)"
+                    >
+                      <div class="dropdown-main">{{ option.name }}</div>
+                    </li>
+                  </ul>
+                  <div v-else-if="showFabricOptionsForRow[item.id] && item.fabricName" class="dropdown-list no-res">
+                    未找到该布料
+                  </div>
+                </Transition>
+              </div>
+            </div>
+          </label>
+
+          <label class="mobile-field">
+            <span>数量 / 重量</span>
+            <textarea
+              v-model="item.quantityInput"
+              rows="4"
+              placeholder="10+10+10 / 10 10 10 / 10.10.10"
+              class="cell-input weight-detail-input"
+            ></textarea>
+          </label>
+
+          <div class="mobile-metric-grid">
+            <div class="mobile-metric">
+              <span>总重量</span>
+              <strong>{{ parseWeightExpression(item.quantityInput ?? item.quantity).toFixed(2) }} 斤</strong>
+            </div>
+            <label class="mobile-metric mobile-price">
+              <span>单价</span>
+              <input v-model.number="item.unitPrice" type="number" step="0.01" class="cell-input" />
+            </label>
+            <div class="mobile-metric mobile-amount">
+              <span>金额</span>
+              <strong>{{ formatMoney(parseWeightExpression(item.quantityInput ?? item.quantity) * Number(item.unitPrice || 0)) }}</strong>
+            </div>
+          </div>
+        </article>
+      </div>
+
       <footer class="summary">
         <div class="summary-metrics">
           <div class="sum-block emphasis framed-metric">
@@ -971,6 +1036,10 @@ const exportImage = () => {
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 16px 40px rgba(44, 83, 120, 0.08);
+}
+
+.mobile-detail-list {
+  display: none;
 }
 
 table {
@@ -1243,6 +1312,208 @@ tbody tr:hover {
 
   .summary-actions {
     justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .weight-page {
+    padding: 0;
+    gap: 12px;
+  }
+
+  .topbar,
+  .form-card {
+    border-radius: 18px;
+  }
+
+  .form-card {
+    padding: 16px;
+  }
+
+  .meta-grid,
+  .overview-grid,
+  .weight-inputs {
+    gap: 10px;
+  }
+
+  .page-tipbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .page-tipbar span {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .tip-tag {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .table-box {
+    display: none;
+  }
+
+  .mobile-detail-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .mobile-detail-card {
+    position: relative;
+    display: grid;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 12px 28px rgba(44, 83, 120, 0.08);
+  }
+
+  .mobile-detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .mobile-row-index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: #eef6ff;
+    color: #2f5477;
+    font-weight: 800;
+  }
+
+  .mobile-delete {
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(239, 68, 68, 0.18);
+    border-radius: 999px;
+    background: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
+    font-weight: 800;
+  }
+
+  .mobile-field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobile-field > span,
+  .mobile-metric span {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .mobile-detail-card .cell-input,
+  .mobile-detail-card .custom-select input {
+    min-height: 46px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+  .mobile-detail-card .weight-detail-input {
+    min-height: 116px;
+    line-height: 1.6;
+  }
+
+  .mobile-detail-card .dropdown-list {
+    z-index: 30;
+  }
+
+  .mobile-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .mobile-metric {
+    min-width: 0;
+    padding: 12px;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid #edf2f7;
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobile-metric strong {
+    color: #1e293b;
+    font-size: 18px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-price input {
+    padding: 0 10px;
+  }
+
+  .mobile-amount {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #fff8ec, #f8fafc);
+  }
+
+  .mobile-amount strong {
+    color: #0f172a;
+    font-size: 22px;
+  }
+
+  .summary {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .summary-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .sum-block {
+    min-width: 0;
+  }
+
+  .sum-block strong {
+    font-size: 20px;
+    overflow-wrap: anywhere;
+  }
+
+  .summary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .summary-actions button {
+    min-height: 52px;
+    padding: 8px 10px;
+    white-space: normal;
+    line-height: 1.35;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-card {
+    padding: 14px;
+  }
+
+  .mobile-metric-grid,
+  .summary-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>
