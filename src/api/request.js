@@ -4,28 +4,10 @@ import storage from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
 
 const DEFAULT_API_BASE = '/api'
-const LEGACY_API_HOSTS = new Set([
-  'my-cloudflare-backend.wnnwwnnw0705.workers.dev',
-])
-
-const isLegacyApiUrl = (input) => {
-  if (!/^https?:\/\//i.test(input)) return false
-  try {
-    return LEGACY_API_HOSTS.has(new URL(input).host)
-  } catch {
-    return false
-  }
-}
-
-const stripApiPrefix = (pathname) => {
-  const normalized = String(pathname || '').replace(/^\/+/, '')
-  return normalized.startsWith('api/') ? normalized.slice(4) : normalized
-}
 
 const normalizeApiBase = (base, fallback = '') => {
   const input = String(base || '').trim()
-  if (!input) return fallback
-  return isLegacyApiUrl(input) ? DEFAULT_API_BASE : input
+  return input || fallback
 }
 
 const PRIMARY_API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL, DEFAULT_API_BASE)
@@ -94,10 +76,6 @@ const resolveAdaptiveTimeout = (baseTimeout) => {
 const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
   if (/^https?:\/\//i.test(url)) {
-    if (isLegacyApiUrl(url)) {
-      const parsed = new URL(url)
-      return stripApiPrefix(parsed.pathname) || '/'
-    }
     return url
   }
 
