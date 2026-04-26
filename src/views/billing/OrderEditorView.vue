@@ -439,7 +439,9 @@ const focusDetailFabricField = async (rowId) => {
     block: 'center',
     inline: 'nearest',
   })
-  target.focus()
+  // 这里控制“添加明细”后是否自动聚焦到新品种下拉框。
+  // 如果后续不想自动弹出下拉，直接把下一行 target.focus() 注释掉即可。
+  // target.focus()
 }
 
 const addRow = () => {
