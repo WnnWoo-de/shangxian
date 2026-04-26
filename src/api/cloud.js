@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import request from './request'
 
 const getData = (res, fallback = null) => {
   if (res && typeof res === 'object' && 'data' in res) {
@@ -7,14 +7,13 @@ const getData = (res, fallback = null) => {
   return fallback
 }
 
-const DEFAULT_SYNC_FALLBACK_BASE = 'https://ws-wnnw.pages.dev/api'
-const SYNC_FALLBACK_BASE = (import.meta.env.VITE_SYNC_API_FALLBACK_URL || DEFAULT_SYNC_FALLBACK_BASE).trim()
+const SYNC_FALLBACK_BASE = (import.meta.env.VITE_SYNC_API_FALLBACK_URL || '').trim()
 const normalizeBaseUrl = (base) => String(base || '').replace(/\/+$/, '')
 const getStatusCode = (error) => Number(error?.response?.status || 0)
 
 export const loginApi = async (username, password) => {
   const res = await request.post('/auth/login', { username, password })
-  return { token: res?.token, user: res?.user }
+  return getData(res, { token: null, user: null })
 }
 
 export const fetchCustomersApi = async () => {

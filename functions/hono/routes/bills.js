@@ -1,13 +1,18 @@
-import { fail, listRows, ok, parseBody } from '../helpers/http'
+import { fail, ok, parseBody } from '../helpers/http.js'
+import {
+  getEntityById,
+  insertEntity,
+  listActiveEntities,
+  softDeleteEntity,
+  updateEntity,
+} from '../../_lib/entity-repository.js'
+import { entityConfigs } from '../../_lib/entity-configs.js'
+
+const billConfig = entityConfigs.bills
 
 export const registerBillRoutes = (app) => {
   app.get('/api/bills', async (c) => {
-    const bills = await listRows(
-      c.env.DB,
-      `SELECT data FROM bills
-       WHERE deleted_at IS NULL
-       ORDER BY date(bill_date) DESC, datetime(updated_at) DESC`
-    )
+    const bills = await listActiveEntities(c.env.DB, billConfig.table, 'date(bill_date) DESC, datetime(updated_at) DESC')
     return ok(c, { data: bills })
   })
 
@@ -30,26 +35,7 @@ export const registerBillRoutes = (app) => {
 
     if (!bill.id) return fail(c, '单据ID无效', 400)
 
-    await c.env.DB
-      .prepare(
-        `INSERT OR REPLACE INTO bills
-        (id, bill_no, type, bill_date, customer_name, status, total_amount, total_weight, data, created_at, updated_at, deleted_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL)`
-      )
-      .bind(
-        bill.id,
-        bill.billNo,
-        bill.type,
-        bill.billDate,
-        bill.customerName,
-        bill.status,
-        bill.totalAmount,
-        bill.totalWeight,
-        JSON.stringify(bill),
-        bill.createdAt,
-        bill.updatedAt
-      )
-      .run()
+    await insertEntity(c.env.DB, billConfig, bill)
 
     return ok(c, { data: bill }, 201)
   })
@@ -58,10 +44,9 @@ export const registerBillRoutes = (app) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少单据ID', 400)
 
-    const existingRow = await c.env.DB.prepare('SELECT data FROM bills WHERE id = ?1 AND deleted_at IS NULL').bind(id).first()
-    if (!existingRow?.data) return fail(c, '单据不存在', 404)
+    const existing = await getEntityById(c.env.DB, billConfig.table, id)
+    if (!existing) return fail(c, '单据不存在', 404)
 
-    const existing = JSON.parse(existingRow.data)
     const payload = await parseBody(c)
     const updated = {
       ...existing,
@@ -73,34 +58,7 @@ export const registerBillRoutes = (app) => {
       updatedAt: new Date().toISOString(),
     }
 
-    await c.env.DB
-      .prepare(
-        `UPDATE bills
-           SET bill_no = ?2,
-               type = ?3,
-               bill_date = ?4,
-               customer_name = ?5,
-               status = ?6,
-               total_amount = ?7,
-               total_weight = ?8,
-               data = ?9,
-               updated_at = ?10,
-               deleted_at = NULL
-         WHERE id = ?1`
-      )
-      .bind(
-        id,
-        String(updated.billNo || ''),
-        String(updated.type || 'purchase'),
-        String(updated.billDate || ''),
-        String(updated.customerName || updated.partnerName || ''),
-        String(updated.status || 'confirmed'),
-        Number(updated.totalAmount || 0),
-        Number(updated.totalWeight || 0),
-        JSON.stringify(updated),
-        updated.updatedAt
-      )
-      .run()
+    await updateEntity(c.env.DB, billConfig, id, updated)
 
     return ok(c, { data: updated })
   })
@@ -108,11 +66,10 @@ export const registerBillRoutes = (app) => {
   app.delete('/api/bills/:id', async (c) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少单据ID', 400)
-    const existingRow = await c.env.DB.prepare('SELECT data FROM bills WHERE id = ?1').bind(id).first()
-    if (!existingRow?.data) return ok(c, { data: { id } })
+    const existing = await getEntityById(c.env.DB, billConfig.table, id, { includeDeleted: true })
+    if (!existing) return ok(c, { data: { id } })
 
     const now = new Date().toISOString()
-    const existing = JSON.parse(existingRow.data)
     const deleted = {
       ...existing,
       id,
@@ -121,17 +78,7 @@ export const registerBillRoutes = (app) => {
       deletedAt: now,
     }
 
-    await c.env.DB
-      .prepare(
-        `UPDATE bills
-           SET status = ?2,
-               data = ?3,
-               updated_at = ?4,
-               deleted_at = ?5
-         WHERE id = ?1`
-      )
-      .bind(id, 'deleted', JSON.stringify(deleted), now, now)
-      .run()
+    await softDeleteEntity(c.env.DB, billConfig, id, deleted)
 
     return ok(c, { data: { id, deletedAt: now } })
   })

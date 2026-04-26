@@ -1,4 +1,4 @@
-import app from './hono/app'
+import app from './hono/app.js'
 
 export const onRequest = (context) => {
   const url = new URL(context.request.url)

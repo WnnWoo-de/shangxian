@@ -1,10 +1,11 @@
-import { fail, ok, parseBody } from '../helpers/http'
-
-const ENTITY_CONFIG = {
-  customers: { table: 'customers' },
-  fabrics: { table: 'fabrics' },
-  bills: { table: 'bills' },
-}
+import { fail, ok, parseBody } from '../helpers/http.js'
+import {
+  getSyncEntityConfig,
+  getSyncRecordSnapshot,
+  listEntityChanges,
+  softDeleteSyncRecord,
+  upsertSyncRecord,
+} from '../../_lib/sync-repository.js'
 
 const EPOCH_ISO = '1970-01-01T00:00:00.000Z'
 
@@ -16,14 +17,6 @@ const toIsoString = (value, fallback = EPOCH_ISO) => {
 const toMillis = (value) => {
   const date = new Date(value || EPOCH_ISO)
   return Number.isNaN(date.getTime()) ? 0 : date.getTime()
-}
-
-const parseRowData = (raw) => {
-  try {
-    return JSON.parse(raw || '{}')
-  } catch {
-    return {}
-  }
 }
 
 const normalizeOperation = (raw = {}, index = 0) => {
@@ -90,100 +83,24 @@ const buildRecordByEntity = (entity, input, existingData, recordId, updatedAt) =
   }
 }
 
-const upsertRow = async (db, entity, record) => {
-  if (entity === 'customers') {
-    await db
-      .prepare(
-        `INSERT OR REPLACE INTO customers (id, name, status, data, created_at, updated_at, deleted_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)`
-      )
-      .bind(
-        record.id,
-        record.name,
-        record.status,
-        JSON.stringify(record),
-        record.createdAt,
-        record.updatedAt
-      )
-      .run()
-    return
-  }
-
-  if (entity === 'fabrics') {
-    await db
-      .prepare(
-        `INSERT OR REPLACE INTO fabrics (id, code, name, status, data, created_at, updated_at, deleted_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)`
-      )
-      .bind(
-        record.id,
-        record.code,
-        record.name,
-        record.status,
-        JSON.stringify(record),
-        record.createdAt,
-        record.updatedAt
-      )
-      .run()
-    return
-  }
-
-  await db
-    .prepare(
-      `INSERT OR REPLACE INTO bills
-      (id, bill_no, type, bill_date, customer_name, status, total_amount, total_weight, data, created_at, updated_at, deleted_at)
-      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL)`
-    )
-    .bind(
-      record.id,
-      record.billNo,
-      record.type,
-      record.billDate,
-      record.customerName,
-      record.status,
-      record.totalAmount,
-      record.totalWeight,
-      JSON.stringify(record),
-      record.createdAt,
-      record.updatedAt
-    )
-    .run()
-}
-
 const softDeleteRow = async (db, entity, recordId, updatedAt) => {
-  const { table } = ENTITY_CONFIG[entity]
-  const row = await db
-    .prepare(`SELECT data FROM ${table} WHERE id = ?1`)
-    .bind(recordId)
-    .first()
+  const existing = await getSyncRecordSnapshot(db, entity, recordId)
+  if (!existing) return
 
-  if (!row?.data) return
-
-  const existing = parseRowData(row.data)
   const status = entity === 'bills' ? 'deleted' : 'inactive'
   const deleted = {
-    ...existing,
+    ...existing.data,
     id: recordId,
     status,
     updatedAt,
     deletedAt: updatedAt,
   }
 
-  await db
-    .prepare(
-      `UPDATE ${table}
-         SET data = ?2,
-             status = ?3,
-             updated_at = ?4,
-             deleted_at = ?5
-       WHERE id = ?1`
-    )
-    .bind(recordId, JSON.stringify(deleted), status, updatedAt, updatedAt)
-    .run()
+  await softDeleteSyncRecord(db, entity, recordId, deleted)
 }
 
 const applyOperation = async (db, operation) => {
-  const config = ENTITY_CONFIG[operation.entity]
+  const config = getSyncEntityConfig(operation.entity)
   if (!config) {
     return { status: 'invalid', reason: 'unsupported_entity' }
   }
@@ -191,12 +108,9 @@ const applyOperation = async (db, operation) => {
     return { status: 'invalid', reason: 'missing_record_id' }
   }
 
-  const existing = await db
-    .prepare(`SELECT data, updated_at FROM ${config.table} WHERE id = ?1`)
-    .bind(operation.recordId)
-    .first()
+  const existing = await getSyncRecordSnapshot(db, operation.entity, operation.recordId)
 
-  const serverUpdatedAt = toIsoString(existing?.updated_at || EPOCH_ISO)
+  const serverUpdatedAt = toIsoString(existing?.updatedAt || EPOCH_ISO)
   if (existing && toMillis(operation.updatedAt) < toMillis(serverUpdatedAt)) {
     return {
       status: 'conflict',
@@ -213,7 +127,7 @@ const applyOperation = async (db, operation) => {
     return { status: 'applied' }
   }
 
-  const existingData = existing ? parseRowData(existing.data) : null
+  const existingData = existing?.data || null
   const nextRecord = buildRecordByEntity(
     operation.entity,
     operation.record,
@@ -230,39 +144,8 @@ const applyOperation = async (db, operation) => {
     return { status: 'applied' }
   }
 
-  await upsertRow(db, operation.entity, nextRecord)
+  await upsertSyncRecord(db, operation.entity, nextRecord)
   return { status: 'applied' }
-}
-
-const listEntityChanges = async (db, entity, since) => {
-  const { table } = ENTITY_CONFIG[entity]
-  const upserts = await db
-    .prepare(
-      `SELECT data FROM ${table}
-       WHERE deleted_at IS NULL
-         AND datetime(updated_at) > datetime(?1)
-       ORDER BY datetime(updated_at) ASC`
-    )
-    .bind(since)
-    .all()
-
-  const deletes = await db
-    .prepare(
-      `SELECT id, deleted_at FROM ${table}
-       WHERE deleted_at IS NOT NULL
-         AND datetime(deleted_at) > datetime(?1)
-       ORDER BY datetime(deleted_at) ASC`
-    )
-    .bind(since)
-    .all()
-
-  return {
-    upserts: (upserts?.results || []).map((row) => parseRowData(row.data)).filter((row) => !!row.id),
-    deletes: (deletes?.results || []).map((row) => ({
-      id: String(row.id || ''),
-      deletedAt: toIsoString(row.deleted_at || new Date().toISOString()),
-    })).filter((row) => !!row.id),
-  }
 }
 
 export const registerSyncRoutes = (app) => {
@@ -271,9 +154,9 @@ export const registerSyncRoutes = (app) => {
     const since = forceFull ? EPOCH_ISO : toIsoString(c.req.query('since') || EPOCH_ISO)
 
     const [customers, fabrics, bills] = await Promise.all([
-      listEntityChanges(c.env.DB, 'customers', since),
-      listEntityChanges(c.env.DB, 'fabrics', since),
-      listEntityChanges(c.env.DB, 'bills', since),
+      listEntityChanges(c.env.DB, 'customers', since, toIsoString),
+      listEntityChanges(c.env.DB, 'fabrics', since, toIsoString),
+      listEntityChanges(c.env.DB, 'bills', since, toIsoString),
     ])
 
     return ok(c, {

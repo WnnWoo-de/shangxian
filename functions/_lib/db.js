@@ -1,5 +1,3 @@
-import { nowIso } from './response'
-
 export const mapRow = (row) => {
   if (!row) return null
   try {
@@ -15,25 +13,16 @@ export const listRows = async (db, sql) => {
   return rows.map(mapRow).filter(Boolean)
 }
 
-export const getRowById = async (db, table, id) => {
-  const result = await db.prepare(`SELECT data FROM ${table} WHERE id = ?1`).bind(id).first()
+export const getUserByUsername = async (db, username) => {
+  const result = await db.prepare('SELECT data FROM users WHERE username = ?1 LIMIT 1').bind(username).first()
   return mapRow(result)
 }
 
-export const upsertRow = async (db, table, payload, extra = {}) => {
-  const now = nowIso()
-  const id = String(payload.id || `${table}-${Date.now()}`)
-  const next = {
-    ...payload,
-    id,
-    createdAt: payload.createdAt || now,
-    updatedAt: now,
-  }
+export const countActiveRows = async (db, table) => {
+  const result = await db.prepare(`SELECT COUNT(1) AS total FROM ${table} WHERE deleted_at IS NULL`).first()
+  return Number(result?.total || 0)
+}
 
-  await db
-    .prepare(extra.sql)
-    .bind(...extra.bind(next), JSON.stringify(next), next.createdAt, next.updatedAt)
-    .run()
-
-  return next
+export const checkConnection = async (db) => {
+  await db.prepare('SELECT 1').first()
 }

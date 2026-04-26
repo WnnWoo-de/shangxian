@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import request from '../../utils/request'
+import request from '../../api/request'
 import { fetchStatisticsOverviewApi } from '../../api/statistics'
 import { useBillRecordStore } from '../../stores/billRecord'
 import { useCustomerStore } from '../../stores/customer'

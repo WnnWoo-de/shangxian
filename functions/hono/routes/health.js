@@ -1,15 +1,19 @@
-import { ok } from '../helpers/http'
+import { fail, ok } from '../helpers/http.js'
+import { checkConnection } from '../../_lib/db.js'
 
 export const registerHealthRoutes = (app) => {
   app.get('/api/health', async (c) => {
     try {
-      await c.env.DB.prepare('SELECT 1').first()
-      return ok(c, { message: 'ok', database: 'connected', timestamp: new Date().toISOString() })
+      await checkConnection(c.env.DB)
+      return ok(c, {
+        data: {
+          database: 'connected',
+          timestamp: new Date().toISOString(),
+        },
+        message: 'ok',
+      })
     } catch (error) {
-      return c.json(
-        { success: false, message: 'database disconnected', error: String(error?.message || error) },
-        500
-      )
+      return fail(c, 'database disconnected', 500, { error: String(error?.message || error) })
     }
   })
 }

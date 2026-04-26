@@ -1,18 +1,19 @@
-import { ok } from '../helpers/http'
+import { ok } from '../helpers/http.js'
+import { countActiveRows } from '../../_lib/db.js'
 
 export const registerStatsRoutes = (app) => {
   app.get('/api/stats/overview', async (c) => {
     const [billCount, customerCount, fabricCount] = await Promise.all([
-      c.env.DB.prepare('SELECT COUNT(1) AS total FROM bills WHERE deleted_at IS NULL').first(),
-      c.env.DB.prepare('SELECT COUNT(1) AS total FROM customers WHERE deleted_at IS NULL').first(),
-      c.env.DB.prepare('SELECT COUNT(1) AS total FROM fabrics WHERE deleted_at IS NULL').first(),
+      countActiveRows(c.env.DB, 'bills'),
+      countActiveRows(c.env.DB, 'customers'),
+      countActiveRows(c.env.DB, 'fabrics'),
     ])
 
     return ok(c, {
       data: {
-        billCount: Number(billCount?.total || 0),
-        customerCount: Number(customerCount?.total || 0),
-        fabricCount: Number(fabricCount?.total || 0),
+        billCount,
+        customerCount,
+        fabricCount,
       },
     })
   })
