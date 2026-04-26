@@ -1,21 +1,58 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import * as echarts from 'echarts/core'
+import { BarChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 
 import AppIcon from '../../components/icons/AppIcon.vue'
 import { fetchStatisticsSummaryApi } from '../../api/statistics'
 import { formatMoney } from '../../utils/money'
 import { BILL_DATA_CHANGED_EVENT } from '../../utils/bill-events'
 
+echarts.use([BarChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
+
 const CUSTOMER_PAGE_SIZE = 5
 const FABRIC_PAGE_SIZE = 5
 
-const selectedMonth = ref('')
-const months = ref([])
+const padNumber = (value) => String(value).padStart(2, '0')
+const formatMonthKey = (date) => `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}`
+const CURRENT_MONTH_KEY = formatMonthKey(new Date())
+
+const getMonthDate = (monthKey) => {
+  const [yearText = '', monthText = ''] = String(monthKey || '').split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    const fallback = new Date()
+    return new Date(fallback.getFullYear(), fallback.getMonth(), 1)
+  }
+  return new Date(year, month - 1, 1)
+}
+
+const getMonthTitle = (monthKey) => {
+  const monthDate = getMonthDate(monthKey)
+  return `${monthDate.getFullYear()}年${monthDate.getMonth() + 1}月`
+}
+
+const shiftMonth = (monthKey, offset) => {
+  const monthDate = getMonthDate(monthKey)
+  monthDate.setMonth(monthDate.getMonth() + offset)
+  return formatMonthKey(monthDate)
+}
+
+const getDaysInMonth = (monthKey) => {
+  const monthDate = getMonthDate(monthKey)
+  return new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate()
+}
+
+const selectedMonth = ref(CURRENT_MONTH_KEY)
 const loading = ref(false)
-const suppressMonthWatch = ref(false)
 const chartMotionReady = ref(false)
 const customerPage = ref(1)
 const fabricPage = ref(1)
+const trendChartRef = ref(null)
+
 const summaryData = ref({
   overview: {
     totalIncome: 0,
@@ -30,6 +67,8 @@ const summaryData = ref({
   fabricDistribution: [],
 })
 
+let trendChartInstance = null
+
 const clampPage = (page, pageCount) => Math.min(Math.max(page, 1), pageCount)
 
 const paginate = (list, page, pageSize) => {
@@ -37,25 +76,21 @@ const paginate = (list, page, pageSize) => {
   return list.slice(start, start + pageSize)
 }
 
+const getCssVarValue = (name, fallback) => {
+  if (typeof window === 'undefined') return fallback
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return value || fallback
+}
+
 const resetPanelPages = () => {
   customerPage.value = 1
   fabricPage.value = 1
 }
 
-const loadStatistics = async (month = '') => {
+const loadStatistics = async (month = selectedMonth.value || CURRENT_MONTH_KEY) => {
   loading.value = true
   try {
-    const data = await fetchStatisticsSummaryApi(month ? { month } : {})
-    months.value = Array.isArray(data.months) ? data.months : []
-
-    const nextMonth = data.selectedMonth || months.value[0] || ''
-    if (selectedMonth.value !== nextMonth) {
-      suppressMonthWatch.value = true
-      selectedMonth.value = nextMonth
-      await nextTick()
-      suppressMonthWatch.value = false
-    }
-
+    const data = await fetchStatisticsSummaryApi({ month })
     summaryData.value = {
       overview: data.overview || {
         totalIncome: 0,
@@ -74,7 +109,8 @@ const loadStatistics = async (month = '') => {
   }
 }
 
-const availableMonths = computed(() => months.value)
+const selectedMonthTitle = computed(() => getMonthTitle(selectedMonth.value))
+const canGoNextMonth = computed(() => selectedMonth.value < CURRENT_MONTH_KEY)
 
 const monthlyStats = computed(() => ({
   totalAmount: Number(summaryData.value.overview?.totalTransactionAmount || 0),
@@ -83,20 +119,29 @@ const monthlyStats = computed(() => ({
 }))
 
 const dailyTrend = computed(() => {
-  const list = Array.isArray(summaryData.value.daily) ? summaryData.value.daily : []
-  const maxAmount = Math.max(...list.map((item) => Number(item.totalAmount || 0)), 1)
+  const source = Array.isArray(summaryData.value.daily) ? summaryData.value.daily : []
+  const byDay = new Map(source.map((item) => [
+    Number(item.day || 0),
+    {
+      income: Number(item.income || 0),
+      expense: Number(item.expense || 0),
+    },
+  ]))
 
-  return list.map((item) => ({
-    day: Number(item.day || 0),
-    amount: Number(item.totalAmount || 0),
-    height: Math.max(2, (Number(item.totalAmount || 0) / maxAmount) * 100),
-  }))
+  return Array.from({ length: getDaysInMonth(selectedMonth.value) }, (_, index) => {
+    const day = index + 1
+    const matched = byDay.get(day)
+    return {
+      day,
+      label: `${day}日`,
+      income: Number(matched?.income || 0),
+      expense: Number(matched?.expense || 0),
+    }
+  })
 })
 
-const animatedDailyTrend = computed(() => dailyTrend.value.map((item) => ({
-  ...item,
-  renderHeight: chartMotionReady.value ? item.height : 0,
-})))
+const hasTrendData = computed(() => dailyTrend.value.some((item) => item.income > 0 || item.expense > 0))
+const trendChartWidth = computed(() => Math.max(720, dailyTrend.value.length * 34))
 
 const byCustomer = computed(() => {
   const list = Array.isArray(summaryData.value.customerRanking) ? summaryData.value.customerRanking : []
@@ -127,12 +172,210 @@ const byFabric = computed(() => {
 const fabricPageCount = computed(() => Math.max(1, Math.ceil(byFabric.value.length / FABRIC_PAGE_SIZE)))
 const pagedFabrics = computed(() => paginate(byFabric.value, fabricPage.value, FABRIC_PAGE_SIZE))
 
+const goPrevMonth = () => {
+  if (loading.value) return
+  selectedMonth.value = shiftMonth(selectedMonth.value, -1)
+}
+
+const goNextMonth = () => {
+  if (loading.value || !canGoNextMonth.value) return
+  selectedMonth.value = shiftMonth(selectedMonth.value, 1)
+}
+
 const goCustomerPage = (page) => {
   customerPage.value = clampPage(page, customerPageCount.value)
 }
 
 const goFabricPage = (page) => {
   fabricPage.value = clampPage(page, fabricPageCount.value)
+}
+
+const renderTrendChart = () => {
+  if (!trendChartRef.value) return
+
+  if (!trendChartInstance) {
+    trendChartInstance = echarts.init(trendChartRef.value)
+  }
+
+  const textMuted = getCssVarValue('--text-muted', '#7c8698')
+  const textNormal = getCssVarValue('--text-normal', '#1f2937')
+  const panelLine = getCssVarValue('--panel-line', 'rgba(201, 214, 230, 0.7)')
+  const primaryDark = getCssVarValue('--primary-dark', '#2a78d1')
+  const data = dailyTrend.value
+
+  trendChartInstance.setOption({
+    animationDuration: 450,
+    animationEasing: 'cubicOut',
+    color: ['#169b62', '#d25959'],
+    grid: {
+      left: 20,
+      right: 20,
+      top: 62,
+      bottom: 24,
+      containLabel: true,
+    },
+    legend: {
+      top: 12,
+      left: 12,
+      itemWidth: 12,
+      itemHeight: 8,
+      textStyle: {
+        color: textMuted,
+        fontSize: 12,
+      },
+      data: ['收入', '支出'],
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow',
+        shadowStyle: {
+          color: 'rgba(38, 115, 199, 0.06)',
+        },
+      },
+      backgroundColor: 'rgba(19, 29, 44, 0.92)',
+      borderWidth: 0,
+      textStyle: {
+        color: '#ffffff',
+        fontSize: 12,
+      },
+      extraCssText: 'border-radius:12px;box-shadow:0 12px 24px rgba(0,0,0,0.16);',
+      formatter: (params) => {
+        const rows = [`<strong>${params[0]?.axisValueLabel || ''}</strong>`]
+        params.forEach((item) => {
+          rows.push(`${item.marker}${item.seriesName}：${formatMoney(item.value)}`)
+        })
+        return rows.join('<br/>')
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: data.map((item) => item.label),
+      axisLine: {
+        lineStyle: {
+          color: panelLine,
+        },
+      },
+      axisTick: {
+        alignWithLabel: true,
+      },
+      axisLabel: {
+        interval: 0,
+        color: textMuted,
+        fontSize: 12,
+        margin: 14,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      name: '元',
+      nameTextStyle: {
+        color: textMuted,
+        fontSize: 12,
+        padding: [0, 0, 8, 0],
+      },
+      axisLine: {
+        show: false,
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: textMuted,
+        fontSize: 12,
+        formatter: (value) => {
+          if (Math.abs(value) >= 10000) {
+            const tenThousands = value / 10000
+            return Number.isInteger(tenThousands) ? `${tenThousands}万` : `${tenThousands.toFixed(1)}万`
+          }
+          return String(value)
+        },
+      },
+      splitLine: {
+        lineStyle: {
+          color: 'rgba(201, 214, 230, 0.55)',
+          type: 'dashed',
+        },
+      },
+    },
+    series: [
+      {
+        name: '收入',
+        type: 'bar',
+        barWidth: 10,
+        itemStyle: {
+          color: '#169b62',
+          borderRadius: [6, 6, 0, 0],
+        },
+        emphasis: {
+          itemStyle: {
+            color: '#11a164',
+          },
+        },
+        data: data.map((item) => item.income),
+      },
+      {
+        name: '支出',
+        type: 'bar',
+        barWidth: 10,
+        itemStyle: {
+          color: '#d25959',
+          borderRadius: [6, 6, 0, 0],
+        },
+        emphasis: {
+          itemStyle: {
+            color: '#c94c4c',
+          },
+        },
+        data: data.map((item) => item.expense),
+      },
+    ],
+    graphic: hasTrendData.value
+      ? []
+      : [
+          {
+            type: 'text',
+            left: 'center',
+            top: 'middle',
+            silent: true,
+            style: {
+              text: '本月暂无收支记录',
+              fill: textNormal,
+              fontSize: 14,
+              fontWeight: 600,
+            },
+          },
+          {
+            type: 'text',
+            left: 'center',
+            top: 'middle',
+            silent: true,
+            style: {
+              text: '整月日期已保留，金额按 0 展示',
+              fill: textMuted,
+              fontSize: 12,
+            },
+            y: 24,
+          },
+        ],
+  }, true)
+
+  if (loading.value) {
+    trendChartInstance.showLoading('default', {
+      text: '月报数据加载中...',
+      color: primaryDark,
+      textColor: textMuted,
+      maskColor: 'rgba(255,255,255,0.68)',
+    })
+  } else {
+    trendChartInstance.hideLoading()
+  }
+
+  trendChartInstance.resize()
+}
+
+const resizeTrendChart = () => {
+  trendChartInstance?.resize()
 }
 
 const handlePageReactiveRefresh = () => {
@@ -142,12 +385,13 @@ const handlePageReactiveRefresh = () => {
 }
 
 watch(selectedMonth, async (value, oldValue) => {
-  if (suppressMonthWatch.value || !value || value === oldValue) return
+  if (!value || value === oldValue) return
   resetPanelPages()
   chartMotionReady.value = false
   await loadStatistics(value)
   await nextTick()
   chartMotionReady.value = true
+  renderTrendChart()
 })
 
 watch(byCustomer, () => {
@@ -159,7 +403,16 @@ watch(byFabric, () => {
 })
 
 watch(
-  [dailyTrend, pagedFabrics],
+  [dailyTrend, loading],
+  async () => {
+    await nextTick()
+    renderTrendChart()
+  },
+  { flush: 'post' }
+)
+
+watch(
+  pagedFabrics,
   async () => {
     chartMotionReady.value = false
     await nextTick()
@@ -169,18 +422,23 @@ watch(
 )
 
 onMounted(async () => {
-  await loadStatistics()
+  await loadStatistics(selectedMonth.value)
   await nextTick()
   chartMotionReady.value = true
+  renderTrendChart()
+  window.addEventListener('resize', resizeTrendChart)
   window.addEventListener('focus', handlePageReactiveRefresh)
   document.addEventListener('visibilitychange', handlePageReactiveRefresh)
   window.addEventListener(BILL_DATA_CHANGED_EVENT, handlePageReactiveRefresh)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', resizeTrendChart)
   window.removeEventListener('focus', handlePageReactiveRefresh)
   document.removeEventListener('visibilitychange', handlePageReactiveRefresh)
   window.removeEventListener(BILL_DATA_CHANGED_EVENT, handlePageReactiveRefresh)
+  trendChartInstance?.dispose()
+  trendChartInstance = null
 })
 </script>
 
@@ -188,12 +446,9 @@ onUnmounted(() => {
   <section class="stats-page slide-up-enter-active">
     <header class="stats-header">
       <div class="title-area">
-        <h1>月度报表 <span class="subtitle">Monthly Financial Report</span></h1>
-        <div class="month-picker">
-          <label>选择查询月份：</label>
-          <select v-model="selectedMonth" class="modern-select">
-            <option v-for="month in availableMonths" :key="month" :value="month">{{ month }}</option>
-          </select>
+        <div class="title-copy">
+          <h1>月度报表 <span class="subtitle">Monthly Financial Report</span></h1>
+          <p class="page-tip">按整月查看每日收入与支出，空白日期也会完整展示。</p>
         </div>
       </div>
     </header>
@@ -216,23 +471,27 @@ onUnmounted(() => {
         </div>
 
         <div class="trend-section">
-          <h3>
-            每日收支趋势
-            <span class="tip">单位：元</span>
-          </h3>
-          <div class="trend-chart">
-            <div
-              v-for="item in animatedDailyTrend"
-              :key="item.day"
-              class="chart-bar-wrap"
-              :title="`第 ${item.day} 日: ¥ ${formatMoney(item.amount)}`"
-            >
-              <div
-                class="bar-actual"
-                :style="{ height: `${item.renderHeight}%` }"
-                :class="{ active: item.amount > 0, ready: chartMotionReady }"
-              ></div>
-              <span class="bar-label">{{ item.day }}</span>
+          <div class="trend-head">
+            <div class="trend-title-group">
+              <h3>每日收支趋势</h3>
+              <span class="tip">双柱对比收入 / 支出，单位：元</span>
+            </div>
+            <div class="month-pager">
+              <button type="button" class="pager-btn" :disabled="loading" @click="goPrevMonth">
+                <AppIcon name="chevron-left" />
+              </button>
+              <div class="month-title-card">
+                <span class="month-card-label">当前月份</span>
+                <strong>{{ selectedMonthTitle }}</strong>
+              </div>
+              <button type="button" class="pager-btn" :disabled="loading || !canGoNextMonth" @click="goNextMonth">
+                <AppIcon name="chevron-right" />
+              </button>
+            </div>
+          </div>
+          <div class="trend-chart-shell">
+            <div class="trend-chart-scroll">
+              <div ref="trendChartRef" class="trend-chart-canvas" :style="{ width: `${trendChartWidth}px` }"></div>
             </div>
           </div>
         </div>
@@ -345,7 +604,7 @@ onUnmounted(() => {
 .title-area {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 16px;
 }
 
@@ -365,33 +624,11 @@ onUnmounted(() => {
   letter-spacing: 1px;
 }
 
-.month-picker {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.month-picker label {
+.page-tip {
+  margin: 10px 0 0;
   font-size: 14px;
+  line-height: 1.6;
   color: var(--text-muted);
-}
-
-.modern-select {
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-line);
-  padding: 8px 16px;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--primary-dark);
-  cursor: pointer;
-  outline: none;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.3s;
-}
-
-.modern-select:hover {
-  border-color: var(--primary);
 }
 
 .overview-grid {
@@ -451,69 +688,80 @@ onUnmounted(() => {
   padding: 32px;
 }
 
-.trend-section h3 {
-  font-size: 16px;
-  color: var(--text-normal);
-  margin-bottom: 24px;
+.trend-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
 }
 
-.trend-section h3 .tip {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: normal;
-}
-
-.trend-chart {
-  height: 160px;
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding-bottom: 24px;
-  border-bottom: 1px dashed var(--panel-line);
-}
-
-.chart-bar-wrap {
-  flex: 1;
-  height: 100%;
+.trend-title-group {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
   gap: 8px;
-  position: relative;
 }
 
-.bar-actual {
-  width: 100%;
-  background: rgba(146, 196, 236, 0.15);
-  border-radius: 4px;
-  transform-origin: bottom;
-  transition: height 0s;
-  will-change: height;
+.trend-section h3 {
+  font-size: 18px;
+  color: var(--text-normal);
+  margin: 0;
 }
 
-.bar-actual.ready {
-  transition: height 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.05), background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, filter 0.3s ease;
-}
-
-.bar-actual.active {
-  background: linear-gradient(180deg, #3ccfd3 0%, var(--accent-blue-deep) 100%);
-  box-shadow: 0 4px 8px rgba(36, 127, 214, 0.2);
-}
-
-.chart-bar-wrap:hover .bar-actual.active {
-  transform: scaleX(1.2);
-  filter: brightness(1.1);
-}
-
-.bar-label {
-  font-size: 10px;
+.trend-title-group .tip {
+  font-size: 12px;
   color: var(--text-muted);
-  position: absolute;
-  bottom: -20px;
+  font-weight: 500;
+}
+
+.month-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.month-title-card {
+  min-width: 148px;
+  padding: 8px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(38, 115, 199, 0.12);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(243, 247, 255, 0.92));
+  box-shadow: 0 10px 24px rgba(24, 52, 93, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.month-card-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.month-title-card strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary-dark);
+  line-height: 1.15;
+}
+
+.trend-chart-shell {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-bottom: 1px dashed var(--panel-line);
+  border-top: 1px dashed var(--panel-line);
+}
+
+.trend-chart-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 10px;
+}
+
+.trend-chart-canvas {
+  height: 360px;
+  min-width: 100%;
 }
 
 .detail-grid {
@@ -745,18 +993,27 @@ th {
     align-items: flex-start;
   }
 
-  .month-picker {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .modern-select {
-    width: 100%;
-  }
-
   .panel-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .trend-head {
+    align-items: stretch;
+  }
+
+  .month-pager {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .month-title-card {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .trend-chart-canvas {
+    height: 320px;
   }
 
   .bar-row {
