@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, reactive, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppIcon from '../../components/icons/AppIcon.vue'
@@ -30,6 +30,7 @@ const customerStore = useCustomerStore()
 const customerPriceStore = useCustomerPriceStore()
 const fabricStore = useFabricStore()
 const saving = ref(false)
+const detailPanelRef = ref(null)
 const isPurchase = computed(() => props.type === 'purchase')
 const DRAFT_STORAGE_KEY = computed(() => props.type === 'sale' ? 'sale-order-editor-draft' : 'purchase-order-editor-draft')
 
@@ -76,16 +77,6 @@ const form = reactive({
   firstWeight: 0,
   lastWeight: 0,
   netWeight: 0,
-})
-
-const makeWeighingRow = () => ({
-  id: `weigh-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-  fabricId: '',
-  fabricName: '',
-  unitPrice: 0,
-  firstWeight: 0,
-  lastWeight: 0,
-  note: '',
 })
 
 const weighingRows = ref([])
@@ -428,8 +419,13 @@ const addRow = () => {
   rows.value.push(makeRow())
 }
 
-const addWeighingDetail = () => {
-  weighingRows.value.push(makeWeighingRow())
+const handleAddDetailFromFooter = async () => {
+  addRow()
+  await nextTick()
+  detailPanelRef.value?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
 }
 
 const removeWeighingDetail = (index) => {
@@ -1093,7 +1089,7 @@ const exportImage = () => {
       </div>
     </section>
 
-    <section class="panel detail-panel">
+    <section ref="detailPanelRef" class="panel detail-panel">
       <div class="panel-title-row">
         <h3 class="title-with-icon">
           <AppIcon name="layers" size="18" />
@@ -1102,7 +1098,7 @@ const exportImage = () => {
         <button type="button" class="btn-ghost" @click="addRow">
           <span class="btn-content">
             <AppIcon name="plus" size="16" />
-            <span>添加计重货物</span>
+            <span>添加明细</span>
           </span>
         </button>
       </div>
@@ -1167,12 +1163,6 @@ const exportImage = () => {
           <AppIcon name="scale" size="18" />
           <span>过磅信息</span>
         </h3>
-        <button type="button" class="btn-ghost weighing-add-btn" @click="addWeighingDetail">
-          <span class="btn-content">
-            <AppIcon name="plus" size="16" />
-            <span>添加明细</span>
-          </span>
-        </button>
       </div>
       <div class="weighing-grid">
         <label class="field">
@@ -1308,6 +1298,12 @@ const exportImage = () => {
         </div>
       </div>
       <div class="actions action-toolbar">
+        <button type="button" class="btn-tag add-detail-tag" @click="handleAddDetailFromFooter">
+          <span class="btn-content">
+            <AppIcon name="plus" size="16" />
+            <span>添加明细</span>
+          </span>
+        </button>
         <button type="button" class="btn-ghost" @click="handleClearEditor">
           <span class="btn-content">
             <AppIcon name="trash" size="16" />
@@ -1398,15 +1394,6 @@ const exportImage = () => {
 }
 .weighing-card .title-with-icon {
   color: var(--weighing-accent-strong);
-}
-.weighing-add-btn {
-  flex: 0 0 auto;
-  border-color: var(--weighing-accent-line);
-  color: var(--weighing-accent-strong);
-  background: rgba(255, 255, 255, 0.58);
-}
-.weighing-add-btn:hover {
-  background: var(--weighing-accent-soft);
 }
 .weighing-card .field input:focus,
 .weighing-card .field select:focus,
@@ -1601,6 +1588,7 @@ const exportImage = () => {
 }
 .btn-primary,
 .btn-ghost,
+.btn-tag,
 .btn-text {
   border: none;
   border-radius: 14px;
@@ -1622,12 +1610,35 @@ const exportImage = () => {
   border: 1px solid var(--panel-line);
   color: var(--text-normal);
 }
+.btn-tag {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-normal);
+}
 .btn-text {
   background: transparent;
   color: var(--text-normal);
 }
 .btn-text.danger {
   color: #d24d57;
+}
+.add-detail-tag {
+  margin-right: auto;
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(20, 31, 58, 0.08);
+}
+.purchase-theme .add-detail-tag {
+  border-color: rgba(35, 120, 98, 0.2);
+  background: rgba(35, 180, 140, 0.1);
+  color: #167c63;
+}
+.sale-theme .add-detail-tag {
+  border-color: rgba(198, 90, 25, 0.2);
+  background: rgba(240, 143, 45, 0.12);
+  color: #a94710;
+}
+.add-detail-tag:hover {
+  transform: translateY(-1px);
 }
 .btn-content {
   display: inline-flex;
@@ -1661,13 +1672,6 @@ const exportImage = () => {
   .weighing-remove-btn {
     width: 100%;
   }
-  .weighing-card .panel-title-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .weighing-add-btn {
-    width: 100%;
-  }
   .single-weight-tip {
     align-items: flex-start;
     flex-direction: column;
@@ -1675,6 +1679,9 @@ const exportImage = () => {
   .action-toolbar {
     width: 100%;
     justify-content: stretch;
+  }
+  .add-detail-tag {
+    margin-right: 0;
   }
   .action-toolbar button {
     flex: 1 1 calc(50% - 6px);
