@@ -31,6 +31,7 @@ const customerPriceStore = useCustomerPriceStore()
 const fabricStore = useFabricStore()
 const saving = ref(false)
 const detailPanelRef = ref(null)
+const detailFabricSelectRefs = ref({})
 const isPurchase = computed(() => props.type === 'purchase')
 const DRAFT_STORAGE_KEY = computed(() => props.type === 'sale' ? 'sale-order-editor-draft' : 'purchase-order-editor-draft')
 
@@ -415,17 +416,41 @@ const unsettledAmount = computed({
   }
 })
 
-const addRow = () => {
-  rows.value.push(makeRow())
+const setDetailFabricSelectRef = (rowId, element) => {
+  if (element) {
+    detailFabricSelectRefs.value[rowId] = element
+    return
+  }
+  delete detailFabricSelectRefs.value[rowId]
 }
 
-const handleAddDetailFromFooter = async () => {
-  addRow()
+const focusDetailFabricField = async (rowId) => {
   await nextTick()
-  detailPanelRef.value?.scrollIntoView({
+  const target = detailFabricSelectRefs.value[rowId]
+  if (!target) {
+    detailPanelRef.value?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+    return
+  }
+  target.scrollIntoView({
     behavior: 'smooth',
-    block: 'start',
+    block: 'center',
+    inline: 'nearest',
   })
+  target.focus()
+}
+
+const addRow = () => {
+  const row = makeRow()
+  rows.value.push(row)
+  return row.id
+}
+
+const handleAddDetail = async () => {
+  const rowId = addRow()
+  await focusDetailFabricField(rowId)
 }
 
 const removeWeighingDetail = (index) => {
@@ -1095,7 +1120,7 @@ const exportImage = () => {
           <AppIcon name="layers" size="18" />
           <span>单独计重货物</span>
         </h3>
-        <button type="button" class="btn-ghost" @click="addRow">
+        <button type="button" class="btn-ghost" @click="handleAddDetail">
           <span class="btn-content">
             <AppIcon name="plus" size="16" />
             <span>添加明细</span>
@@ -1110,6 +1135,7 @@ const exportImage = () => {
               <span>品种</span>
               <select
                 v-model="rows[idx].fabricId"
+                :ref="(element) => setDetailFabricSelectRef(rowView.id, element)"
                 @change="selectFabric(rows[idx])"
               >
                 <option value="">请选择品种</option>
@@ -1298,7 +1324,7 @@ const exportImage = () => {
         </div>
       </div>
       <div class="actions action-toolbar">
-        <button type="button" class="btn-tag add-detail-tag" @click="handleAddDetailFromFooter">
+        <button type="button" class="btn-tag add-detail-tag" @click="handleAddDetail">
           <span class="btn-content">
             <AppIcon name="plus" size="16" />
             <span>添加明细</span>
