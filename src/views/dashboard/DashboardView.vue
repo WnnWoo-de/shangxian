@@ -15,6 +15,8 @@ import IconFabric from '@/components/icons/IconFabric.vue'
 import IconReport from '@/components/icons/IconReport.vue'
 import IconStatistics from '@/components/icons/IconStatistics.vue'
 import { onBillDataChanged } from '@/utils/bill-events'
+import { getRecordTotalAmount, getRecordTotalWeight, toFiniteNumber } from '@/utils/bill-metrics'
+import { DATE_FORMATS, dayjs } from '@/utils/date'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -36,47 +38,76 @@ const shortcuts = [
   { label: '品种管理', route: '/fabric', icon: IconFabric, color: '#e67e22' },
 ]
 
+const TIME_RANGE_LABELS = {
+  today: '今日',
+  week: '本周',
+  month: '本月',
+}
+
 // 获取日期范围
 const getDateRange = () => {
-  const now = new Date()
-  const today = now.toISOString().slice(0, 10)
+  const now = dayjs()
+  const today = now.format(DATE_FORMATS.DATE)
 
   if (timeRange.value === 'today') {
     return { start: today, end: today }
-  } else if (timeRange.value === 'week') {
-    const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() - now.getDay())
+  }
+
+  if (timeRange.value === 'week') {
     return {
-      start: weekStart.toISOString().slice(0, 10),
-      end: today
-    }
-  } else {
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    return {
-      start: monthStart.toISOString().slice(0, 10),
+      start: now.startOf('isoWeek').format(DATE_FORMATS.DATE),
       end: today
     }
   }
+
+  return {
+    start: now.startOf('month').format(DATE_FORMATS.DATE),
+    end: today
+  }
+}
+
+const getBillDateKey = (bill) => {
+  const source = bill.billDate || bill.createdAt || bill.updatedAt
+  if (!source) return ''
+  const parsed = dayjs(source)
+  if (!parsed.isValid()) return ''
+  return parsed.format(DATE_FORMATS.DATE)
 }
 
 // 筛选指定日期范围内的单据
 const filteredBills = computed(() => {
   const { start, end } = getDateRange()
   return billRecordStore.records.filter(item => {
-    const billDate = item.billDate || item.createdAt?.slice?.(0, 10)
+    const billDate = getBillDateKey(item)
     return billDate >= start && billDate <= end
   })
 })
 
+const todayBills = computed(() => {
+  const today = dayjs().format(DATE_FORMATS.DATE)
+  return billRecordStore.records.filter(item => getBillDateKey(item) === today)
+})
+
 const purchaseBills = computed(() => filteredBills.value.filter(item => item.type === 'purchase'))
 const saleBills = computed(() => filteredBills.value.filter(item => item.type === 'sale'))
+const filteredPartnerCount = computed(() => {
+  const partners = new Set()
+  filteredBills.value.forEach((bill) => {
+    const key = String(bill.partnerId || bill.customerId || bill.partnerName || bill.customerName || '').trim()
+    if (key) partners.add(key)
+  })
+  return partners.size
+})
 
 // 计算统计数据
 const stats = computed(() => {
   const purchaseCount = purchaseBills.value.length
   const saleCount = saleBills.value.length
-  const purchaseAmount = purchaseBills.value.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0)
-  const saleAmount = saleBills.value.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0)
+  const purchaseAmount = purchaseBills.value.reduce((sum, item) => sum + getRecordTotalAmount(item), 0)
+  const saleAmount = saleBills.value.reduce((sum, item) => sum + getRecordTotalAmount(item), 0)
+  const purchaseWeight = purchaseBills.value.reduce((sum, item) => sum + getRecordTotalWeight(item), 0)
+  const saleWeight = saleBills.value.reduce((sum, item) => sum + getRecordTotalWeight(item), 0)
+  const unsettledCount = filteredBills.value.filter((item) => toFiniteNumber(item.unsettledAmount, 0) > 0).length
   const profit = saleAmount - purchaseAmount
 
   return [
@@ -84,8 +115,10 @@ const stats = computed(() => {
     { label: '出货单数', value: saleCount, suffix: '单', color: '#2c3e50', icon: IconSale },
     { label: '进货金额', value: Number(purchaseAmount).toFixed(2), prefix: '¥ ', color: '#d4a76a', icon: IconList },
     { label: '出货金额', value: Number(saleAmount).toFixed(2), prefix: '¥ ', color: '#62c29a', icon: IconReport },
+    { label: '总重量', value: Number(purchaseWeight + saleWeight).toFixed(2), suffix: '斤', color: '#9ecfc2', icon: IconFabric },
+    { label: '未结单据', value: unsettledCount, suffix: '单', color: '#e67e22', icon: IconStatistics },
     { label: '经营利润', value: Number(profit).toFixed(2), prefix: '¥ ', color: profit >= 0 ? '#1a915c' : '#e74c3c', icon: IconStatistics },
-    { label: '活跃客户', value: customerStore.activeCount, suffix: '位', color: '#9ecfc2', icon: IconCustomer },
+    { label: '往来客户', value: filteredPartnerCount.value, suffix: '位', color: '#9ecfc2', icon: IconCustomer },
   ]
 })
 
@@ -127,7 +160,7 @@ const getQuickTip = () => {
   if (recentBills.value.length === 0) {
     return '欢迎使用！点击上方按钮开始创建第一张单据。'
   }
-  const todayCount = filteredBills.value.length
+  const todayCount = todayBills.value.length
   if (todayCount === 0) {
     return '今天还没有开单，从进货或出货开始吧！'
   }
@@ -222,9 +255,9 @@ onUnmounted(() => {
       <div class="time-range-tabs">
         <button
           v-for="range in [
-            { key: 'today', label: '今日' },
-            { key: 'week', label: '本周' },
-            { key: 'month', label: '本月' }
+            { key: 'today', label: TIME_RANGE_LABELS.today },
+            { key: 'week', label: TIME_RANGE_LABELS.week },
+            { key: 'month', label: TIME_RANGE_LABELS.month }
           ]"
           :key="range.key"
           :class="['time-tab', { active: timeRange === range.key }]"

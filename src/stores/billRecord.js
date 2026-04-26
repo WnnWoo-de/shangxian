@@ -5,6 +5,7 @@ import { billRecords as seedBillRecords } from '@/data/billRecords'
 import { createBillApi, deleteBillApi, fetchBillsApi, updateBillApi } from '@/api/cloud'
 import { storage, StorageTypes } from '@/utils'
 import { emitBillDataChanged } from '@/utils/bill-events'
+import { today } from '@/utils/date'
 import { enqueueSyncOperation } from '@/utils/sync-queue'
 
 const STORAGE_KEY = StorageTypes.BILLS
@@ -117,7 +118,7 @@ const normalizeRecord = (record = {}) => {
     ? unsettledAmountNumber
     : Math.max(totalAmount - (record.type === 'sale' ? receivedAmount : paidAmount), 0)
   const partnerName = record.partnerName || record.customerName || record.supplier || ''
-  const billDate = record.billDate || record.date?.slice?.(0, 10) || new Date().toISOString().slice(0, 10)
+  const billDate = record.billDate || record.date?.slice?.(0, 10) || today()
   const weighingDetails = Array.isArray(record.weighingDetails)
     ? record.weighingDetails.map((item, index) => normalizeWeighingDetail(item, index))
     : []

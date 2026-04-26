@@ -13,6 +13,7 @@ import { formatMoney } from '../../utils/money'
 import { showToast } from '../../utils/toast'
 import { MASTER_DATA_CHANGED_EVENT } from '../../utils/master-data-events'
 import { getExportImageBrandName } from '../../utils/app-config'
+import { today } from '../../utils/date'
 
 const props = defineProps({
   type: {
@@ -426,7 +427,7 @@ const buildExportRows = () => {
 }
 
 const getExportFileBase = () => {
-  const date = new Date().toISOString().slice(0, 10)
+  const date = today()
   const partnerName = (form.supplier.trim() || '未命名对象').replace(/[\\/:*?"<>|\s]+/g, '_')
   const typeText = isSale.value ? '出货单' : '进货单'
   return `${typeText}_${date}_${partnerName}`
@@ -439,7 +440,7 @@ const getPartnerContactText = () => {
 
 const buildExportMetaRows = () => {
   const rows = [
-    ['单据日期', form.createdAt || new Date().toISOString().slice(0, 10)],
+    ['单据日期', form.createdAt || today()],
   ]
   const partnerName = form.supplier.trim()
   const contactText = getPartnerContactText()

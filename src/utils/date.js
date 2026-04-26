@@ -92,8 +92,8 @@ export const DateRanges = {
   // 本周
   thisWeek() {
     return {
-      start: dayjs().startOf('week').format(DATE_FORMATS.DATETIME),
-      end: dayjs().endOf('week').format(DATE_FORMATS.DATETIME),
+      start: dayjs().startOf('isoWeek').format(DATE_FORMATS.DATETIME),
+      end: dayjs().endOf('isoWeek').format(DATE_FORMATS.DATETIME),
       label: '本周'
     }
   },
@@ -101,8 +101,8 @@ export const DateRanges = {
   // 上周
   lastWeek() {
     return {
-      start: dayjs().subtract(1, 'week').startOf('week').format(DATE_FORMATS.DATETIME),
-      end: dayjs().subtract(1, 'week').endOf('week').format(DATE_FORMATS.DATETIME),
+      start: dayjs().subtract(1, 'week').startOf('isoWeek').format(DATE_FORMATS.DATETIME),
+      end: dayjs().subtract(1, 'week').endOf('isoWeek').format(DATE_FORMATS.DATETIME),
       label: '上周'
     }
   },

@@ -15,6 +15,7 @@ import { showToast } from '../../utils/toast'
 import { countExcelTextLines, formatExcelWrapText, getExcelWrappedRowHeight } from '../../utils/excel'
 import { MASTER_DATA_CHANGED_EVENT } from '../../utils/master-data-events'
 import { getExportImageBrandName } from '../../utils/app-config'
+import { today } from '../../utils/date'
 
 const props = defineProps({
   type: {
@@ -548,7 +549,7 @@ const saveBill = async () => {
     const payload = {
       type: props.type,
       billNo: isEditing.value ? currentRecord.value.billNo : `B${Date.now()}`,
-      billDate: new Date().toISOString().slice(0, 10),
+      billDate: today(),
       partnerId: form.partnerId,
       partnerName: form.partnerName,
       note: '',
@@ -684,7 +685,7 @@ const buildExportRows = () => {
 }
 
 const getExportFileBase = () => {
-  const date = new Date().toISOString().slice(0, 10)
+  const date = today()
   const partnerName = (form.partnerName.trim() || '未命名对象').replace(/[\\/:*?"<>|\s]+/g, '_')
   const typeText = isPurchase.value ? '进货单' : '出货单'
   return `${typeText}_${date}_${partnerName}`
@@ -697,7 +698,7 @@ const getPartnerContactText = () => {
 
 const buildExportMetaRows = () => {
   const rows = [
-    ['单据日期', new Date().toISOString().slice(0, 10)],
+    ['单据日期', today()],
   ]
   const partnerName = form.partnerName.trim()
   const contactText = getPartnerContactText()
