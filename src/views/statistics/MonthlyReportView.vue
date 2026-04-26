@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as echarts from 'echarts/core'
-import { BarChart } from 'echarts/charts'
+import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 
@@ -10,7 +10,7 @@ import { fetchStatisticsSummaryApi } from '../../api/statistics'
 import { formatMoney } from '../../utils/money'
 import { BILL_DATA_CHANGED_EVENT } from '../../utils/bill-events'
 
-echarts.use([BarChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
+echarts.use([BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
 const CUSTOMER_PAGE_SIZE = 5
 const FABRIC_PAGE_SIZE = 5
@@ -131,11 +131,14 @@ const dailyTrend = computed(() => {
   return Array.from({ length: getDaysInMonth(selectedMonth.value) }, (_, index) => {
     const day = index + 1
     const matched = byDay.get(day)
+    const income = Number(matched?.income || 0)
+    const expense = Number(matched?.expense || 0)
     return {
       day,
       label: `${day}日`,
-      income: Number(matched?.income || 0),
-      expense: Number(matched?.expense || 0),
+      income,
+      expense,
+      net: Number((income - expense).toFixed(2)),
     }
   })
 })
@@ -206,7 +209,7 @@ const renderTrendChart = () => {
   trendChartInstance.setOption({
     animationDuration: 450,
     animationEasing: 'cubicOut',
-    color: ['#169b62', '#d25959'],
+    color: ['#169b62', '#d25959', '#2a78d1'],
     grid: {
       left: 20,
       right: 20,
@@ -223,7 +226,7 @@ const renderTrendChart = () => {
         color: textMuted,
         fontSize: 12,
       },
-      data: ['收入', '支出'],
+      data: ['收入', '支出', '净额'],
     },
     tooltip: {
       trigger: 'axis',
@@ -328,6 +331,30 @@ const renderTrendChart = () => {
           },
         },
         data: data.map((item) => item.expense),
+      },
+      {
+        name: '净额',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 7,
+        z: 3,
+        lineStyle: {
+          width: 3,
+          color: '#2a78d1',
+        },
+        itemStyle: {
+          color: '#2a78d1',
+          borderColor: '#ffffff',
+          borderWidth: 2,
+        },
+        emphasis: {
+          scale: true,
+          itemStyle: {
+            color: '#1d66c3',
+          },
+        },
+        data: data.map((item) => item.net),
       },
     ],
     graphic: hasTrendData.value
