@@ -4,9 +4,25 @@ import storage from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
 
 const DEFAULT_API_BASE = '/api'
+const PRODUCTION_API_BASE = 'https://www.wsbs.wnnw.fun/api'
+
+const isWorkersDevUrl = (input) => {
+  if (!/^https?:\/\//i.test(input)) return false
+  try {
+    return new URL(input).hostname.endsWith('.workers.dev')
+  } catch {
+    return false
+  }
+}
+
+const stripApiPrefix = (pathname) => {
+  const normalized = String(pathname || '').replace(/^\/+/, '')
+  return normalized.startsWith('api/') ? normalized.slice(4) : normalized
+}
 
 const normalizeApiBase = (base, fallback = '') => {
   const input = String(base || '').trim()
+  if (isWorkersDevUrl(input)) return PRODUCTION_API_BASE
   return input || fallback
 }
 
@@ -76,6 +92,10 @@ const resolveAdaptiveTimeout = (baseTimeout) => {
 const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
   if (/^https?:\/\//i.test(url)) {
+    if (isWorkersDevUrl(url)) {
+      const parsed = new URL(url)
+      return stripApiPrefix(parsed.pathname) || '/'
+    }
     return url
   }
 
