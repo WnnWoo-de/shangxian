@@ -339,6 +339,27 @@ const renderTrendChart = () => {
         symbol: 'circle',
         symbolSize: 7,
         z: 3,
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          label: {
+            show: true,
+            formatter: '0 元',
+            color: textMuted,
+            fontSize: 11,
+            padding: [0, 6, 0, 0],
+          },
+          lineStyle: {
+            color: 'rgba(42, 120, 209, 0.45)',
+            type: 'dashed',
+            width: 1.5,
+          },
+          data: [
+            {
+              yAxis: 0,
+            },
+          ],
+        },
         lineStyle: {
           width: 3,
           color: '#2a78d1',
