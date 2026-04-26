@@ -4,9 +4,32 @@ import storage from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
 
 const DEFAULT_API_BASE = '/api'
+const LEGACY_API_HOSTS = new Set([
+  'my-cloudflare-backend.wnnwwnnw0705.workers.dev',
+])
 
-const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).trim() || DEFAULT_API_BASE
-const FALLBACK_API_BASE = (import.meta.env.VITE_FALLBACK_API_BASE_URL || '').trim()
+const isLegacyApiUrl = (input) => {
+  if (!/^https?:\/\//i.test(input)) return false
+  try {
+    return LEGACY_API_HOSTS.has(new URL(input).host)
+  } catch {
+    return false
+  }
+}
+
+const stripApiPrefix = (pathname) => {
+  const normalized = String(pathname || '').replace(/^\/+/, '')
+  return normalized.startsWith('api/') ? normalized.slice(4) : normalized
+}
+
+const normalizeApiBase = (base, fallback = '') => {
+  const input = String(base || '').trim()
+  if (!input) return fallback
+  return isLegacyApiUrl(input) ? DEFAULT_API_BASE : input
+}
+
+const PRIMARY_API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL, DEFAULT_API_BASE)
+const FALLBACK_API_BASE = normalizeApiBase(import.meta.env.VITE_FALLBACK_API_BASE_URL)
 const DEFAULT_TIMEOUT_MS = import.meta.env.PROD ? 30000 : 12000
 const DEFAULT_MAX_TIMEOUT_MS = 60000
 const DEFAULT_GET_RETRY_COUNT = 2
@@ -71,6 +94,10 @@ const resolveAdaptiveTimeout = (baseTimeout) => {
 const normalizeUrl = (base, url = '') => {
   if (!url) return '/'
   if (/^https?:\/\//i.test(url)) {
+    if (isLegacyApiUrl(url)) {
+      const parsed = new URL(url)
+      return stripApiPrefix(parsed.pathname) || '/'
+    }
     return url
   }
 

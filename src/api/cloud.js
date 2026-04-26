@@ -7,7 +7,22 @@ const getData = (res, fallback = null) => {
   return fallback
 }
 
-const SYNC_FALLBACK_BASE = (import.meta.env.VITE_SYNC_API_FALLBACK_URL || '').trim()
+const LEGACY_API_HOSTS = new Set([
+  'my-cloudflare-backend.wnnwwnnw0705.workers.dev',
+])
+
+const normalizeOptionalApiBase = (base) => {
+  const input = String(base || '').trim()
+  if (!/^https?:\/\//i.test(input)) return input
+
+  try {
+    return LEGACY_API_HOSTS.has(new URL(input).host) ? '' : input
+  } catch {
+    return ''
+  }
+}
+
+const SYNC_FALLBACK_BASE = normalizeOptionalApiBase(import.meta.env.VITE_SYNC_API_FALLBACK_URL)
 const normalizeBaseUrl = (base) => String(base || '').replace(/\/+$/, '')
 const getStatusCode = (error) => Number(error?.response?.status || 0)
 
