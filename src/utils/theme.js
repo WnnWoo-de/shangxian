@@ -5,7 +5,7 @@ const THEMES = ['light', 'dark', 'system']
 
 const normalizeTheme = (theme) => (THEMES.includes(theme) ? theme : 'system')
 
-const getPreferredTheme = () => normalizeTheme(storage.get(THEME_KEY, 'system'))
+const getPreferredTheme = () => normalizeTheme(storage.get(THEME_KEY, 'light'))
 
 const getResolvedTheme = (theme = getPreferredTheme()) => {
   const normalized = normalizeTheme(theme)
