@@ -573,6 +573,169 @@ textarea {
   small {
     color: var(--text-soft);
   }
+
+  .order-list-page,
+  .dashboard-page {
+    background: transparent !important;
+  }
+
+  .order-list-page .header-content,
+  .order-list-page .filter-grid,
+  .order-list-page .list-container,
+  .dashboard-page .hero-card,
+  .dashboard-page .welcome-content,
+  .dashboard-page .time-range-tabs,
+  .dashboard-page .stats-panel,
+  .dashboard-page .quick-panel,
+  .dashboard-page .recent-panel,
+  .dashboard-page .shortcuts-section,
+  .dashboard-page .recent-section,
+  .dashboard-page .empty-card {
+    background: var(--panel-bg) !important;
+    border-color: var(--panel-line) !important;
+    color: var(--text-normal) !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+
+  .order-list-page .stat-card,
+  .order-list-page .mobile-bill-card,
+  .dashboard-page .stat-card,
+  .dashboard-page .shortcut-card,
+  .dashboard-page .recent-row,
+  .dashboard-page .recent-item,
+  .inner-page__table-wrap,
+  .price-table-wrap,
+  .inner-page__card {
+    background: var(--card-bg) !important;
+    border-color: var(--panel-line) !important;
+    color: var(--text-normal) !important;
+  }
+
+  .order-list-page .page-title,
+  .order-list-page .stat-value,
+  .order-list-page .list-header h3,
+  .order-list-page .data-table td,
+  .order-list-page .data-table .partner-name,
+  .order-list-page .data-table .bill-no,
+  .order-list-page .mobile-bill-head strong,
+  .order-list-page .mobile-weight-item strong,
+  .dashboard-page .hero-title,
+  .dashboard-page .welcome-content h1,
+  .dashboard-page .section-title,
+  .dashboard-page .stat-value,
+  .dashboard-page .shortcut-title,
+  .dashboard-page .shortcut-label,
+  .dashboard-page .recent-main strong,
+  .dashboard-page .recent-partner,
+  .dashboard-page .recent-amount,
+  .empty-card h3,
+  .inner-page__table td,
+  .price-table td {
+    color: var(--text-normal) !important;
+  }
+
+  .order-list-page .page-eyebrow,
+  .order-list-page .page-desc,
+  .order-list-page .stat-label,
+  .order-list-page .stat-note,
+  .order-list-page .filter-label,
+  .order-list-page .date-separator,
+  .order-list-page .list-tip,
+  .order-list-page .data-table th,
+  .order-list-page .data-table .bill-date,
+  .order-list-page .data-table .total-weight,
+  .order-list-page .weight-detail-meta,
+  .order-list-page .page-size-control,
+  .order-list-page .page-summary,
+  .order-list-page .mobile-bill-no,
+  .order-list-page .mobile-bill-meta,
+  .order-list-page .mobile-bill-money span,
+  .order-list-page .mobile-weight-item span,
+  .dashboard-page .hero-desc,
+  .dashboard-page .welcome-tip,
+  .dashboard-page .section-subtitle,
+  .dashboard-page .stat-label,
+  .dashboard-page .stat-note,
+  .dashboard-page .recent-meta,
+  .dashboard-page .recent-page-size,
+  .dashboard-page .recent-page-summary,
+  .empty-card p,
+  .inner-page__table th,
+  .price-table th {
+    color: var(--text-soft) !important;
+  }
+
+  .order-list-page .filter-input,
+  .order-list-page .filter-select,
+  .order-list-page .page-size-select,
+  .order-list-page .page-btn,
+  .dashboard-page .filter-input,
+  .dashboard-page .filter-select,
+  .dashboard-page .recent-page-size select,
+  .dashboard-page .recent-page-actions button,
+  .price-table input {
+    background: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--text-normal) !important;
+  }
+
+  .order-list-page .data-table thead th,
+  .inner-page__table th,
+  .price-table th {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .order-list-page .data-table tbody .table-row:hover,
+  .dashboard-page .recent-row:hover,
+  .inner-page__table tr:hover td {
+    background: rgba(125, 183, 173, 0.08) !important;
+  }
+
+  .order-list-page .weight-detail-card,
+  .order-list-page .mobile-bill-money div,
+  .order-list-page .mobile-weight-item,
+  .fabric-card__price-grid div {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--panel-line) !important;
+  }
+
+  .order-list-page .fabric-name,
+  .order-list-page .weight-token,
+  .order-list-page .weight-raw {
+    color: var(--text-normal) !important;
+  }
+
+  .order-list-page .weight-token {
+    background: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .order-list-page .status-blue {
+    background: rgba(125, 183, 173, 0.14) !important;
+    color: #9acdc4 !important;
+  }
+
+  .order-list-page .status-green,
+  .order-list-page .total-amount,
+  .order-list-page .detail-link {
+    color: #9acdc4 !important;
+  }
+
+  .order-list-page .status-orange {
+    background: rgba(224, 165, 95, 0.16) !important;
+    color: #f0d5a7 !important;
+  }
+
+  .order-list-page .btn-text,
+  .order-list-page .partner-tag,
+  .order-list-page .mobile-more-btn {
+    color: #e3bb7a !important;
+  }
+
+  .order-list-page .page-btn.active {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #10201d !important;
+  }
 }
 
 .page-container {

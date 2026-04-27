@@ -993,4 +993,91 @@ onUnmounted(() => {
     flex: 1 1 calc(50% - 3px);
   }
 }
+
+:global(html[data-theme='dark']) .dashboard-page {
+  background: transparent;
+  color: var(--text-normal);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .welcome-content,
+:global(html[data-theme='dark']) .dashboard-page .time-range-tabs,
+:global(html[data-theme='dark']) .dashboard-page .stat-card,
+:global(html[data-theme='dark']) .dashboard-page .shortcut-card,
+:global(html[data-theme='dark']) .dashboard-page .recent-item,
+:global(html[data-theme='dark']) .dashboard-page .empty-card {
+  background: var(--card-bg);
+  border-color: var(--panel-line);
+  box-shadow: var(--shadow-card);
+  color: var(--text-normal);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .welcome-content,
+:global(html[data-theme='dark']) .dashboard-page .time-range-tabs,
+:global(html[data-theme='dark']) .dashboard-page .empty-card {
+  background: var(--panel-bg);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .welcome-content h1,
+:global(html[data-theme='dark']) .dashboard-page .section-title,
+:global(html[data-theme='dark']) .dashboard-page .stat-value,
+:global(html[data-theme='dark']) .dashboard-page .shortcut-label,
+:global(html[data-theme='dark']) .dashboard-page .recent-partner,
+:global(html[data-theme='dark']) .dashboard-page .recent-amount,
+:global(html[data-theme='dark']) .dashboard-page .empty-card h3 {
+  color: var(--text-normal);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .welcome-tip,
+:global(html[data-theme='dark']) .dashboard-page .section-subtitle,
+:global(html[data-theme='dark']) .dashboard-page .stat-label,
+:global(html[data-theme='dark']) .dashboard-page .recent-meta,
+:global(html[data-theme='dark']) .dashboard-page .recent-page-size,
+:global(html[data-theme='dark']) .dashboard-page .recent-page-summary,
+:global(html[data-theme='dark']) .dashboard-page .empty-card p {
+  color: var(--text-soft);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .logo-badge {
+  background: rgba(227, 187, 122, 0.14);
+  border-color: rgba(227, 187, 122, 0.26);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .logo-badge span,
+:global(html[data-theme='dark']) .dashboard-page .time-tab {
+  color: var(--text-soft);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .logout-btn,
+:global(html[data-theme='dark']) .dashboard-page .recent-page-size select,
+:global(html[data-theme='dark']) .dashboard-page .recent-page-actions button {
+  background: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--text-normal);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .time-tab:hover:not(.active),
+:global(html[data-theme='dark']) .dashboard-page .shortcut-card:hover,
+:global(html[data-theme='dark']) .dashboard-page .recent-item:hover {
+  background: rgba(125, 183, 173, 0.08);
+  border-color: rgba(125, 183, 173, 0.22);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .time-tab.active,
+:global(html[data-theme='dark']) .dashboard-page .recent-page-actions button.active {
+  background: linear-gradient(135deg, #7db7ad 0%, #e3bb7a 100%);
+  border-color: transparent;
+  color: #10201d;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+}
+
+:global(html[data-theme='dark']) .dashboard-page .stat-icon,
+:global(html[data-theme='dark']) .dashboard-page .shortcut-icon,
+:global(html[data-theme='dark']) .dashboard-page .recent-type {
+  background: rgba(125, 183, 173, 0.14) !important;
+  color: #bfe3d9 !important;
+}
+
+:global(html[data-theme='dark']) .dashboard-page .recent-pagination {
+  border-top-color: var(--panel-line);
+}
 </style>
