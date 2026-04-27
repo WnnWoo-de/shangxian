@@ -11,9 +11,44 @@ import { entityConfigs } from '../../_lib/entity-configs.js'
 const billConfig = entityConfigs.bills
 const toMoney = (value) => Math.max(Number(value || 0), 0)
 const subtractMoney = (amount, settlement) => Math.max(Math.round((toMoney(amount) - toMoney(settlement)) * 100) / 100, 0)
+const parseWeightExpression = (input) => {
+  const raw = String(input || '').trim()
+  if (!raw) return 0
+  return raw
+    .replace(/[，,、；;]/g, ' ')
+    .replace(/[＋]/g, '+')
+    .replace(/[×xX]/g, '*')
+    .replace(/\s+/g, ' ')
+    .split('+')
+    .reduce((sum, part) => {
+      const factors = part.split('*')
+      if (factors.length === 2) {
+        const left = Number(factors[0])
+        const right = Number(factors[1])
+        return sum + (Number.isFinite(left) && Number.isFinite(right) ? left * right : 0)
+      }
+
+      return sum + part.split(' ').reduce((partSum, token) => {
+        const number = Number(token)
+        return partSum + (Number.isFinite(number) ? number : 0)
+      }, 0)
+    }, 0)
+}
+
+const getItemWeight = (item = {}) => {
+  const inputWeight = parseWeightExpression(item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText)
+  if (inputWeight > 0) return inputWeight
+  return toMoney(item.totalWeight ?? item.quantity ?? item.weight)
+}
+
+const getItems = (bill = {}) => Array.isArray(bill.items) ? bill.items : Array.isArray(bill.details) ? bill.details : []
 
 const normalizeBillAmounts = (bill = {}) => {
-  const totalAmount = toMoney(bill.totalAmount)
+  const items = getItems(bill)
+  const itemTotalWeight = items.reduce((sum, item) => sum + getItemWeight(item), 0)
+  const itemTotalAmount = items.reduce((sum, item) => sum + getItemWeight(item) * toMoney(item.unitPrice ?? item.unit_price), 0)
+  const totalAmount = Math.round((itemTotalAmount || toMoney(bill.totalAmount)) * 100) / 100
+  const totalWeight = Math.round((itemTotalWeight || toMoney(bill.totalWeight)) * 100) / 100
   const type = bill.type === 'sale' ? 'sale' : 'purchase'
   const paidAmount = type === 'purchase' ? Math.min(toMoney(bill.paidAmount), totalAmount) : 0
   const receivedAmount = type === 'sale' ? Math.min(toMoney(bill.receivedAmount), totalAmount) : 0
@@ -24,6 +59,7 @@ const normalizeBillAmounts = (bill = {}) => {
     ...bill,
     type,
     totalAmount,
+    totalWeight,
     paidAmount,
     receivedAmount,
     unsettledAmount,

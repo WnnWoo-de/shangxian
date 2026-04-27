@@ -60,10 +60,13 @@ const normalizeItem = (item = {}, index = 0) => {
   const quantityInput = String((item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText ?? item.totalWeight ?? '') || '')
   const parsedQuantity = parseWeightExpression(quantityInput)
   const quantityNumber = toFiniteNumber(item.quantity ?? item.totalWeight ?? item.total_weight, NaN)
-  const quantity = Number.isFinite(quantityNumber) && quantityNumber > 0 ? quantityNumber : parsedQuantity
+  const quantity = quantityInput
+    ? parsedQuantity
+    : Number.isFinite(quantityNumber) && quantityNumber > 0
+      ? quantityNumber
+      : parsedQuantity
   const unitPrice = toFiniteNumber(item.unitPrice ?? item.unit_price, 0)
-  const amountNumber = toFiniteNumber(item.amount, NaN)
-  const amount = Number.isFinite(amountNumber) && amountNumber > 0 ? amountNumber : quantity * unitPrice
+  const amount = Math.round(quantity * unitPrice * 100) / 100
 
   return {
     id: item.id || `item-${Date.now()}-${index}`,
@@ -115,8 +118,8 @@ const normalizeRecord = (record = {}) => {
   const itemTotalAmount = items.reduce((sum, item) => sum + toFiniteNumber(item.amount, 0), 0)
   const totalWeightNumber = toFiniteNumber(record.totalWeight ?? record.netWeight, NaN)
   const totalAmountNumber = toFiniteNumber(record.totalAmount ?? record.totalPrice, NaN)
-  const totalWeight = Number.isFinite(totalWeightNumber) && totalWeightNumber > 0 ? totalWeightNumber : itemTotalWeight
-  const totalAmount = Number.isFinite(totalAmountNumber) && totalAmountNumber > 0 ? totalAmountNumber : itemTotalAmount
+  const totalWeight = items.length ? itemTotalWeight : Number.isFinite(totalWeightNumber) && totalWeightNumber > 0 ? totalWeightNumber : 0
+  const totalAmount = items.length ? itemTotalAmount : Number.isFinite(totalAmountNumber) && totalAmountNumber > 0 ? totalAmountNumber : 0
   const type = record.type === 'sale' ? 'sale' : 'purchase'
   const paidAmount = Math.min(normalizeMoney(record.paidAmount), totalAmount)
   const receivedAmount = Math.min(normalizeMoney(record.receivedAmount), totalAmount)

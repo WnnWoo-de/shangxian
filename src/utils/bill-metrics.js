@@ -42,25 +42,30 @@ export const getBillItems = (record = {}) => {
 }
 
 export const getRecordItemWeight = (item = {}) => {
+  const inputWeight = parseWeightExpression(item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText)
+  if (inputWeight > 0) return inputWeight
+
   const direct = toFiniteNumber(item.totalWeight ?? item.quantity ?? item.weight, NaN)
-  if (Number.isFinite(direct) && direct > 0) return direct
-  return parseWeightExpression(item.quantityInput ?? item.weightInput ?? item.weight_input_text ?? item.weightInputText)
+  return Number.isFinite(direct) && direct > 0 ? direct : 0
 }
 
 export const getRecordTotalWeight = (record = {}) => {
+  const itemTotal = getBillItems(record).reduce((sum, item) => sum + getRecordItemWeight(item), 0)
+  if (itemTotal > 0) return itemTotal
+
   const direct = toFiniteNumber(record.totalWeight ?? record.netWeight, NaN)
   if (Number.isFinite(direct) && direct > 0) return direct
-
-  return getBillItems(record).reduce((sum, item) => sum + getRecordItemWeight(item), 0)
+  return 0
 }
 
 export const getRecordTotalAmount = (record = {}) => {
+  const itemTotal = getBillItems(record).reduce((sum, item) => {
+    const unitPrice = toFiniteNumber(item.unitPrice ?? item.unit_price, 0)
+    return sum + getRecordItemWeight(item) * unitPrice
+  }, 0)
+  if (itemTotal > 0) return itemTotal
+
   const direct = toFiniteNumber(record.totalAmount ?? record.totalPrice, NaN)
   if (Number.isFinite(direct) && direct > 0) return direct
-
-  return getBillItems(record).reduce((sum, item) => {
-    const unitPrice = toFiniteNumber(item.unitPrice ?? item.unit_price, 0)
-    const amount = toFiniteNumber(item.amount, NaN)
-    return sum + (Number.isFinite(amount) && amount > 0 ? amount : getRecordItemWeight(item) * unitPrice)
-  }, 0)
+  return 0
 }
