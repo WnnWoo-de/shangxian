@@ -19,6 +19,27 @@ const toMillis = (value) => {
   return Number.isNaN(date.getTime()) ? 0 : date.getTime()
 }
 
+const toMoney = (value) => Math.max(Number(value || 0), 0)
+
+const normalizeBillAmounts = (bill = {}) => {
+  const type = bill.type === 'sale' ? 'sale' : 'purchase'
+  const totalAmount = toMoney(bill.totalAmount)
+  const paidAmount = type === 'purchase' ? Math.min(toMoney(bill.paidAmount), totalAmount) : 0
+  const receivedAmount = type === 'sale' ? Math.min(toMoney(bill.receivedAmount), totalAmount) : 0
+  const settlementAmount = type === 'sale' ? receivedAmount : paidAmount
+  const unsettledAmount = Math.max(Math.round((totalAmount - settlementAmount) * 100) / 100, 0)
+
+  return {
+    ...bill,
+    type,
+    totalAmount,
+    paidAmount,
+    receivedAmount,
+    unsettledAmount,
+    status: unsettledAmount <= 0 ? 'settled' : 'confirmed',
+  }
+}
+
 const normalizeOperation = (raw = {}, index = 0) => {
   const action = raw.action === 'delete' ? 'delete' : 'upsert'
   const entity = String(raw.entity || '').trim()
@@ -70,7 +91,7 @@ const buildRecordByEntity = (entity, input, existingData, recordId, updatedAt) =
     }
   }
 
-  return {
+  return normalizeBillAmounts({
     ...merged,
     billNo: String(merged.billNo || `B${Date.now()}`),
     type: merged.type === 'sale' ? 'sale' : 'purchase',
@@ -80,7 +101,7 @@ const buildRecordByEntity = (entity, input, existingData, recordId, updatedAt) =
     totalAmount: Number(merged.totalAmount || 0),
     totalWeight: Number(merged.totalWeight || 0),
     deletedAt: null,
-  }
+  })
 }
 
 const softDeleteRow = async (db, entity, recordId, updatedAt) => {

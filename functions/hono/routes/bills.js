@@ -9,6 +9,27 @@ import {
 import { entityConfigs } from '../../_lib/entity-configs.js'
 
 const billConfig = entityConfigs.bills
+const toMoney = (value) => Math.max(Number(value || 0), 0)
+const subtractMoney = (amount, settlement) => Math.max(Math.round((toMoney(amount) - toMoney(settlement)) * 100) / 100, 0)
+
+const normalizeBillAmounts = (bill = {}) => {
+  const totalAmount = toMoney(bill.totalAmount)
+  const type = bill.type === 'sale' ? 'sale' : 'purchase'
+  const paidAmount = type === 'purchase' ? Math.min(toMoney(bill.paidAmount), totalAmount) : 0
+  const receivedAmount = type === 'sale' ? Math.min(toMoney(bill.receivedAmount), totalAmount) : 0
+  const settlementAmount = type === 'sale' ? receivedAmount : paidAmount
+  const unsettledAmount = subtractMoney(totalAmount, settlementAmount)
+
+  return {
+    ...bill,
+    type,
+    totalAmount,
+    paidAmount,
+    receivedAmount,
+    unsettledAmount,
+    status: unsettledAmount <= 0 ? 'settled' : 'confirmed',
+  }
+}
 
 export const registerBillRoutes = (app) => {
   app.get('/api/bills', async (c) => {
@@ -19,7 +40,7 @@ export const registerBillRoutes = (app) => {
   app.post('/api/bills', async (c) => {
     const body = await parseBody(c)
     const now = new Date().toISOString()
-    const bill = {
+    const bill = normalizeBillAmounts({
       ...body,
       id: String(body.id || `bill-${Date.now()}`),
       billNo: String(body.billNo || `B${Date.now()}`),
@@ -31,7 +52,7 @@ export const registerBillRoutes = (app) => {
       totalWeight: Number(body.totalWeight || 0),
       createdAt: body.createdAt || now,
       updatedAt: now,
-    }
+    })
 
     if (!bill.id) return fail(c, '单据ID无效', 400)
 
@@ -48,7 +69,7 @@ export const registerBillRoutes = (app) => {
     if (!existing) return fail(c, '单据不存在', 404)
 
     const payload = await parseBody(c)
-    const updated = {
+    const updated = normalizeBillAmounts({
       ...existing,
       ...payload,
       id,
@@ -56,7 +77,7 @@ export const registerBillRoutes = (app) => {
         ? (payload.type === 'sale' ? 'sale' : 'purchase')
         : (existing.type === 'sale' ? 'sale' : 'purchase'),
       updatedAt: new Date().toISOString(),
-    }
+    })
 
     await updateEntity(c.env.DB, billConfig, id, updated)
 

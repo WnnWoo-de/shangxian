@@ -18,6 +18,12 @@ const toFiniteNumber = (value, fallback = 0) => {
   return Number.isFinite(number) ? number : fallback
 }
 
+const normalizeMoney = (value) => Math.max(toFiniteNumber(value, 0), 0)
+
+const subtractMoney = (amount, settlement) => {
+  return Math.max(Math.round((normalizeMoney(amount) - normalizeMoney(settlement)) * 100) / 100, 0)
+}
+
 const parseWeightExpression = (input) => {
   const raw = String(input || '').trim()
   if (!raw) return 0
@@ -111,12 +117,11 @@ const normalizeRecord = (record = {}) => {
   const totalAmountNumber = toFiniteNumber(record.totalAmount ?? record.totalPrice, NaN)
   const totalWeight = Number.isFinite(totalWeightNumber) && totalWeightNumber > 0 ? totalWeightNumber : itemTotalWeight
   const totalAmount = Number.isFinite(totalAmountNumber) && totalAmountNumber > 0 ? totalAmountNumber : itemTotalAmount
-  const paidAmount = toFiniteNumber(record.paidAmount, 0)
-  const receivedAmount = toFiniteNumber(record.receivedAmount, 0)
-  const unsettledAmountNumber = toFiniteNumber(record.unsettledAmount, NaN)
-  const unsettledAmount = Number.isFinite(unsettledAmountNumber)
-    ? unsettledAmountNumber
-    : Math.max(totalAmount - (record.type === 'sale' ? receivedAmount : paidAmount), 0)
+  const type = record.type === 'sale' ? 'sale' : 'purchase'
+  const paidAmount = Math.min(normalizeMoney(record.paidAmount), totalAmount)
+  const receivedAmount = Math.min(normalizeMoney(record.receivedAmount), totalAmount)
+  const settlementAmount = type === 'sale' ? receivedAmount : paidAmount
+  const unsettledAmount = subtractMoney(totalAmount, settlementAmount)
   const partnerName = record.partnerName || record.customerName || record.supplier || ''
   const billDate = record.billDate || record.date?.slice?.(0, 10) || today()
   const weighingDetails = Array.isArray(record.weighingDetails)
@@ -125,7 +130,7 @@ const normalizeRecord = (record = {}) => {
 
   return {
     id: String(record.id || `bill-${Date.now()}`),
-    type: record.type === 'sale' ? 'sale' : 'purchase',
+    type,
     billNo: record.billNo || `B${Date.now()}`,
     billDate,
     createdAt: record.createdAt || record.date || new Date().toLocaleString('sv-SE').replace(' ', ' '),
@@ -136,7 +141,7 @@ const normalizeRecord = (record = {}) => {
     customerName: partnerName,
     supplier: partnerName,
     note: record.note || '',
-    status: record.status || (unsettledAmount <= 0 ? 'settled' : 'confirmed'),
+    status: record.status === 'deleted' ? 'deleted' : (unsettledAmount <= 0 ? 'settled' : 'confirmed'),
     items,
     details: items,
     totalWeight,

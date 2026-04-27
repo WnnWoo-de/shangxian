@@ -54,6 +54,8 @@ const partnerLabel = computed(() => (isPurchase.value ? '供货方' : '客户'))
 const quantityLabel = computed(() => '数量 / 重量')
 const totalWeightLabel = computed(() => '总重量')
 const roundAmount = (value) => Math.round(Number(value) || 0)
+const normalizeMoney = (value) => Math.max(Number(value || 0), 0)
+const settlementAmount = computed(() => Math.min(normalizeMoney(form.settlementAmount), totalAmount.value))
 const hasWeighing = computed(() => {
   return Number(form.firstWeight || 0) > 0 ||
     Number(form.lastWeight || 0) > 0 ||
@@ -398,23 +400,27 @@ const weighingTotalAmount = computed(() => {
     ...weighingRows.value.map((row) => getWeighingAmount(row)),
   ])
 })
-// 未结金额计算 - 支持手动输入
+// 未结金额始终跟随当前明细总额和已付/已收金额，避免删除明细后保留旧欠款。
 const unsettledAmount = computed({
   get() {
-    // 如果用户手动输入了未结金额，直接返回输入值
-    if (form.unsettledAmount > 0) {
-      return Math.max(form.unsettledAmount, 0)
-    }
-    // 否则自动计算
-    return Math.max(addMoney([totalAmount.value, -Number(form.settlementAmount || 0)]), 0)
+    return Math.max(addMoney([totalAmount.value, -settlementAmount.value]), 0)
   },
   set(value) {
-    form.unsettledAmount = Math.max(Number(value || 0), 0)
-    // 根据未结金额自动计算已付款/已收款金额
-    if (totalAmount.value > 0) {
-      form.settlementAmount = Math.max(addMoney([totalAmount.value, -form.unsettledAmount]), 0)
-    }
+    const nextUnsettled = Math.min(normalizeMoney(value), totalAmount.value)
+    form.unsettledAmount = nextUnsettled
+    form.settlementAmount = Math.max(addMoney([totalAmount.value, -nextUnsettled]), 0)
   }
+})
+
+watch(totalAmount, (amount) => {
+  if (form.settlementAmount > amount) {
+    form.settlementAmount = amount
+  }
+  form.unsettledAmount = unsettledAmount.value
+})
+
+watch(() => form.settlementAmount, () => {
+  form.unsettledAmount = unsettledAmount.value
 })
 
 const setDetailFabricSelectRef = (rowId, element) => {
@@ -578,8 +584,8 @@ const saveBill = async () => {
       })),
       totalWeight: totalWeight.value,
       totalAmount: totalAmount.value,
-      paidAmount: props.type === 'purchase' ? form.settlementAmount : 0,
-      receivedAmount: props.type === 'sale' ? form.settlementAmount : 0,
+      paidAmount: props.type === 'purchase' ? settlementAmount.value : 0,
+      receivedAmount: props.type === 'sale' ? settlementAmount.value : 0,
       unsettledAmount: unsettledAmount.value,
       firstWeight: form.firstWeight,
       lastWeight: form.lastWeight,
