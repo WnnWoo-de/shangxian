@@ -780,7 +780,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (prefers-color-scheme: dark) {
+:global(html[data-theme='dark']) {
   .main-layout {
     background:
       radial-gradient(circle at left top, rgba(125, 183, 173, .12), transparent 24%),

@@ -1,17 +1,11 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { showToast } from '@/utils/toast'
 import { getExportImageBrandName, setExportImageBrandName } from '@/utils/app-config'
+import { getPreferredTheme, getResolvedTheme, setTheme } from '@/utils/theme'
 // UUID is not necessary, just standard icons or simple css shapes
 
 const settingsList = ref([
-  {
-    id: 1,
-    title: '系统主题',
-    desc: '当前系统采用浅色系主题，带来清新明亮的视觉体验。',
-    value: '浅色系',
-    type: 'badge'
-  },
   {
     id: 2,
     title: '修改密码',
@@ -37,9 +31,33 @@ const settingsList = ref([
 
 const exportImageBrandName = ref('')
 const savingBrandName = ref(false)
+const themeMode = ref('system')
+const resolvedTheme = ref('light')
+
+const themeOptions = [
+  { value: 'light', label: '亮色', iconClass: 'sun-icon' },
+  { value: 'dark', label: '暗色', iconClass: 'moon-icon' },
+  { value: 'system', label: '跟随系统', iconClass: 'system-icon' },
+]
+
+const themeLabel = computed(() => {
+  const current = themeOptions.find((item) => item.value === themeMode.value)
+  return current?.label || '跟随系统'
+})
 
 const loadBrandName = () => {
   exportImageBrandName.value = getExportImageBrandName()
+}
+
+const loadTheme = () => {
+  themeMode.value = getPreferredTheme()
+  resolvedTheme.value = getResolvedTheme(themeMode.value)
+}
+
+const changeTheme = (mode) => {
+  themeMode.value = setTheme(mode)
+  resolvedTheme.value = getResolvedTheme(themeMode.value)
+  showToast(`已切换为${themeLabel.value}`, 'success')
 }
 
 const saveBrandName = async () => {
@@ -60,6 +78,7 @@ const saveBrandName = async () => {
 
 onMounted(() => {
   loadBrandName()
+  loadTheme()
 })
 </script>
 
@@ -92,6 +111,26 @@ onMounted(() => {
     </section>
 
     <section class="panel settings-panel">
+      <div class="setting-item theme-setting">
+        <div class="item-info">
+          <h3>系统主题</h3>
+          <p>切换亮色、暗色或跟随系统，暗色模式会同步适配侧边栏、表格、输入框和弹窗。</p>
+        </div>
+        <div class="theme-control" role="group" aria-label="系统主题">
+          <button
+            v-for="item in themeOptions"
+            :key="item.value"
+            type="button"
+            :class="['theme-switch-btn', { active: themeMode === item.value }]"
+            @click="changeTheme(item.value)"
+          >
+            <i :class="item.iconClass"></i>
+            <span>{{ item.label }}</span>
+          </button>
+          <span class="theme-state">{{ resolvedTheme === 'dark' ? '当前暗色' : '当前亮色' }}</span>
+        </div>
+      </div>
+
       <div 
         class="setting-item" 
         v-for="(item, index) in settingsList" 
@@ -217,7 +256,7 @@ onMounted(() => {
   border: 1px solid var(--input-border);
   padding: 0 12px;
   font-size: 14px;
-  background: #fff;
+  background: var(--input-bg);
   color: var(--text-primary);
 }
 
@@ -246,12 +285,85 @@ onMounted(() => {
   border: 1px solid rgba(45, 199, 176, 0.2);
 }
 
+.theme-setting {
+  align-items: flex-start;
+}
+
+.theme-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.theme-switch-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-switch-btn:hover,
+.theme-switch-btn.active {
+  transform: translateY(-1px);
+  background: var(--primary-soft);
+  border-color: rgba(125, 183, 173, 0.42);
+}
+
+.theme-switch-btn i {
+  flex-shrink: 0;
+}
+
+.theme-state {
+  width: 100%;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: right;
+}
+
 .sun-icon {
   width: 14px;
   height: 14px;
   border-radius: 50%;
   background: currentColor;
   position: relative;
+}
+
+.moon-icon {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: inset -5px 0 0 var(--card-bg);
+}
+
+.system-icon {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 2px solid currentColor;
+  position: relative;
+}
+
+.system-icon::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: -5px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 999px;
 }
 
 .sun-icon::before {
@@ -267,7 +379,7 @@ onMounted(() => {
   padding: 10px 20px;
   border-radius: 10px;
   border: 1px solid var(--accent-blue);
-  background: #fff;
+  background: var(--input-bg);
   color: var(--accent-blue-deep);
   font-size: 14px;
   font-weight: 600;
@@ -310,6 +422,15 @@ onMounted(() => {
 
   .item-action {
     align-self: flex-end;
+  }
+
+  .theme-control {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .theme-state {
+    text-align: left;
   }
 
   .item-action-row {

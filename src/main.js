@@ -16,9 +16,12 @@ import { useBillRecordStore } from '@/stores/billRecord'
 import { setupPwaAutoUpdate } from '@/pwa'
 import { setupPwaInstallPrompt } from '@/utils/pwa-install'
 import { incrementalSync, startAutoSync, stopAutoSync } from '@/utils/sync'
+import { initTheme } from '@/utils/theme'
 
 const app = createApp(App)
 const pinia = createPinia()
+
+initTheme()
 
 app.use(pinia)
 app.use(router)
