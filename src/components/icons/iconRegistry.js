@@ -126,8 +126,8 @@ const iconRegistry = Object.freeze({
   },
   return: {
     nodes: [
-      { tag: 'path', attrs: { d: 'M9 14l-4-4 4-4' } },
-      { tag: 'path', attrs: { d: 'M5 10h11a4 4 0 1 1 0 8h-1' } },
+      { tag: 'line', attrs: { x1: '12', y1: '1', x2: '12', y2: '23' } },
+      { tag: 'path', attrs: { d: 'M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' } },
     ],
   },
   trend: {
@@ -221,6 +221,14 @@ const iconRegistry = Object.freeze({
       { tag: 'circle', attrs: { cx: '12', cy: '12', r: '10' } },
       { tag: 'path', attrs: { d: 'M12 10v6' } },
       { tag: 'path', attrs: { d: 'M12 7h.01' } },
+    ],
+  },
+  scale: {
+    nodes: [
+      { tag: 'rect', attrs: { x: '2', y: '6', width: '20', height: '12', rx: '2' } },
+      { tag: 'path', attrs: { d: 'M12 6v12' } },
+      { tag: 'path', attrs: { d: 'M6 10h12' } },
+      { tag: 'path', attrs: { d: 'M6 14h12' } },
     ],
   },
 })
