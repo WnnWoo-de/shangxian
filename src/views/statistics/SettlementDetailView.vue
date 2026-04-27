@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppIcon from '@/components/icons/AppIcon.vue'
@@ -24,6 +24,7 @@ const selectedMonth = ref('')
 const keyword = ref('')
 const statusFilter = ref('all')
 const page = ref(1)
+const selectedRecordIds = ref(new Set())
 
 const toNumber = (value) => {
   const number = Number(value)
@@ -117,6 +118,43 @@ const pagedRecords = computed(() => {
   return filteredRecords.value.slice(start, start + PAGE_SIZE)
 })
 
+const selectedRecords = computed(() => {
+  const ids = selectedRecordIds.value
+  return filteredRecords.value.filter((record) => ids.has(String(record.id)))
+})
+
+const exportSourceRecords = computed(() => (
+  selectedRecords.value.length ? selectedRecords.value : filteredRecords.value
+))
+
+const hasFilteredRecords = computed(() => filteredRecords.value.length > 0)
+const allFilteredSelected = computed(() => (
+  hasFilteredRecords.value
+  && filteredRecords.value.every((record) => selectedRecordIds.value.has(String(record.id)))
+))
+
+const isRecordSelected = (record) => selectedRecordIds.value.has(String(record.id))
+
+const setSelectedIds = (ids) => {
+  selectedRecordIds.value = new Set(ids.map((id) => String(id)))
+}
+
+const toggleRecordSelection = (record) => {
+  const next = new Set(selectedRecordIds.value)
+  const id = String(record.id)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedRecordIds.value = next
+}
+
+const toggleAllFiltered = () => {
+  if (allFilteredSelected.value) {
+    selectedRecordIds.value = new Set()
+    return
+  }
+  setSelectedIds(filteredRecords.value.map((record) => record.id))
+}
+
 const summary = computed(() => {
   const rows = filteredRecords.value
 
@@ -185,7 +223,7 @@ const getFilterText = () => {
   ].join(' / ')
 }
 
-const buildExportRows = () => filteredRecords.value.map((record, index) => ({
+const buildExportRows = () => exportSourceRecords.value.map((record, index) => ({
   index: index + 1,
   date: billDateOf(record) || '-',
   partner: partnerOf(record),
@@ -199,6 +237,24 @@ const buildExportRows = () => filteredRecords.value.map((record, index) => ({
   status: statusText(record),
   note: record.note || '-',
 }))
+
+const exportSummary = computed(() => {
+  const rows = exportSourceRecords.value
+  return rows.reduce((acc, record) => {
+    acc.count += 1
+    acc.weight += toNumber(record.totalWeight)
+    acc.totalAmount += toNumber(record.totalAmount)
+    acc.settledAmount += settlementOf(record)
+    acc.pendingAmount += pendingOf(record)
+    return acc
+  }, {
+    count: 0,
+    weight: 0,
+    totalAmount: 0,
+    settledAmount: 0,
+    pendingAmount: 0,
+  })
+})
 
 const exportToExcel = async () => {
   const rows = buildExportRows()
@@ -239,7 +295,7 @@ const exportToExcel = async () => {
     worksheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'center' }
 
     worksheet.addRow([])
-    worksheet.addRow(['总金额', summary.value.totalAmount, activeType.value === 'purchase' ? '已付金额' : '已收金额', summary.value.settledAmount, activeType.value === 'purchase' ? '待付金额' : '待收金额', summary.value.pendingAmount, '总重量', summary.value.weight, '单据数', summary.value.count])
+    worksheet.addRow(['总金额', exportSummary.value.totalAmount, activeType.value === 'purchase' ? '已付金额' : '已收金额', exportSummary.value.settledAmount, activeType.value === 'purchase' ? '待付金额' : '待收金额', exportSummary.value.pendingAmount, '总重量', exportSummary.value.weight, '单据数', exportSummary.value.count])
     const summaryRow = worksheet.getRow(4)
     summaryRow.font = { bold: true, color: { argb: 'FF1F3852' } }
     summaryRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E9DC' } }
@@ -355,10 +411,10 @@ const exportImage = () => {
   const metricY = 154
   const metricWidth = 330
   const metrics = [
-    ['总金额', formatMoney(summary.value.totalAmount)],
-    [activeType.value === 'purchase' ? '已付金额' : '已收金额', formatMoney(summary.value.settledAmount)],
-    [activeType.value === 'purchase' ? '待付金额' : '待收金额', formatMoney(summary.value.pendingAmount)],
-    ['总重量 / 单据', `${summary.value.weight.toFixed(0)} 斤 / ${summary.value.count} 笔`],
+    ['总金额', formatMoney(exportSummary.value.totalAmount)],
+    [activeType.value === 'purchase' ? '已付金额' : '已收金额', formatMoney(exportSummary.value.settledAmount)],
+    [activeType.value === 'purchase' ? '待付金额' : '待收金额', formatMoney(exportSummary.value.pendingAmount)],
+    ['总重量 / 单据', `${exportSummary.value.weight.toFixed(0)} 斤 / ${exportSummary.value.count} 笔`],
   ]
 
   metrics.forEach(([label, value], index) => {
@@ -464,6 +520,12 @@ onMounted(async () => {
   await billStore.init()
   selectedMonth.value = months.value[0] || dayjs().format('YYYY-MM')
 })
+
+watch(filteredRecords, (records) => {
+  const availableIds = new Set(records.map((record) => String(record.id)))
+  const next = Array.from(selectedRecordIds.value).filter((id) => availableIds.has(id))
+  if (next.length !== selectedRecordIds.value.size) setSelectedIds(next)
+})
 </script>
 
 <template>
@@ -473,16 +535,6 @@ onMounted(async () => {
         <p class="eyebrow">Settlement Ledger</p>
         <h1>结算详情</h1>
         <p class="hero-desc">按进货和出货分别汇总每笔单据的实收、实付、未结和最终金额，便于对账、追款和查看详情。</p>
-        <div class="export-actions">
-          <button type="button" @click="exportToExcel">
-            <AppIcon name="table" />
-            <span>导出表格</span>
-          </button>
-          <button type="button" @click="exportImage">
-            <AppIcon name="image" />
-            <span>导出图片</span>
-          </button>
-        </div>
       </div>
 
       <div class="hero-total">
@@ -556,7 +608,7 @@ onMounted(async () => {
       <div class="panel-title">
         <div>
           <h2>{{ activeType === 'purchase' ? '进货结算明细' : '出货结算明细' }}</h2>
-          <p>当前筛选共 {{ filteredRecords.length }} 笔，按日期分组展示。</p>
+          <p>当前筛选共 {{ filteredRecords.length }} 笔，已勾选 {{ selectedRecords.length }} 笔。</p>
         </div>
         <div class="pager" v-if="filteredRecords.length > PAGE_SIZE">
           <button type="button" :disabled="page === 1" @click="page -= 1">
@@ -585,6 +637,16 @@ onMounted(async () => {
             <table>
               <thead>
                 <tr>
+                  <th class="select-col">
+                    <label class="check-cell">
+                      <input
+                        type="checkbox"
+                        :checked="allFilteredSelected"
+                        :disabled="!hasFilteredRecords"
+                        @change="toggleAllFiltered"
+                      />
+                    </label>
+                  </th>
                   <th>#</th>
                   <th>日期</th>
                   <th>{{ activeType === 'purchase' ? '供应商' : '客户' }}</th>
@@ -600,6 +662,15 @@ onMounted(async () => {
               </thead>
               <tbody>
                 <tr v-for="(record, index) in group.rows" :key="record.id">
+                  <td class="select-col">
+                    <label class="check-cell">
+                      <input
+                        type="checkbox"
+                        :checked="isRecordSelected(record)"
+                        @change="toggleRecordSelection(record)"
+                      />
+                    </label>
+                  </td>
                   <td>{{ (page - 1) * PAGE_SIZE + index + 1 }}</td>
                   <td>{{ billDateOf(record) }}</td>
                   <td class="partner-cell">{{ partnerOf(record) }}</td>
@@ -622,6 +693,23 @@ onMounted(async () => {
             </table>
           </div>
         </article>
+      </div>
+
+      <div v-if="filteredRecords.length > 0" class="bottom-export-bar">
+        <div class="export-summary-text">
+          <strong>{{ selectedRecords.length ? `已选择 ${selectedRecords.length} 笔` : '未选择明细' }}</strong>
+          <span>{{ selectedRecords.length ? '将导出已勾选的结算明细' : '导出时默认使用当前筛选的全部明细' }}</span>
+        </div>
+        <div class="export-actions">
+          <button type="button" @click="exportToExcel">
+            <AppIcon name="table" />
+            <span>导出表格</span>
+          </button>
+          <button type="button" @click="exportImage">
+            <AppIcon name="image" />
+            <span>导出图片</span>
+          </button>
+        </div>
       </div>
     </section>
   </section>
@@ -701,7 +789,6 @@ h2 {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 16px;
 }
 
 .export-actions button {
@@ -935,7 +1022,7 @@ h2 {
 
 table {
   width: 100%;
-  min-width: 1120px;
+  min-width: 1170px;
   border-collapse: collapse;
 }
 
@@ -952,6 +1039,31 @@ th {
   background: rgba(255, 250, 241, 0.74);
   font-size: 12px;
   font-weight: 800;
+}
+
+.select-col {
+  width: 46px;
+  text-align: center;
+}
+
+.check-cell {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.check-cell input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.check-cell input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 tbody tr:last-child td {
@@ -1023,6 +1135,36 @@ tbody tr:hover td {
   color: var(--text-soft);
 }
 
+.bottom-export-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--panel-line);
+  background: var(--card-bg);
+}
+
+.export-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.export-summary-text strong {
+  color: var(--text-normal);
+  font-size: 15px;
+}
+
+.export-summary-text span {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
 @media (max-width: 1024px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1059,6 +1201,17 @@ tbody tr:hover td {
 
   .panel-title {
     flex-direction: column;
+  }
+
+  .bottom-export-bar,
+  .export-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .export-actions button {
+    justify-content: center;
+    width: 100%;
   }
 }
 
