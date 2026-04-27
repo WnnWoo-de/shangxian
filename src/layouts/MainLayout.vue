@@ -55,7 +55,8 @@ const menuItems = [
     label: '报表',
     children: [
       { label: '数据统计', route: '/statistics', note: '经营趋势', icon: IconStatistics },
-      { label: '月度报表', route: '/statistics/monthly', note: '月度复盘', icon: IconReport }
+      { label: '月度报表', route: '/statistics/monthly', note: '月度复盘', icon: IconReport },
+      { label: '结算详情', route: '/statistics/settlement', note: '进货出货对账', icon: IconReport }
     ]
   },
   { label: '设置', route: '/settings', note: '系统配置', icon: IconSettings }
@@ -776,6 +777,62 @@ onBeforeUnmount(() => {
 
   .page-content {
     overflow: visible;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .main-layout {
+    background:
+      radial-gradient(circle at left top, rgba(125, 183, 173, .12), transparent 24%),
+      radial-gradient(circle at right top, rgba(227, 187, 122, .1), transparent 28%),
+      linear-gradient(180deg, #171918 0%, #111312 100%);
+  }
+
+  .mobile-overlay {
+    background: rgba(10, 12, 11, .64);
+  }
+
+  .sidebar-shell,
+  .top-bar {
+    background: rgba(32, 35, 33, .9);
+    border-color: rgba(255, 255, 255, .08);
+    box-shadow: 0 24px 54px rgba(0, 0, 0, .26);
+  }
+
+  .sidebar-panel,
+  .user-card,
+  .logout-btn,
+  .top-chip,
+  .menu-icon {
+    background: rgba(255, 255, 255, .06);
+    border-color: rgba(255, 255, 255, .08);
+  }
+
+  .brand-kicker,
+  .brand-desc,
+  .menu-note,
+  .menu-group-label,
+  .page-subtitle,
+  .top-date,
+  .user-role,
+  .menu-arrow {
+    color: var(--text-soft);
+  }
+
+  .sidebar-title,
+  .menu-item,
+  .menu-name,
+  .page-title,
+  .user-name,
+  .logout-btn {
+    color: var(--text-normal);
+  }
+
+  .menu-item:hover,
+  .menu-item.pressed,
+  .menu-item.active {
+    background: linear-gradient(135deg, rgba(125, 183, 173, .16), rgba(227, 187, 122, .1));
+    border-color: rgba(125, 183, 173, .24);
   }
 }
 </style>

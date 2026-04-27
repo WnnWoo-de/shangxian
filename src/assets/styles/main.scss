@@ -64,6 +64,9 @@
   --surface-glass: rgba(255, 250, 241, 0.78);
   --surface-strong: rgba(250, 242, 232, 0.92);
   --surface-line: rgba(255, 255, 255, 0.48);
+  --text-primary: #{$text-primary};
+  --text-secondary: #{$text-secondary};
+  --text-muted: #{$text-muted};
   --text-normal: #{$text-primary};
   --text-soft: #{$text-secondary};
   --accent-blue-deep: #d6b38a;
@@ -80,6 +83,52 @@
   --border-color: rgba(106, 93, 82, 0.08);
   --primary-soft: rgba(227, 187, 122, 0.12);
   --accent-blue: #e6cfb2;
+  --shadow-sm: #{$shadow-sm};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
+  --shadow-card: 0 16px 34px rgba(21, 35, 42, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --el-bg-color: #1e211f;
+    --el-bg-color-page: #171918;
+    --el-bg-color-overlay: #262a28;
+    --el-fill-color: rgba(255, 255, 255, 0.08);
+    --el-fill-color-light: rgba(255, 255, 255, 0.06);
+    --el-fill-color-blank: rgba(38, 42, 40, 0.92);
+    --el-text-color-primary: #f3eadc;
+    --el-text-color-regular: #e4d8c9;
+    --el-text-color-secondary: #b9aa9a;
+    --el-text-color-placeholder: #8e8174;
+    --el-border-color: rgba(255, 255, 255, 0.12);
+    --el-border-color-light: rgba(255, 255, 255, 0.08);
+    --el-border-color-lighter: rgba(255, 255, 255, 0.06);
+    --el-table-header-bg-color: rgba(255, 255, 255, 0.05);
+    --el-table-row-hover-bg-color: rgba(125, 183, 173, 0.1);
+
+    --bg-soft: #171918;
+    --bg-deep: #111312;
+    --surface-glass: rgba(32, 35, 33, 0.82);
+    --surface-strong: rgba(38, 42, 40, 0.9);
+    --surface-line: rgba(255, 255, 255, 0.08);
+    --text-primary: #f3eadc;
+    --text-secondary: #b9aa9a;
+    --text-muted: #8e8174;
+    --text-normal: #f3eadc;
+    --text-soft: #b9aa9a;
+    --input-border: rgba(255, 255, 255, 0.1);
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --panel-bg: rgba(32, 35, 33, 0.82);
+    --panel-line: rgba(255, 255, 255, 0.08);
+    --card-bg: rgba(40, 44, 42, 0.86);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --primary-soft: rgba(125, 183, 173, 0.16);
+    --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.22);
+    --shadow-md: 0 18px 40px rgba(0, 0, 0, 0.26);
+    --shadow-lg: 0 28px 60px rgba(0, 0, 0, 0.32);
+    --shadow-card: 0 16px 34px rgba(0, 0, 0, 0.26);
+  }
 }
 
 html,
@@ -91,6 +140,17 @@ body {
     linear-gradient(180deg, #fffaf3 0%, #f5ebde 100%);
   color: $text-primary;
   font-family: 'Outfit', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  html,
+  body {
+    background:
+      radial-gradient(circle at top left, rgba(125, 183, 173, 0.12), transparent 26%),
+      radial-gradient(circle at 85% 10%, rgba(227, 187, 122, 0.1), transparent 28%),
+      linear-gradient(180deg, #171918 0%, #111312 100%);
+    color: var(--text-normal);
+  }
 }
 
 body {

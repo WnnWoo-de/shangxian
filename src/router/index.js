@@ -12,6 +12,7 @@ const SaleListView = () => import('@/views/bill-history/SaleListView.vue')
 const BillDetailView = () => import('@/views/bill-detail/BillDetailView.vue')
 const StatisticsView = () => import('@/views/statistics/StatisticsView.vue')
 const MonthlyReportView = () => import('@/views/statistics/MonthlyReportView.vue')
+const SettlementDetailView = () => import('@/views/statistics/SettlementDetailView.vue')
 const SettingsView = () => import('@/views/settings/SettingsView.vue')
 const DataManagementView = () => import('@/views/settings/DataManagementView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
@@ -32,6 +33,7 @@ export const ROUTES = {
   SALE_LIST: '/sale/list',
   STATISTICS: '/statistics',
   MONTHLY_REPORT: '/statistics/monthly',
+  SETTLEMENT_DETAIL: '/statistics/settlement',
   SETTINGS: '/settings',
   DATA_MANAGEMENT: '/settings/data'
 }
@@ -186,6 +188,16 @@ const router = createRouter({
         requiresAuth: true,
         title: '月度报表 - 皖盛布碎资源结算系统',
         icon: 'monthlyReport'
+      }
+    },
+    {
+      path: ROUTES.SETTLEMENT_DETAIL,
+      name: 'settlementDetail',
+      component: SettlementDetailView,
+      meta: {
+        requiresAuth: true,
+        title: '结算详情 - 皖盛布碎资源结算系统',
+        icon: 'settlementDetail'
       }
     },
     {
