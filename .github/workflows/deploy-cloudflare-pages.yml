@@ -29,6 +29,8 @@ jobs:
       - name: Build project
         env:
           VITE_API_BASE_URL: https://www.wsbs.wnnw.fun/api
+          VITE_FALLBACK_API_BASE_URL: ''
+          VITE_SYNC_API_FALLBACK_URL: ''
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
