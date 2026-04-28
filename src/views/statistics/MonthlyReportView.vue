@@ -958,10 +958,6 @@ const exportImage = () => {
   canvas.toBlob(blobCallback, 'image/png', 0.95)
 }
 
-const printReport = () => {
-  window.print()
-}
-
 const renderTrendChart = () => {
   if (!trendChartRef.value) return
 
@@ -1158,10 +1154,6 @@ onUnmounted(() => {
           <button type="button" class="tool-btn" @click="exportImage">
             <AppIcon name="image" />
             图片
-          </button>
-          <button type="button" class="tool-btn" @click="printReport">
-            <AppIcon name="report" />
-            打印
           </button>
         </div>
       </div>
@@ -2224,16 +2216,4 @@ td {
   }
 }
 
-@media print {
-  .header-actions,
-  .filter-panel,
-  .pager-inline,
-  .month-pager {
-    display: none;
-  }
-
-  .stats-page {
-    gap: 14px;
-  }
-}
 </style>
