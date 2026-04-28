@@ -491,6 +491,17 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+        <div v-if="expenseByCustomer.length > CUSTOMER_PAGE_SIZE" class="panel-bottom-pager">
+          <div class="pager-inline">
+            <button type="button" class="pager-btn" :disabled="customerPage === 1" @click="goCustomerPage(customerPage - 1)">
+              <AppIcon name="chevron-left" />
+            </button>
+            <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
+            <button type="button" class="pager-btn" :disabled="customerPage === customerPageCount" @click="goCustomerPage(customerPage + 1)">
+              <AppIcon name="chevron-right" />
+            </button>
+          </div>
+        </div>
       </article>
 
       <article class="panel fabric-panel">
@@ -539,6 +550,17 @@ onUnmounted(() => {
             <div class="fabric-footnote">
               <span>金额占比 {{ item.share.toFixed(1) }}%</span>
             </div>
+          </div>
+        </div>
+        <div v-if="expenseByFabric.length > FABRIC_PAGE_SIZE" class="panel-bottom-pager">
+          <div class="pager-inline">
+            <button type="button" class="pager-btn" :disabled="fabricPage === 1" @click="goFabricPage(fabricPage - 1)">
+              <AppIcon name="chevron-left" />
+            </button>
+            <span class="pager-text">{{ fabricPage }} / {{ fabricPageCount }}</span>
+            <button type="button" class="pager-btn" :disabled="fabricPage === fabricPageCount" @click="goFabricPage(fabricPage + 1)">
+              <AppIcon name="chevron-right" />
+            </button>
           </div>
         </div>
       </article>
@@ -971,6 +993,12 @@ h3 {
 .customer-list,
 .fabric-chart {
   gap: 12px;
+}
+
+.panel-bottom-pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 .ledger-row {

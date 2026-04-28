@@ -26,6 +26,8 @@ const statusFilter = ref('all')
 const page = ref(1)
 const selectedRecordIds = ref(new Set())
 
+const clampPage = (value, max) => Math.min(Math.max(value, 1), max)
+
 const toNumber = (value) => {
   const number = Number(value)
   return Number.isFinite(number) ? number : 0
@@ -113,7 +115,6 @@ const filteredRecords = computed(() => {
 const pageCount = computed(() => Math.max(1, Math.ceil(filteredRecords.value.length / PAGE_SIZE)))
 
 const pagedRecords = computed(() => {
-  if (page.value > pageCount.value) page.value = pageCount.value
   const start = (page.value - 1) * PAGE_SIZE
   return filteredRecords.value.slice(start, start + PAGE_SIZE)
 })
@@ -199,6 +200,10 @@ const groupedByDate = computed(() => {
 
 const resetPage = () => {
   page.value = 1
+}
+
+const goPage = (value) => {
+  page.value = clampPage(value, pageCount.value)
 }
 
 const viewRecord = (record) => {
@@ -522,6 +527,7 @@ onMounted(async () => {
 })
 
 watch(filteredRecords, (records) => {
+  page.value = clampPage(page.value, pageCount.value)
   const availableIds = new Set(records.map((record) => String(record.id)))
   const next = Array.from(selectedRecordIds.value).filter((id) => availableIds.has(id))
   if (next.length !== selectedRecordIds.value.size) setSelectedIds(next)
@@ -611,11 +617,11 @@ watch(filteredRecords, (records) => {
           <p>当前筛选共 {{ filteredRecords.length }} 笔，已勾选 {{ selectedRecords.length }} 笔。</p>
         </div>
         <div class="pager" v-if="filteredRecords.length > PAGE_SIZE">
-          <button type="button" :disabled="page === 1" @click="page -= 1">
+          <button type="button" :disabled="page === 1" @click="goPage(page - 1)">
             <AppIcon name="chevron-left" />
           </button>
           <span>{{ page }} / {{ pageCount }}</span>
-          <button type="button" :disabled="page === pageCount" @click="page += 1">
+          <button type="button" :disabled="page === pageCount" @click="goPage(page + 1)">
             <AppIcon name="chevron-right" />
           </button>
         </div>
@@ -693,6 +699,16 @@ watch(filteredRecords, (records) => {
             </table>
           </div>
         </article>
+      </div>
+
+      <div class="pager pager-bottom" v-if="filteredRecords.length > PAGE_SIZE">
+        <button type="button" :disabled="page === 1" @click="goPage(page - 1)">
+          <AppIcon name="chevron-left" />
+        </button>
+        <span>{{ page }} / {{ pageCount }}</span>
+        <button type="button" :disabled="page === pageCount" @click="goPage(page + 1)">
+          <AppIcon name="chevron-right" />
+        </button>
       </div>
 
       <div v-if="filteredRecords.length > 0" class="bottom-export-bar">
@@ -980,6 +996,11 @@ h2 {
 .pager button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.pager-bottom {
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 .date-groups,

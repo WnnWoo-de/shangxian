@@ -1255,7 +1255,7 @@ onUnmounted(() => {
         </div>
       </article>
 
-      <article class="panel stat-panel product-panel">
+      <article class="panel stat-panel">
         <div class="panel-head">
           <div class="panel-title-group">
             <h2>结算概览 <span class="badge">Settlement</span></h2>
@@ -1322,6 +1322,7 @@ onUnmounted(() => {
             <span v-if="customerRanking.length > 0" class="panel-count">{{ customerRanking.length }} 位客户</span>
           </div>
           <div v-if="customerRanking.length > 0" class="pager-inline">
+            <span class="scroll-tip">左右滑动查看</span>
             <button type="button" class="pager-btn" :disabled="customerPage === 1" @click="goCustomerPage(customerPage - 1)">
               <AppIcon name="chevron-left" />
             </button>
@@ -1331,7 +1332,7 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap ranking-wrap">
           <table class="ranking-table">
             <thead>
               <tr>
@@ -1365,13 +1366,14 @@ onUnmounted(() => {
         </div>
       </article>
 
-      <article class="panel stat-panel">
+      <article class="panel stat-panel product-panel">
         <div class="panel-head">
           <div class="panel-title-group">
             <h2>品种构成分析 <span class="badge">Profit</span></h2>
             <span v-if="productAnalysis.length > 0" class="panel-count">{{ productAnalysis.length }} 个品种</span>
           </div>
           <div v-if="productAnalysis.length > 0" class="pager-inline">
+            <span class="scroll-tip">左右滑动查看</span>
             <button type="button" class="pager-btn" :disabled="fabricPage === 1" @click="goFabricPage(fabricPage - 1)">
               <AppIcon name="chevron-left" />
             </button>
@@ -1635,6 +1637,13 @@ h2 {
   font-weight: 700;
 }
 
+.scroll-tip {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .badge {
   font-size: 11px;
   background: var(--primary-soft);
@@ -1715,6 +1724,14 @@ h2 {
   overflow-x: hidden;
 }
 
+.table-wrap.ranking-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -1743,6 +1760,7 @@ td {
 }
 
 .ranking-table {
+  min-width: 760px;
   table-layout: auto;
 }
 
@@ -1928,6 +1946,36 @@ td {
   font-family: 'Outfit', monospace;
 }
 
+.detail-grid .product-panel .bar-chart {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.detail-grid .product-panel .product-row {
+  min-width: min(82vw, 380px);
+  scroll-snap-align: start;
+  grid-template-columns: 1fr;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.detail-grid .product-panel .product-metrics {
+  grid-template-columns: 1fr;
+}
+
+.detail-grid .product-panel .empty {
+  min-width: 100%;
+}
+
 .empty {
   text-align: center;
   padding: 36px 20px;
@@ -1953,7 +2001,7 @@ td {
 
   .ranking-table th,
   .ranking-table td {
-    white-space: normal;
+    white-space: nowrap;
   }
 }
 
@@ -2025,7 +2073,7 @@ td {
 
   .trend-chart-scroll,
   .ranking-wrap,
-  .product-panel .bar-chart {
+  .detail-grid .product-panel .bar-chart {
     scrollbar-width: thin;
     -webkit-overflow-scrolling: touch;
   }
@@ -2038,12 +2086,6 @@ td {
 
   .table-wrap {
     overflow: visible;
-  }
-
-  .ranking-wrap {
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 8px;
   }
 
   table,
@@ -2163,33 +2205,15 @@ td {
     margin-left: 0;
   }
 
-  .product-panel .bar-chart {
-    display: flex;
+  .detail-grid .product-panel .bar-chart {
     gap: 12px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
     margin: 0 -4px;
     padding: 0 4px 8px;
   }
 
-  .product-panel .product-row {
+  .detail-grid .product-panel .product-row {
     min-width: min(82vw, 340px);
-    scroll-snap-align: start;
-    grid-template-columns: 1fr;
-    align-content: start;
     padding: 14px;
-    border: 1px solid var(--panel-line);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.58);
-  }
-
-  .product-panel .product-metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .product-panel .empty {
-    min-width: 100%;
   }
 }
 
