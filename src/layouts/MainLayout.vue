@@ -866,7 +866,7 @@ onBeforeUnmount(() => {
   }
 
   .page-content.without-top-bar {
-    padding-top: calc(54px + var(--safe-area-inset-top));
+    padding-top: 54px;
   }
 
   .sidebar-shell {
