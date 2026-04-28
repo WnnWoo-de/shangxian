@@ -279,7 +279,7 @@ const dailyTrend = computed(() => {
 
 const hasTrendData = computed(() => dailyTrend.value.some((item) => item.income > 0 || item.expense > 0))
 const trendChartWidth = computed(() => {
-  if (viewportWidth.value <= 768) return Math.max(280, viewportWidth.value - 72)
+  if (viewportWidth.value <= 768) return Math.max(760, dailyTrend.value.length * 34)
   if (viewportWidth.value <= 1180) return Math.max(640, viewportWidth.value - 96)
   return Math.max(760, dailyTrend.value.length * 34)
 })
@@ -1237,7 +1237,7 @@ onUnmounted(() => {
             <span class="panel-count">{{ filteredRecords.length }} 笔单据</span>
           </div>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap ranking-wrap">
           <table>
             <thead>
               <tr>
@@ -1263,7 +1263,7 @@ onUnmounted(() => {
         </div>
       </article>
 
-      <article class="panel stat-panel">
+      <article class="panel stat-panel product-panel">
         <div class="panel-head">
           <div class="panel-title-group">
             <h2>结算概览 <span class="badge">Settlement</span></h2>
@@ -2027,11 +2027,31 @@ td {
   }
 
   .trend-chart-canvas {
+    min-width: 760px;
     height: 320px;
+  }
+
+  .trend-chart-scroll,
+  .ranking-wrap,
+  .product-panel .bar-chart {
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .trend-chart-scroll {
+    overflow-x: auto;
+    margin: 0 -4px;
+    padding: 0 4px 10px;
   }
 
   .table-wrap {
     overflow: visible;
+  }
+
+  .ranking-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
   }
 
   table,
@@ -2107,6 +2127,77 @@ td {
 
   .muted-cell {
     line-height: 1.5;
+  }
+
+  .ranking-table {
+    display: table;
+    width: 100%;
+    min-width: 760px;
+    table-layout: auto;
+    border-collapse: collapse;
+  }
+
+  .ranking-table thead {
+    display: table-header-group;
+  }
+
+  .ranking-table tbody {
+    display: table-row-group;
+  }
+
+  .ranking-table tr {
+    display: table-row;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .ranking-table th,
+  .ranking-table td {
+    display: table-cell;
+    width: auto;
+    padding: 13px 10px;
+    border-bottom: 1px solid var(--panel-line);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .ranking-table td::before {
+    content: none;
+  }
+
+  .ranking-table .rank-num {
+    margin-left: 0;
+  }
+
+  .product-panel .bar-chart {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    margin: 0 -4px;
+    padding: 0 4px 8px;
+  }
+
+  .product-panel .product-row {
+    min-width: min(82vw, 340px);
+    scroll-snap-align: start;
+    grid-template-columns: 1fr;
+    align-content: start;
+    padding: 14px;
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.58);
+  }
+
+  .product-panel .product-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .product-panel .empty {
+    min-width: 100%;
   }
 }
 
