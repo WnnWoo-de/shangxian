@@ -240,10 +240,11 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .main-layout{
-  min-height:100vh;
-  min-height:100dvh;
+  height:100vh;
+  height:100dvh;
   display:flex;
-  align-items:stretch;
+  align-items:flex-start;
+  overflow:hidden;
   background:radial-gradient(circle at left top,rgba(158,207,194,.16),transparent 24%),radial-gradient(circle at right top,rgba(227,187,122,.18),transparent 28%),linear-gradient(180deg,#fffaf4 0%,#f8efe3 100%)
 }
 .mobile-overlay{
@@ -256,16 +257,18 @@ onBeforeUnmount(() => {
 }
 .sidebar{
   width:320px;
-  min-height:100vh;
-  min-height:100dvh;
+  height:100vh;
+  height:100dvh;
   flex:0 0 320px;
-  position:relative;
+  position:sticky;
+  top:0;
+  align-self:flex-start;
   z-index:50;
   @include respond-to(lg){
     position:fixed;
     inset:0 auto 0 0;
     width:min(86vw,320px);
-    min-height:100dvh;
+    height:100dvh;
     flex:none;
     transform:translateX(-110%);
     transition:transform $transition-normal
@@ -276,8 +279,7 @@ onBeforeUnmount(() => {
 }
 .sidebar-shell{
   position:relative;
-  min-height:100vh;
-  min-height:100dvh;
+  height:100%;
   display:flex;
   flex-direction:column;
   gap:16px;
@@ -288,10 +290,9 @@ onBeforeUnmount(() => {
   border:1px solid rgba(255,255,255,.72);
   border-left:none;
   overflow:hidden;
+  overscroll-behavior:contain;
   @include respond-to(md){
-    min-height:100vh;
-    min-height:100dvh;
-    height:100dvh;
+    height:100%;
     border-radius:0 28px 28px 0;
     padding-top:calc(18px + var(--safe-area-inset-top));
     padding-bottom:calc(18px + var(--safe-area-inset-bottom))
@@ -516,10 +517,11 @@ onBeforeUnmount(() => {
 .main-content{
   flex:1;
   min-width:0;
-  min-height:100vh;
-  min-height:100dvh;
+  height:100vh;
+  height:100dvh;
   display:flex;
   flex-direction:column;
+  overflow:hidden;
   padding:18px;
   @include respond-to(md){padding:16px}
   @include respond-to(sm){
@@ -658,6 +660,7 @@ onBeforeUnmount(() => {
   min-height:0;
   margin-top:16px;
   overflow-y:auto;
+  overscroll-behavior:contain;
   @include scrollbar-beautiful;
   @include respond-to(md){margin-top:12px}
   @include respond-to(sm){
@@ -776,7 +779,7 @@ onBeforeUnmount(() => {
   }
 
   .page-content {
-    overflow: visible;
+    overflow-y: auto;
   }
 }
 
