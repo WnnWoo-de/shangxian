@@ -227,6 +227,10 @@ onBeforeUnmount(() => {
           <span></span><span></span><span></span>
         </button>
 
+        <div class="top-brand-mark" aria-hidden="true">
+          <img :src="logoUrl" alt="" />
+        </div>
+
         <div class="top-copy">
           <p class="top-date">{{ route.path === '/dashboard' ? '皖盛布碎' : currentTime }}</p>
           <div class="page-title-row">
@@ -596,6 +600,23 @@ onBeforeUnmount(() => {
 .floating-menu-toggle{
   display:none;
 }
+.top-brand-mark {
+  display: none;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: rgba(255, 250, 241, .72);
+  border: 1px solid rgba(255, 255, 255, .78);
+  box-shadow: 0 12px 24px rgba(179, 153, 123, .1);
+
+  img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+  }
+}
 .top-copy{
   flex:1;
   min-width:0
@@ -841,6 +862,10 @@ onBeforeUnmount(() => {
     margin-left: 0;
   }
 
+  .top-brand-mark {
+    display: grid;
+  }
+
   .floating-menu-toggle {
     position: fixed;
     top: calc(12px + var(--safe-area-inset-top));
@@ -911,7 +936,7 @@ onBeforeUnmount(() => {
 
   .main-content {
     padding: 8px;
-    padding-top: 0;
+    padding-top: calc(8px + var(--safe-area-inset-top));
     padding-left: calc(8px + var(--safe-area-inset-left));
     padding-right: calc(8px + var(--safe-area-inset-right));
   }
@@ -968,18 +993,29 @@ onBeforeUnmount(() => {
     top: 0;
     z-index: 20;
     align-items: center;
-    gap: 10px;
-    min-height: 76px;
+    gap: 8px;
+    min-height: 72px;
     padding: 10px 12px;
     border-radius: 20px;
     box-shadow: 0 12px 26px rgba(179, 153, 123, .12);
   }
 
   .menu-toggle {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     border-radius: 13px;
     background: rgba(125, 183, 173, .13);
+  }
+
+  .top-brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  .top-brand-mark img {
+    width: 28px;
+    height: 28px;
   }
 
   .top-copy {
@@ -1031,6 +1067,12 @@ onBeforeUnmount(() => {
   .page-content {
     margin-top: 8px;
     overflow-y: auto;
+  }
+}
+
+@media (display-mode: standalone) and (max-width: 480px) {
+  .main-content {
+    padding-top: calc(12px + var(--safe-area-inset-top));
   }
 }
 
