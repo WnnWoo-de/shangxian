@@ -1149,7 +1149,7 @@ onUnmounted(() => {
           </button>
           <button type="button" class="tool-btn" @click="exportExcel">
             <AppIcon name="table" />
-            Excel
+            表格
           </button>
           <button type="button" class="tool-btn" @click="exportImage">
             <AppIcon name="image" />

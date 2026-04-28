@@ -85,7 +85,7 @@ const updateTime = () => {
 }
 
 let timer = null
-const handleResize = () => { if (window.innerWidth > 1024) mobileMenuOpen.value = false }
+const handleResize = () => { if (window.innerWidth > 768) mobileMenuOpen.value = false }
 const handleLogout = async () => {
   try {
     await authStore.logout()
@@ -240,6 +240,7 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .main-layout{
+  --sidebar-width:320px;
   height:100vh;
   height:100dvh;
   display:flex;
@@ -250,32 +251,22 @@ onBeforeUnmount(() => {
 .mobile-overlay{
   position:fixed;
   inset:0;
-  background:rgba(255,250,243,.66);
+  background:rgba(45,36,28,.2);
   backdrop-filter:blur(4px);
   z-index:40;
-  @media (min-width: 1025px){display:none}
+  @media (min-width: 769px){display:none}
 }
 .sidebar{
-  width:320px;
+  width:var(--sidebar-width);
   height:100vh;
   height:100dvh;
-  flex:0 0 320px;
-  position:sticky;
-  top:0;
-  align-self:flex-start;
+  flex:0 0 var(--sidebar-width);
+  position:fixed;
+  inset:0 auto 0 0;
   z-index:50;
-  @include respond-to(lg){
-    position:fixed;
-    inset:0 auto 0 0;
-    width:min(86vw,320px);
-    height:100dvh;
-    flex:none;
-    transform:translateX(-110%);
-    transition:transform $transition-normal
-  }
 }
 .sidebar.mobile-open{
-  @include respond-to(lg){transform:translateX(0)}
+  @media (max-width: 768px){transform:translateX(0)}
 }
 .sidebar-shell{
   position:relative;
@@ -522,6 +513,7 @@ onBeforeUnmount(() => {
   display:flex;
   flex-direction:column;
   overflow:hidden;
+  margin-left:var(--sidebar-width);
   padding:18px;
   @include respond-to(md){padding:16px}
   @include respond-to(sm){
@@ -572,7 +564,7 @@ onBeforeUnmount(() => {
     background:$text-primary;
     border-radius:999px
   }
-  @include respond-to(lg){
+  @include respond-to(md){
     display:block;
     flex-shrink:0
   }
@@ -670,9 +662,13 @@ onBeforeUnmount(() => {
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
+  .main-layout {
+    --sidebar-width: 288px;
+  }
+
   .sidebar {
-    width: 288px;
-    flex-basis: 288px;
+    width: var(--sidebar-width);
+    flex-basis: var(--sidebar-width);
   }
 
   .sidebar-shell {
@@ -709,19 +705,57 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (max-width: 768px) {
+  .main-layout {
+    --sidebar-width: min(86vw, 320px);
+  }
+
+  .sidebar {
+    transform: translateX(-110%);
+    transition: transform $transition-normal;
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+
+  .sidebar-shell {
+    border-radius: 0 24px 24px 0;
+  }
+
+  .brand-kicker,
+  .brand-desc,
+  .menu-note {
+    display: none;
+  }
+
+  .sidebar-title {
+    font-size: 23px;
+  }
+
+  .brand-mark {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+  }
+
+  .menu-item {
+    gap: 10px;
+    padding: 11px 10px;
+    border-radius: 15px;
+  }
+}
+
 @media (max-width: 480px) {
   .main-layout {
-    min-height: 100dvh;
+    --sidebar-width: min(92vw, 316px);
+    height: 100dvh;
     background:
       linear-gradient(180deg, rgba(255, 250, 243, .98) 0%, rgba(245, 235, 222, .98) 100%);
   }
 
-  .mobile-overlay {
-    background: rgba(45, 36, 28, .2);
-  }
-
   .sidebar {
-    width: min(92vw, 316px);
+    width: var(--sidebar-width);
   }
 
   .sidebar-shell {
@@ -732,18 +766,12 @@ onBeforeUnmount(() => {
   }
 
   .sidebar-panel {
-    padding: 14px 10px;
+    padding: 12px 8px;
     border-radius: 20px;
   }
 
   .sidebar-title {
-    font-size: 24px;
-  }
-
-  .brand-kicker,
-  .brand-desc,
-  .menu-note {
-    display: none;
+    font-size: 20px;
   }
 
   .menu-group {
@@ -752,6 +780,21 @@ onBeforeUnmount(() => {
 
   .menu-item.single {
     margin-bottom: 12px;
+  }
+
+  .menu-item {
+    gap: 8px;
+    padding: 10px 8px;
+  }
+
+  .menu-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+  }
+
+  .menu-arrow {
+    display: none;
   }
 
   .user-card {
@@ -789,10 +832,6 @@ onBeforeUnmount(() => {
       radial-gradient(circle at left top, rgba(125, 183, 173, .12), transparent 24%),
       radial-gradient(circle at right top, rgba(227, 187, 122, .1), transparent 28%),
       linear-gradient(180deg, #171918 0%, #111312 100%);
-  }
-
-  .mobile-overlay {
-    background: rgba(10, 12, 11, .64);
   }
 
   .sidebar-shell,

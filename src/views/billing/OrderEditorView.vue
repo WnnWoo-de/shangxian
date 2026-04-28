@@ -1624,8 +1624,12 @@ const exportImage = () => {
   gap: 12px;
 }
 .action-toolbar {
+  align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+.action-toolbar .add-detail-tag {
+  margin-right: auto;
 }
 .btn-primary,
 .btn-ghost,
@@ -1803,7 +1807,6 @@ const exportImage = () => {
     width: 100%;
     gap: 10px;
   }
-
   .action-toolbar button,
   .actions button {
     flex: 1 1 calc(50% - 5px);
@@ -1851,7 +1854,6 @@ const exportImage = () => {
   .actions button {
     flex-basis: 100%;
   }
-
   .btn-content {
     justify-content: center;
     width: 100%;
