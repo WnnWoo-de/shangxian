@@ -64,6 +64,7 @@ const menuItems = [
 
 const pageTitle = computed(() => route.meta.title?.split(' - ')[0] || '经营工作台')
 const showTopBar = computed(() => route.path === '/dashboard')
+const displayUserName = computed(() => authStore.user?.name || '系统管理员')
 const pageSubtitle = computed(() => {
   const lookup = new Map()
   menuItems.forEach((item) => {
@@ -221,18 +222,18 @@ onBeforeUnmount(() => {
         <span></span><span></span><span></span>
       </button>
 
-      <header v-if="showTopBar" class="top-bar">
+      <header v-if="showTopBar" :class="['top-bar', { 'dashboard-top-bar': route.path === '/dashboard' }]">
         <button class="menu-toggle" @click="toggleMobileMenu" aria-label="打开菜单">
           <span></span><span></span><span></span>
         </button>
 
         <div class="top-copy">
-          <p class="top-date">{{ currentTime }}</p>
+          <p class="top-date">{{ route.path === '/dashboard' ? '皖盛布碎' : currentTime }}</p>
           <div class="page-title-row">
-            <h2 class="page-title">{{ pageTitle }}</h2>
+            <h2 class="page-title">{{ route.path === '/dashboard' ? `你好，${displayUserName}` : pageTitle }}</h2>
             <span v-if="route.path === '/dashboard'" class="title-badge">今日数据</span>
           </div>
-          <p class="page-subtitle">{{ pageSubtitle }}</p>
+          <p class="page-subtitle">{{ route.path === '/dashboard' ? currentTime : pageSubtitle }}</p>
         </div>
 
         <div class="top-actions">
@@ -910,7 +911,7 @@ onBeforeUnmount(() => {
 
   .main-content {
     padding: 8px;
-    padding-top: calc(6px + var(--safe-area-inset-top));
+    padding-top: 0;
     padding-left: calc(8px + var(--safe-area-inset-left));
     padding-right: calc(8px + var(--safe-area-inset-right));
   }
@@ -964,7 +965,7 @@ onBeforeUnmount(() => {
 
   .top-bar {
     position: sticky;
-    top: calc(6px + var(--safe-area-inset-top));
+    top: 0;
     z-index: 20;
     align-items: center;
     gap: 10px;
@@ -991,6 +992,13 @@ onBeforeUnmount(() => {
     letter-spacing: .04em;
   }
 
+  .dashboard-top-bar .top-date {
+    color: $secondary-dark;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .12em;
+  }
+
   .page-title-row {
     gap: 6px;
   }
@@ -1000,6 +1008,10 @@ onBeforeUnmount(() => {
     line-height: 1.08;
   }
 
+  .dashboard-top-bar .page-title {
+    font-size: 24px;
+  }
+
   .title-badge {
     padding: 4px 7px;
     font-size: 11px;
@@ -1007,6 +1019,13 @@ onBeforeUnmount(() => {
 
   .page-subtitle {
     display: none;
+  }
+
+  .dashboard-top-bar .page-subtitle {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+    line-height: 1.3;
   }
 
   .page-content {
