@@ -1315,7 +1315,7 @@ onUnmounted(() => {
     </article>
 
     <div class="detail-grid">
-      <article class="panel stat-panel">
+      <article class="panel stat-panel ranking-panel">
         <div class="panel-head">
           <div class="panel-title-group">
             <h2>客户交易排名 <span class="badge">Ranking</span></h2>
@@ -1332,37 +1332,39 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
-        <div class="table-wrap ranking-wrap">
-          <table class="ranking-table">
-            <thead>
-              <tr>
-                <th>排名</th>
-                <th>客户名称</th>
-                <th>交易笔数</th>
-                <th>总重量</th>
-                <th>总金额</th>
-                <th>未收款</th>
-                <th>占比</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in pagedCustomers" :key="item.customerId">
-                <td data-label="排名"><span class="rank-num" :class="{ 'top-3': item.rank <= 3 }">{{ item.rank }}</span></td>
-                <td data-label="客户名称" class="strong-cell">{{ item.customerName }}</td>
-                <td data-label="交易笔数">{{ item.transactionCount }} 笔</td>
-                <td data-label="总重量">{{ formatWeight(item.totalWeight) }} 斤</td>
-                <td data-label="总金额"><span class="amount-text">{{ formatMoney(item.totalAmount) }}</span></td>
-                <td data-label="未收款"><span class="danger-text">{{ formatMoney(item.unpaidAmount) }}</span></td>
-                <td data-label="占比">{{ formatPercent(item.amountRatio) }}</td>
-              </tr>
-              <tr v-if="!loading && customerRanking.length === 0">
-                <td colspan="7" class="empty">该月份暂无客户交易记录</td>
-              </tr>
-              <tr v-if="loading">
-                <td colspan="7" class="empty">月报数据加载中...</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="table-scroll-wrap">
+          <div class="table-wrap ranking-wrap">
+            <table class="ranking-table">
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>客户名称</th>
+                  <th>交易笔数</th>
+                  <th>总重量</th>
+                  <th>总金额</th>
+                  <th>未收款</th>
+                  <th>占比</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in pagedCustomers" :key="item.customerId">
+                  <td data-label="排名"><span class="rank-num" :class="{ 'top-3': item.rank <= 3 }">{{ item.rank }}</span></td>
+                  <td data-label="客户名称" class="strong-cell">{{ item.customerName }}</td>
+                  <td data-label="交易笔数">{{ item.transactionCount }} 笔</td>
+                  <td data-label="总重量">{{ formatWeight(item.totalWeight) }} 斤</td>
+                  <td data-label="总金额"><span class="amount-text">{{ formatMoney(item.totalAmount) }}</span></td>
+                  <td data-label="未收款"><span class="danger-text">{{ formatMoney(item.unpaidAmount) }}</span></td>
+                  <td data-label="占比">{{ formatPercent(item.amountRatio) }}</td>
+                </tr>
+                <tr v-if="!loading && customerRanking.length === 0">
+                  <td colspan="7" class="empty">该月份暂无客户交易记录</td>
+                </tr>
+                <tr v-if="loading">
+                  <td colspan="7" class="empty">月报数据加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </article>
 
@@ -1383,25 +1385,27 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
-        <div class="bar-chart">
-          <div v-for="item in pagedFabrics" :key="item.productId" class="product-row">
-            <div class="product-main">
-              <span class="label">{{ item.productName }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" :class="{ ready: chartMotionReady }" :style="{ width: `${chartMotionReady ? Math.max(5, item.amountRatio * 100) : 0}%` }"></div>
+        <div class="bar-chart-scroll-wrap">
+          <div class="bar-chart">
+            <div v-for="item in pagedFabrics" :key="item.productId" class="product-row">
+              <div class="product-main">
+                <span class="label">{{ item.productName }}</span>
+                <div class="bar-track">
+                  <div class="bar-fill" :class="{ ready: chartMotionReady }" :style="{ width: `${chartMotionReady ? Math.max(5, item.amountRatio * 100) : 0}%` }"></div>
+                </div>
+              </div>
+              <div class="product-metrics">
+                <span>出货 {{ formatWeight(item.outboundWeight) }} 斤</span>
+                <strong>{{ formatMoney(item.outboundAmount) }}</strong>
+                <span>进货成本 {{ item.purchaseCost == null ? '--' : formatMoney(item.purchaseCost) }}</span>
+                <span>毛利 {{ item.grossProfit == null ? '--' : formatMoney(item.grossProfit) }}</span>
+                <span>毛利率 {{ item.grossProfitRate == null ? '--' : formatPercent(item.grossProfitRate) }}</span>
+                <span>占比 {{ formatPercent(item.amountRatio) }}</span>
               </div>
             </div>
-            <div class="product-metrics">
-              <span>出货 {{ formatWeight(item.outboundWeight) }} 斤</span>
-              <strong>{{ formatMoney(item.outboundAmount) }}</strong>
-              <span>进货成本 {{ item.purchaseCost == null ? '--' : formatMoney(item.purchaseCost) }}</span>
-              <span>毛利 {{ item.grossProfit == null ? '--' : formatMoney(item.grossProfit) }}</span>
-              <span>毛利率 {{ item.grossProfitRate == null ? '--' : formatPercent(item.grossProfitRate) }}</span>
-              <span>占比 {{ formatPercent(item.amountRatio) }}</span>
-            </div>
+            <div v-if="!loading && productAnalysis.length === 0" class="empty">暂无品种分析数据</div>
+            <div v-if="loading" class="empty">月报数据加载中...</div>
           </div>
-          <div v-if="!loading && productAnalysis.length === 0" class="empty">暂无品种分析数据</div>
-          <div v-if="loading" class="empty">月报数据加载中...</div>
         </div>
       </article>
     </div>
@@ -1724,10 +1728,28 @@ h2 {
   overflow-x: hidden;
 }
 
-.table-wrap.ranking-wrap {
+.ranking-wrap {
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 8px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0 -4px;
+  padding: 0 4px 8px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bar-chart-scroll-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0 -4px;
+  padding: 0 4px 8px;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
 }
@@ -1957,6 +1979,14 @@ td {
   -webkit-overflow-scrolling: touch;
 }
 
+.ranking-panel .table-scroll-wrap .ranking-table {
+  min-width: max-content;
+}
+
+.ranking-panel .table-scroll-wrap .ranking-table tr {
+  scroll-snap-align: start;
+}
+
 .detail-grid .product-panel .product-row {
   min-width: min(82vw, 380px);
   scroll-snap-align: start;
@@ -2072,7 +2102,8 @@ td {
   }
 
   .trend-chart-scroll,
-  .ranking-wrap,
+  .table-scroll-wrap,
+  .bar-chart-scroll-wrap,
   .detail-grid .product-panel .bar-chart {
     scrollbar-width: thin;
     -webkit-overflow-scrolling: touch;
@@ -2082,6 +2113,43 @@ td {
     overflow-x: auto;
     margin: 0 -4px;
     padding: 0 4px 10px;
+  }
+
+  .table-scroll-wrap {
+    margin: 0 -4px;
+    padding: 0 4px 8px;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table {
+    min-width: max-content;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table thead {
+    display: table-header-group;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table tbody {
+    display: table-row-group;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table tr {
+    display: table-row;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table th,
+  .ranking-panel .table-scroll-wrap .ranking-table td {
+    display: table-cell;
+    padding: 13px 10px;
+    border-bottom: 1px solid var(--panel-line);
+    white-space: nowrap;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table td::before {
+    content: none;
   }
 
   .table-wrap {
