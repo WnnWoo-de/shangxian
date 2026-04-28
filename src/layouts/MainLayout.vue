@@ -283,8 +283,8 @@ onBeforeUnmount(() => {
   height:100%;
   display:flex;
   flex-direction:column;
-  gap:12px;
-  padding:16px 16px 14px;
+  gap:10px;
+  padding:14px 14px 8px;
   border-radius:0 30px 30px 0;
   background:linear-gradient(180deg,rgba(255,251,246,.98) 0%,rgba(250,242,232,.97) 56%,rgba(246,237,225,.96) 100%);
   box-shadow:0 32px 60px rgba(179,153,123,.18);
@@ -312,22 +312,22 @@ onBeforeUnmount(() => {
 .sidebar-header,.sidebar-panel,.sidebar-footer{position:relative;z-index:1}
 .sidebar-header{
   display:flex;
-  gap:14px;
+  gap:10px;
   align-items:center;
-  padding:8px 6px 4px
+  padding:2px 4px 0
 }
 .brand-mark{
-  width:62px;
-  height:62px;
-  border-radius:20px;
+  width:46px;
+  height:46px;
+  border-radius:15px;
   background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(227,187,122,.52));
   display:grid;
   place-items:center;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 10px 25px rgba(179,153,123,.16)
 }
 .sidebar-logo{
-  width:38px;
-  height:38px;
+  width:30px;
+  height:30px;
   object-fit:contain
 }
 .brand-kicker{
@@ -340,7 +340,7 @@ onBeforeUnmount(() => {
 .sidebar-title{
   margin:0;
   color:$text-primary;
-  font-size:28px;
+  font-size:23px;
   line-height:1.05
 }
 .brand-desc{
@@ -353,8 +353,8 @@ onBeforeUnmount(() => {
   min-height:0;
   display:flex;
   flex-direction:column;
-  padding:16px 12px;
-  border-radius:24px;
+  padding:12px 10px 10px;
+  border-radius:20px;
   background:rgba(255,255,255,.42);
   border:1px solid rgba(255,255,255,.72);
   backdrop-filter:blur(10px)
@@ -363,7 +363,7 @@ onBeforeUnmount(() => {
   display:inline-flex;
   align-items:center;
   gap:8px;
-  margin:0 6px 16px;
+  margin:0 6px 10px;
   color:$text-primary;
   font-size:12px;
   letter-spacing:.08em
@@ -378,30 +378,31 @@ onBeforeUnmount(() => {
 .sidebar-nav{
   flex:1;
   min-height:0;
-  overflow-y:auto;
+  overflow:hidden;
   padding-right:4px;
   @include scrollbar-beautiful
 }
 .menu-group{
-  margin-bottom:18px
+  margin-bottom:10px
 }
 .menu-group-label{
-  margin:0 8px 10px;
-  font-size:12px;
+  margin:0 8px 6px;
+  font-size:11px;
   letter-spacing:.08em;
   color:rgba(139,125,112,.7)
 }
 .menu-group-items{
   display:flex;
   flex-direction:column;
-  gap:8px
+  gap:6px
 }
 .menu-item{
   display:flex;
   align-items:center;
   gap:12px;
-  padding:13px 14px;
-  border-radius:18px;
+  min-height:40px;
+  padding:8px 10px;
+  border-radius:14px;
   color:$text-primary;
   text-decoration:none;
   border:1px solid transparent;
@@ -432,11 +433,11 @@ onBeforeUnmount(() => {
 }
 .menu-item.active .menu-name,.menu-item.active .menu-arrow,.menu-item.active .menu-icon{color:$text-primary}
 .menu-item.active .menu-note{color:$text-secondary}
-.menu-item.single{margin-bottom:18px}
+.menu-item.single{margin-bottom:10px}
 .menu-icon{
-  width:28px;
-  height:28px;
-  border-radius:10px;
+  width:26px;
+  height:26px;
+  border-radius:9px;
   display:grid;
   place-items:center;
   background:rgba(255,255,255,.62);
@@ -457,29 +458,31 @@ onBeforeUnmount(() => {
 }
 .menu-note{
   font-size:12px;
-  color:rgba(139,125,112,.78)
+  color:rgba(139,125,112,.78);
+  display:none
 }
 .menu-arrow{
   color:rgba(139,125,112,.68);
   font-size:14px
 }
 .sidebar-footer{
-  padding:0 4px 2px
+  flex:0 0 auto;
+  padding:0 4px
 }
 .user-card{
   display:flex;
   align-items:center;
   gap:12px;
-  padding:9px 12px;
-  margin-bottom:8px;
-  border-radius:18px;
+  padding:7px 10px;
+  margin-bottom:6px;
+  border-radius:14px;
   background:rgba(255,255,255,.46);
   border:1px solid rgba(255,255,255,.72)
 }
 .user-avatar{
-  width:42px;
-  height:42px;
-  border-radius:14px;
+  width:30px;
+  height:30px;
+  border-radius:10px;
   display:grid;
   place-items:center;
   background:linear-gradient(135deg,#e3bb7a,#f5dfb7);
@@ -488,20 +491,22 @@ onBeforeUnmount(() => {
 }
 .user-name{
   color:$text-primary;
-  font-weight:600
+  font-weight:600;
+  font-size:13px
 }
 .user-role{
-  margin-top:2px;
-  font-size:12px;
+  margin-top:1px;
+  font-size:11px;
   color:$text-secondary
 }
 .logout-btn{
   width:100%;
-  height:40px;
+  height:34px;
   border:1px solid rgba(106,93,82,.12);
   border-radius:999px;
   background:rgba(255,255,255,.5);
   color:$text-primary;
+  font-size:13px;
   font-weight:600;
   cursor:pointer;
   transition:transform $transition-fast,background $transition-normal,border-color $transition-normal;
@@ -866,6 +871,10 @@ onBeforeUnmount(() => {
 
   .sidebar-shell {
     border-radius: 0 24px 24px 0;
+  }
+
+  .sidebar-nav {
+    overflow-y: auto;
   }
 
   .brand-kicker,
