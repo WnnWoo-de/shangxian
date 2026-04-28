@@ -81,6 +81,11 @@ export const fetchStatsOverviewApi = async () => {
   return getData(res, { billCount: 0, customerCount: 0, fabricCount: 0 })
 }
 
+export const fetchStatsMonthlyApi = async (params = {}) => {
+  const res = await request.get('/stats/monthly', params)
+  return getData(res, null)
+}
+
 export const pullSyncApi = async (since, full = false) => {
   const params = {}
   if (since) params.since = since

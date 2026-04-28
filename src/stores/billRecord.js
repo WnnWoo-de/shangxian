@@ -168,6 +168,7 @@ export const useBillRecordStore = defineStore('billRecord', () => {
   const records = ref([])
   const loading = ref(false)
   const initialized = ref(false)
+  let initPromise = null
 
   const ensureLoaded = async () => {
     if (!initialized.value) {
@@ -190,40 +191,47 @@ export const useBillRecordStore = defineStore('billRecord', () => {
   }
 
   async function init() {
-    if (initialized.value && records.value.length) return
+    if (initialized.value) return
+    if (initPromise) return initPromise
 
-    loading.value = true
-    try {
-      const cloudRecords = await fetchBillsApi()
-      if (Array.isArray(cloudRecords) && cloudRecords.length > 0) {
-        records.value = cloudRecords.map((item) => normalizeRecord(item))
-      } else if (ENABLE_DEMO_SEED) {
-        records.value = await seedCloudIfEmpty()
-      } else {
-        records.value = []
-      }
+    initPromise = (async () => {
+      loading.value = true
+      try {
+        const cloudRecords = await fetchBillsApi()
+        if (Array.isArray(cloudRecords) && cloudRecords.length > 0) {
+          records.value = cloudRecords.map((item) => normalizeRecord(item))
+        } else if (ENABLE_DEMO_SEED) {
+          records.value = await seedCloudIfEmpty()
+        } else {
+          records.value = []
+        }
 
-      persistLocal(records.value)
-      initialized.value = true
-    } catch (error) {
-      console.error('Load bills from cloud failed:', error)
-      const saved = storage.get(STORAGE_KEY, [])
-      if (Array.isArray(saved) && saved.length) {
-        records.value = saved.map((item) => normalizeRecord(item))
-      } else if (ENABLE_DEMO_SEED) {
-        records.value = seedBillRecords.map((item) => normalizeRecord(item))
-      } else {
-        records.value = []
+        persistLocal(records.value)
+        initialized.value = true
+      } catch (error) {
+        console.error('Load bills from cloud failed:', error)
+        const saved = storage.get(STORAGE_KEY, [])
+        if (Array.isArray(saved) && saved.length) {
+          records.value = saved.map((item) => normalizeRecord(item))
+        } else if (ENABLE_DEMO_SEED) {
+          records.value = seedBillRecords.map((item) => normalizeRecord(item))
+        } else {
+          records.value = []
+        }
+        persistLocal(records.value)
+        initialized.value = true
+      } finally {
+        loading.value = false
+        initPromise = null
       }
-      persistLocal(records.value)
-      initialized.value = true
-    } finally {
-      loading.value = false
-    }
+    })()
+
+    return initPromise
   }
 
   async function refresh() {
     initialized.value = false
+    initPromise = null
     await init()
   }
 
