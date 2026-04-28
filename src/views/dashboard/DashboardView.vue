@@ -969,6 +969,10 @@ onUnmounted(() => {
 }
 
 @media (max-width: 480px) {
+  .welcome-section {
+    display: none;
+  }
+
   .welcome-content .welcome-header {
     flex-direction: column;
   }
