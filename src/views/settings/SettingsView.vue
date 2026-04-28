@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { showToast } from '@/utils/toast'
 import { getExportImageBrandName, setExportImageBrandName } from '@/utils/app-config'
 import { getPreferredTheme, getResolvedTheme, setTheme } from '@/utils/theme'
-import PwaInstallButton from '@/components/PwaInstallButton.vue'
 // UUID is not necessary, just standard icons or simple css shapes
 
 const settingsList = ref([
@@ -112,16 +111,6 @@ onMounted(() => {
     </section>
 
     <section class="panel settings-panel">
-      <div class="setting-item">
-        <div class="item-info">
-          <h3>桌面快捷方式</h3>
-          <p>在支持的浏览器中，可将系统添加到手机或平板主屏幕，像应用一样快速打开。</p>
-        </div>
-        <div class="item-action pwa-install-action">
-          <PwaInstallButton />
-        </div>
-      </div>
-
       <div class="setting-item theme-setting">
         <div class="item-info">
           <h3>系统主题</h3>
@@ -433,11 +422,6 @@ onMounted(() => {
 
   .item-action {
     align-self: flex-end;
-  }
-
-  .pwa-install-action {
-    width: 100%;
-    align-self: stretch;
   }
 
   .theme-control {
