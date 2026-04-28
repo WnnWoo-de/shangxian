@@ -1628,9 +1628,6 @@ const exportImage = () => {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.action-toolbar .add-detail-tag {
-  margin-right: auto;
-}
 .btn-primary,
 .btn-ghost,
 .btn-tag,
@@ -1668,7 +1665,6 @@ const exportImage = () => {
   color: #d24d57;
 }
 .add-detail-tag {
-  margin-right: auto;
   border-radius: 999px;
   box-shadow: 0 10px 24px rgba(20, 31, 58, 0.08);
 }
