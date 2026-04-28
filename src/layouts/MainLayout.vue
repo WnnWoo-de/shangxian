@@ -63,6 +63,7 @@ const menuItems = [
 ]
 
 const pageTitle = computed(() => route.meta.title?.split(' - ')[0] || '经营工作台')
+const showTopBar = computed(() => route.path === '/dashboard')
 const pageSubtitle = computed(() => {
   const lookup = new Map()
   menuItems.forEach((item) => {
@@ -211,7 +212,16 @@ onBeforeUnmount(() => {
     </aside>
 
     <div class="main-content">
-      <header class="top-bar">
+      <button
+        v-if="!showTopBar"
+        class="floating-menu-toggle"
+        @click="toggleMobileMenu"
+        aria-label="打开菜单"
+      >
+        <span></span><span></span><span></span>
+      </button>
+
+      <header v-if="showTopBar" class="top-bar">
         <button class="menu-toggle" @click="toggleMobileMenu" aria-label="打开菜单">
           <span></span><span></span><span></span>
         </button>
@@ -233,7 +243,7 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <main class="page-content"><RouterView /></main>
+      <main :class="['page-content', { 'without-top-bar': !showTopBar }]"><RouterView /></main>
     </div>
   </div>
 </template>
@@ -273,8 +283,8 @@ onBeforeUnmount(() => {
   height:100%;
   display:flex;
   flex-direction:column;
-  gap:16px;
-  padding:20px 18px 18px;
+  gap:12px;
+  padding:16px 16px 14px;
   border-radius:0 30px 30px 0;
   background:linear-gradient(180deg,rgba(255,251,246,.98) 0%,rgba(250,242,232,.97) 56%,rgba(246,237,225,.96) 100%);
   box-shadow:0 32px 60px rgba(179,153,123,.18);
@@ -341,7 +351,9 @@ onBeforeUnmount(() => {
 .sidebar-panel{
   flex:1;
   min-height:0;
-  padding:18px 12px;
+  display:flex;
+  flex-direction:column;
+  padding:16px 12px;
   border-radius:24px;
   background:rgba(255,255,255,.42);
   border:1px solid rgba(255,255,255,.72);
@@ -364,7 +376,8 @@ onBeforeUnmount(() => {
   box-shadow:0 0 0 6px rgba(227,187,122,.12)
 }
 .sidebar-nav{
-  height:calc(100% - 30px);
+  flex:1;
+  min-height:0;
   overflow-y:auto;
   padding-right:4px;
   @include scrollbar-beautiful
@@ -451,14 +464,14 @@ onBeforeUnmount(() => {
   font-size:14px
 }
 .sidebar-footer{
-  padding:2px 4px 4px
+  padding:0 4px 2px
 }
 .user-card{
   display:flex;
   align-items:center;
   gap:12px;
-  padding:12px 14px;
-  margin-bottom:12px;
+  padding:9px 12px;
+  margin-bottom:8px;
   border-radius:18px;
   background:rgba(255,255,255,.46);
   border:1px solid rgba(255,255,255,.72)
@@ -484,7 +497,7 @@ onBeforeUnmount(() => {
 }
 .logout-btn{
   width:100%;
-  height:44px;
+  height:40px;
   border:1px solid rgba(106,93,82,.12);
   border-radius:999px;
   background:rgba(255,255,255,.5);
@@ -574,6 +587,9 @@ onBeforeUnmount(() => {
     border-radius:12px
   }
 }
+.floating-menu-toggle{
+  display:none;
+}
 .top-copy{
   flex:1;
   min-width:0
@@ -660,6 +676,106 @@ onBeforeUnmount(() => {
     padding-bottom:var(--safe-area-inset-bottom)
   }
 }
+.page-content.without-top-bar{
+  margin-top:0;
+}
+
+@media (min-width: 769px) and (max-height: 980px) {
+  .sidebar-shell {
+    gap: 10px;
+    padding: 14px 14px 12px;
+  }
+
+  .sidebar-header {
+    gap: 10px;
+    padding: 4px 4px 2px;
+  }
+
+  .brand-mark {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+  }
+
+  .sidebar-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-kicker,
+  .brand-desc,
+  .menu-note {
+    display: none;
+  }
+
+  .sidebar-title {
+    font-size: 24px;
+  }
+
+  .sidebar-panel {
+    padding: 12px 10px 10px;
+    border-radius: 20px;
+  }
+
+  .panel-caption {
+    margin: 0 6px 10px;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .menu-group {
+    margin-bottom: 10px;
+  }
+
+  .menu-group-label {
+    margin: 0 8px 6px;
+    font-size: 11px;
+  }
+
+  .menu-group-items {
+    gap: 6px;
+  }
+
+  .menu-item {
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+
+  .menu-item.single {
+    margin-bottom: 10px;
+  }
+
+  .menu-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+  }
+
+  .sidebar-footer {
+    padding: 0 2px 2px;
+  }
+
+  .user-card {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+  }
+
+  .user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+  }
+
+  .logout-btn {
+    height: 38px;
+  }
+}
 
 @media (min-width: 769px) and (max-width: 1024px) {
   .main-layout {
@@ -717,6 +833,35 @@ onBeforeUnmount(() => {
 
   .main-content {
     margin-left: 0;
+  }
+
+  .floating-menu-toggle {
+    position: fixed;
+    top: calc(12px + var(--safe-area-inset-top));
+    left: calc(12px + var(--safe-area-inset-left));
+    z-index: 35;
+    display: block;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid rgba(106, 93, 82, .08);
+    border-radius: 14px;
+    background: rgba(255, 252, 247, .92);
+    box-shadow: 0 12px 26px rgba(179, 153, 123, .16);
+    cursor: pointer;
+  }
+
+  .floating-menu-toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    margin: 4px auto;
+    background: $text-primary;
+    border-radius: 999px;
+  }
+
+  .page-content.without-top-bar {
+    padding-top: calc(54px + var(--safe-area-inset-top));
   }
 
   .sidebar-shell {
