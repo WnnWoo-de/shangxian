@@ -1413,21 +1413,50 @@ const exportImage = () => {
   --weighing-accent-strong: #0f654f;
   --weighing-accent-soft: rgba(35, 180, 140, 0.12);
   --weighing-accent-line: rgba(35, 120, 98, 0.2);
-  --weighing-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(235, 248, 244, 0.92));
-  --weighing-shadow: rgba(35, 120, 98, 0.1);
+  --weighing-card-bg:
+    linear-gradient(135deg, rgba(35, 180, 140, 0.08), transparent 44%),
+    var(--panel-bg);
+  --weighing-inner-bg: rgba(255, 255, 255, 0.5);
+  --weighing-shadow: var(--shadow-card);
 }
 .sale-theme {
   --weighing-accent: #c65a19;
   --weighing-accent-strong: #a94710;
   --weighing-accent-soft: rgba(240, 143, 45, 0.13);
   --weighing-accent-line: rgba(198, 90, 25, 0.22);
-  --weighing-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 244, 232, 0.92));
-  --weighing-shadow: rgba(198, 90, 25, 0.11);
+  --weighing-card-bg:
+    linear-gradient(135deg, rgba(240, 143, 45, 0.1), transparent 44%),
+    var(--panel-bg);
+  --weighing-inner-bg: rgba(255, 255, 255, 0.5);
+  --weighing-shadow: var(--shadow-card);
+}
+:global(:root[data-theme='dark']) .purchase-theme {
+  --weighing-accent: #7db7ad;
+  --weighing-accent-strong: #bfe3d9;
+  --weighing-accent-soft: rgba(125, 183, 173, 0.16);
+  --weighing-accent-line: rgba(125, 183, 173, 0.22);
+  --weighing-card-bg:
+    linear-gradient(135deg, rgba(125, 183, 173, 0.12), transparent 46%),
+    var(--panel-bg);
+  --weighing-inner-bg: rgba(255, 255, 255, 0.06);
+}
+:global(:root[data-theme='dark']) .sale-theme {
+  --weighing-accent: #e0a55f;
+  --weighing-accent-strong: #f0d5a7;
+  --weighing-accent-soft: rgba(224, 165, 95, 0.14);
+  --weighing-accent-line: rgba(224, 165, 95, 0.22);
+  --weighing-card-bg:
+    linear-gradient(135deg, rgba(224, 165, 95, 0.12), transparent 46%),
+    var(--panel-bg);
+  --weighing-inner-bg: rgba(255, 255, 255, 0.06);
 }
 .weighing-card {
   border: 1px solid var(--weighing-accent-line);
+  border-radius: 24px;
   background: var(--weighing-card-bg);
-  box-shadow: 0 18px 42px var(--weighing-shadow);
+  box-shadow: var(--weighing-shadow);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
 }
 .weighing-card .panel-title-row {
   padding-bottom: 14px;
@@ -1441,6 +1470,13 @@ const exportImage = () => {
 .weighing-card .field textarea:focus {
   border-color: var(--weighing-accent);
   box-shadow: 0 0 0 4px var(--weighing-accent-soft);
+}
+.weighing-card .field input,
+.weighing-card .field select,
+.weighing-card .field textarea {
+  border-color: var(--weighing-accent-line);
+  background: var(--input-bg);
+  color: var(--text-normal);
 }
 .panel-title-row {
   display: flex;
@@ -1528,8 +1564,8 @@ const exportImage = () => {
   align-items: end;
   padding: 14px;
   border: 1px solid var(--weighing-accent-line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.52);
+  border-radius: 18px;
+  background: var(--weighing-inner-bg);
 }
 .weighing-detail-index {
   align-self: center;
@@ -1548,7 +1584,7 @@ const exportImage = () => {
   margin-top: 14px;
   padding: 12px 14px;
   border: 1px solid var(--weighing-accent-line);
-  border-radius: 14px;
+  border-radius: 18px;
   background: var(--weighing-accent-soft);
   color: var(--text-muted);
   font-size: 13px;
