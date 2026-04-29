@@ -448,58 +448,30 @@ onUnmounted(() => {
               <span v-if="expenseByCustomer.length > 0" class="panel-count">{{ expenseByCustomer.length }} 位对象</span>
             </div>
           </div>
-          <div v-if="expenseByCustomer.length > 0" class="pager-inline">
-            <button
-              type="button"
-              class="pager-btn"
-              :disabled="customerPage === 1"
-              @click="goCustomerPage(customerPage - 1)"
-            >
-              <AppIcon name="chevron-left" />
-            </button>
-            <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
-            <button
-              type="button"
-              class="pager-btn"
-              :disabled="customerPage === customerPageCount"
-              @click="goCustomerPage(customerPage + 1)"
-            >
-              <AppIcon name="chevron-right" />
-            </button>
-          </div>
         </div>
 
-        <div class="customer-list">
-          <div v-if="loading" class="empty">加载中...</div>
-          <div v-else-if="expenseByCustomer.length === 0" class="empty">暂无数据</div>
-          <div v-for="item in pagedCustomers" :key="item.customerName" class="customer-row">
-            <div class="customer-main">
-              <span class="rank-badge" :class="{ 'top-3': item.rank <= 3 }">{{ item.rank }}</span>
-              <div class="customer-copy">
-                <div class="customer-name-row">
-                  <span class="customer-name" :title="item.customerName">{{ item.customerName }}</span>
-                  <span class="customer-chip">{{ item.billCount }} 笔</span>
-                </div>
-                <div class="customer-meta">
-                  <span>累计重量 {{ item.totalWeight.toFixed(1) }} 斤</span>
+        <div class="customer-scroll">
+          <div class="customer-list">
+            <div v-if="loading" class="empty">加载中...</div>
+            <div v-else-if="expenseByCustomer.length === 0" class="empty">暂无数据</div>
+            <div v-for="item in expenseByCustomer" :key="item.customerName" class="customer-row">
+              <div class="customer-main">
+                <span class="rank-badge" :class="{ 'top-3': item.rank <= 3 }">{{ item.rank }}</span>
+                <div class="customer-copy">
+                  <div class="customer-name-row">
+                    <span class="customer-name" :title="item.customerName">{{ item.customerName }}</span>
+                    <span class="customer-chip">{{ item.billCount }} 笔</span>
+                  </div>
+                  <div class="customer-meta">
+                    <span>累计重量 {{ item.totalWeight.toFixed(1) }} 斤</span>
+                  </div>
                 </div>
               </div>
+              <div class="customer-amount">
+                <span class="amount-label">交易金额</span>
+                <strong class="expense-text">{{ formatMoney(item.totalAmount) }}</strong>
+              </div>
             </div>
-            <div class="customer-amount">
-              <span class="amount-label">交易金额</span>
-              <strong class="expense-text">{{ formatMoney(item.totalAmount) }}</strong>
-            </div>
-          </div>
-        </div>
-        <div v-if="expenseByCustomer.length > CUSTOMER_PAGE_SIZE" class="panel-bottom-pager">
-          <div class="pager-inline">
-            <button type="button" class="pager-btn" :disabled="customerPage === 1" @click="goCustomerPage(customerPage - 1)">
-              <AppIcon name="chevron-left" />
-            </button>
-            <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
-            <button type="button" class="pager-btn" :disabled="customerPage === customerPageCount" @click="goCustomerPage(customerPage + 1)">
-              <AppIcon name="chevron-right" />
-            </button>
           </div>
         </div>
       </article>
@@ -513,54 +485,31 @@ onUnmounted(() => {
               <span v-if="expenseByFabric.length > 0" class="panel-count">{{ expenseByFabric.length }} 个品类</span>
             </div>
           </div>
-          <div v-if="expenseByFabric.length > 0" class="pager-inline">
-            <button type="button" class="pager-btn" :disabled="fabricPage === 1" @click="goFabricPage(fabricPage - 1)">
-              <AppIcon name="chevron-left" />
-            </button>
-            <span class="pager-text">{{ fabricPage }} / {{ fabricPageCount }}</span>
-            <button
-              type="button"
-              class="pager-btn"
-              :disabled="fabricPage === fabricPageCount"
-              @click="goFabricPage(fabricPage + 1)"
-            >
-              <AppIcon name="chevron-right" />
-            </button>
-          </div>
         </div>
 
-        <div class="fabric-chart">
-          <div v-if="loading" class="empty">加载中...</div>
-          <div v-else-if="expenseByFabric.length === 0" class="empty">暂无品种数据</div>
-          <div v-for="item in pagedFabrics" :key="item.fabricName" class="fabric-row">
-            <div class="fabric-topline">
-              <div class="fabric-title-group">
-                <span class="fabric-name" :title="item.fabricName">{{ item.fabricName }}</span>
-                <span class="fabric-weight">{{ item.weight.toFixed(1) }} 斤</span>
+        <div class="fabric-scroll">
+          <div class="fabric-chart">
+            <div v-if="loading" class="empty">加载中...</div>
+            <div v-else-if="expenseByFabric.length === 0" class="empty">暂无品种数据</div>
+            <div v-for="item in expenseByFabric" :key="item.fabricName" class="fabric-row">
+              <div class="fabric-topline">
+                <div class="fabric-title-group">
+                  <span class="fabric-name" :title="item.fabricName">{{ item.fabricName }}</span>
+                  <span class="fabric-weight">{{ item.weight.toFixed(1) }} 斤</span>
+                </div>
+                <strong class="fabric-amount">{{ formatMoney(item.amount) }}</strong>
               </div>
-              <strong class="fabric-amount">{{ formatMoney(item.amount) }}</strong>
+              <div class="fabric-bar-track">
+                <div
+                  class="fabric-bar-fill"
+                  :class="{ ready: barMotionReady }"
+                  :style="{ width: `${barMotionReady ? item.ratio : 0}%` }"
+                ></div>
+              </div>
+              <div class="fabric-footnote">
+                <span>金额占比 {{ item.share.toFixed(1) }}%</span>
+              </div>
             </div>
-            <div class="fabric-bar-track">
-              <div
-                class="fabric-bar-fill"
-                :class="{ ready: barMotionReady }"
-                :style="{ width: `${barMotionReady ? item.ratio : 0}%` }"
-              ></div>
-            </div>
-            <div class="fabric-footnote">
-              <span>金额占比 {{ item.share.toFixed(1) }}%</span>
-            </div>
-          </div>
-        </div>
-        <div v-if="expenseByFabric.length > FABRIC_PAGE_SIZE" class="panel-bottom-pager">
-          <div class="pager-inline">
-            <button type="button" class="pager-btn" :disabled="fabricPage === 1" @click="goFabricPage(fabricPage - 1)">
-              <AppIcon name="chevron-left" />
-            </button>
-            <span class="pager-text">{{ fabricPage }} / {{ fabricPageCount }}</span>
-            <button type="button" class="pager-btn" :disabled="fabricPage === fabricPageCount" @click="goFabricPage(fabricPage + 1)">
-              <AppIcon name="chevron-right" />
-            </button>
           </div>
         </div>
       </article>
@@ -987,9 +936,7 @@ h3 {
 }
 
 .ledger-list,
-.insight-list,
-.customer-list,
-.fabric-chart {
+.insight-list {
   display: flex;
   flex-direction: column;
 }
@@ -1004,7 +951,51 @@ h3 {
 
 .customer-list,
 .fabric-chart {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 12px;
+  min-width: min-content;
+}
+
+.customer-list > .customer-row,
+.fabric-chart > .fabric-row {
+  flex-shrink: 0;
+  width: 260px;
+}
+
+.customer-list > .customer-row {
+  flex-direction: column !important;
+}
+
+.customer-scroll,
+.fabric-scroll {
+  overflow-x: auto;
+  margin: 0 -4px;
+  padding: 4px 4px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(38, 115, 199, 0.2) transparent;
+}
+
+.customer-scroll::-webkit-scrollbar,
+.fabric-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.customer-scroll::-webkit-scrollbar-track,
+.fabric-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.customer-scroll::-webkit-scrollbar-thumb,
+.fabric-scroll::-webkit-scrollbar-thumb {
+  background: rgba(38, 115, 199, 0.2);
+  border-radius: 999px;
+}
+
+.customer-scroll::-webkit-scrollbar-thumb:hover,
+.fabric-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(38, 115, 199, 0.4);
 }
 
 .panel-bottom-pager {
