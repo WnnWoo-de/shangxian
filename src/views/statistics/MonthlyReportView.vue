@@ -2305,31 +2305,26 @@ td {
   }
 
   .product-panel {
-    padding: 0;
+    padding: 20px 16px;
     background: transparent;
     border: none;
     border-radius: 0;
   }
 
   .product-panel .panel-head {
-    padding: 20px 16px;
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-line);
-    border-radius: 10px;
-    margin-bottom: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    margin-bottom: 16px;
   }
 
   .product-panel .table-scroll-wrap {
-    padding: 12px 16px;
+    padding: 16px;
     background: var(--panel-bg);
     border: 1px solid var(--panel-line);
-    border-top: none;
-    border-radius: 0 0 10px 10px;
+    border-radius: 10px;
     margin: 0;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table {
-    min-width: 100%;
   }
 }
 
