@@ -301,7 +301,8 @@ const customerRanking = computed(() => {
   const customerMap = new Map()
 
   saleRecords.forEach((record) => {
-    const customerName = record.partnerName || record.customerName || '未命名客户'
+    const customerName = record.partnerName || record.customerName || ''
+    if (!customerName) return
     const key = record.partnerId || record.customerId || customerName
     const current = customerMap.get(key) || {
       customerId: key,
@@ -320,6 +321,7 @@ const customerRanking = computed(() => {
   })
 
   const totalAmount = Array.from(customerMap.values()).reduce((sum, item) => sum + item.totalAmount, 0)
+  if (totalAmount === 0) return []
   return Array.from(customerMap.values())
     .sort((a, b) => b.totalAmount - a.totalAmount || b.transactionCount - a.transactionCount)
     .map((item, index) => ({
@@ -2049,6 +2051,34 @@ td {
     content: none !important;
   }
 
+  .product-panel {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .product-panel .panel-head {
+    padding: 20px 16px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    margin-bottom: 0;
+  }
+
+  .product-panel .table-scroll-wrap {
+    padding: 12px 16px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-line);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    margin: 0;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table {
+    min-width: 100%;
+  }
+
   .filter-panel {
     padding: 16px;
     gap: 12px;
@@ -2163,6 +2193,34 @@ td {
 
   .ranking-panel .table-scroll-wrap .ranking-table tbody {
     display: table-row-group !important;
+  }
+
+  .ranking-panel {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .ranking-panel .panel-head {
+    padding: 20px 16px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    margin-bottom: 0;
+  }
+
+  .ranking-panel .table-scroll-wrap {
+    padding: 12px 16px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-line);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    margin: 0;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table {
+    min-width: 100%;
   }
 
   tbody {
@@ -2311,6 +2369,34 @@ td {
 
   .product-panel .table-scroll-wrap .ranking-table td::before {
     content: none !important;
+  }
+
+  .product-panel {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .product-panel .panel-head {
+    padding: 20px 16px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    margin-bottom: 0;
+  }
+
+  .product-panel .table-scroll-wrap {
+    padding: 12px 16px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-line);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    margin: 0;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table {
+    min-width: 100%;
   }
 }
 

@@ -69,8 +69,8 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
   const productMap = {}
 
   bills.forEach(bill => {
-    const amount = Number(bill.totalAmount || 0)
-    const weight = Number(bill.totalWeight || 0)
+    const amount = Math.round(Number(bill.totalAmount || 0))
+    const weight = Math.round(Number(bill.totalWeight || 0) * 100) / 100
     const billDate = String(bill.billDate || '')
     const day = billDate.substring(8, 10) || '01'
 
@@ -104,7 +104,7 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
       customerMap[customerId].transactionCount += 1
       customerMap[customerId].totalAmount += amount
       customerMap[customerId].totalWeight += weight
-      customerMap[customerId].unpaidAmount += Number(bill.unsettledAmount || 0)
+      customerMap[customerId].unpaidAmount += Math.round(Number(bill.unsettledAmount || 0))
     }
 
     bill.items?.forEach(item => {
@@ -112,8 +112,8 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
       if (!fabricMap[fabricName]) {
         fabricMap[fabricName] = { fabricName, totalWeight: 0, totalAmount: 0 }
       }
-      const itemWeight = Number(item.totalWeight ?? item.weight ?? item.quantity ?? 0)
-      const itemAmount = Number(item.amount || 0)
+      const itemWeight = Math.round(Number(item.totalWeight ?? item.weight ?? item.quantity ?? 0) * 100) / 100
+      const itemAmount = Math.round(Number(item.amount || 0))
       fabricMap[fabricName].totalWeight += itemWeight
       fabricMap[fabricName].totalAmount += itemAmount
 
@@ -174,10 +174,10 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
   const saleBills = bills.filter((bill) => bill.type === 'sale')
   const purchaseBills = bills.filter((bill) => bill.type === 'purchase')
   const settlementOverview = [
-    { settlementType: '本月已收款', amount: saleBills.reduce((sum, bill) => sum + Number(bill.receivedAmount || 0), 0), relatedOrderCount: saleBills.filter((bill) => Number(bill.receivedAmount || 0) > 0).length, description: '出货单已收客户货款' },
-    { settlementType: '客户未收款', amount: saleBills.reduce((sum, bill) => sum + Number(bill.unsettledAmount || 0), 0), relatedOrderCount: saleBills.filter((bill) => Number(bill.unsettledAmount || 0) > 0).length, description: '出货单待客户结清金额' },
-    { settlementType: '本月已付款', amount: purchaseBills.reduce((sum, bill) => sum + Number(bill.paidAmount || 0), 0), relatedOrderCount: purchaseBills.filter((bill) => Number(bill.paidAmount || 0) > 0).length, description: '进货单已付供应商货款' },
-    { settlementType: '供应商未付款', amount: purchaseBills.reduce((sum, bill) => sum + Number(bill.unsettledAmount || 0), 0), relatedOrderCount: purchaseBills.filter((bill) => Number(bill.unsettledAmount || 0) > 0).length, description: '进货单待付款金额' },
+    { settlementType: '本月已收款', amount: Math.round(saleBills.reduce((sum, bill) => sum + Number(bill.receivedAmount || 0), 0)), relatedOrderCount: saleBills.filter((bill) => Number(bill.receivedAmount || 0) > 0).length, description: '出货单已收客户货款' },
+    { settlementType: '客户未收款', amount: Math.round(saleBills.reduce((sum, bill) => sum + Number(bill.unsettledAmount || 0), 0)), relatedOrderCount: saleBills.filter((bill) => Number(bill.unsettledAmount || 0) > 0).length, description: '出货单待客户结清金额' },
+    { settlementType: '本月已付款', amount: Math.round(purchaseBills.reduce((sum, bill) => sum + Number(bill.paidAmount || 0), 0)), relatedOrderCount: purchaseBills.filter((bill) => Number(bill.paidAmount || 0) > 0).length, description: '进货单已付供应商货款' },
+    { settlementType: '供应商未付款', amount: Math.round(purchaseBills.reduce((sum, bill) => sum + Number(bill.unsettledAmount || 0), 0)), relatedOrderCount: purchaseBills.filter((bill) => Number(bill.unsettledAmount || 0) > 0).length, description: '进货单待付款金额' },
   ]
 
   const months = []
