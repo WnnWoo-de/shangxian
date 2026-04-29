@@ -66,7 +66,7 @@ const toNumber = (value) => {
   return Number.isFinite(number) ? number : 0
 }
 
-const roundMoney = (value) => Math.round(toNumber(value) * 100) / 100
+const roundMoney = (value) => Math.round(toNumber(value))
 
 const formatPercent = (value) => {
   const number = Number(value)
@@ -1385,26 +1385,38 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
-        <div class="bar-chart-scroll-wrap">
-          <div class="bar-chart">
-            <div v-for="item in pagedFabrics" :key="item.productId" class="product-row">
-              <div class="product-main">
-                <span class="label">{{ item.productName }}</span>
-                <div class="bar-track">
-                  <div class="bar-fill" :class="{ ready: chartMotionReady }" :style="{ width: `${chartMotionReady ? Math.max(5, item.amountRatio * 100) : 0}%` }"></div>
-                </div>
-              </div>
-              <div class="product-metrics">
-                <span>出货 {{ formatWeight(item.outboundWeight) }} 斤</span>
-                <strong>{{ formatMoney(item.outboundAmount) }}</strong>
-                <span>进货成本 {{ item.purchaseCost == null ? '--' : formatMoney(item.purchaseCost) }}</span>
-                <span>毛利 {{ item.grossProfit == null ? '--' : formatMoney(item.grossProfit) }}</span>
-                <span>毛利率 {{ item.grossProfitRate == null ? '--' : formatPercent(item.grossProfitRate) }}</span>
-                <span>占比 {{ formatPercent(item.amountRatio) }}</span>
-              </div>
-            </div>
-            <div v-if="!loading && productAnalysis.length === 0" class="empty">暂无品种分析数据</div>
-            <div v-if="loading" class="empty">月报数据加载中...</div>
+        <div class="table-scroll-wrap">
+          <div class="table-wrap ranking-wrap">
+            <table class="ranking-table">
+              <thead>
+                <tr>
+                  <th>品种</th>
+                  <th>出货重量</th>
+                  <th>出货金额</th>
+                  <th>进货成本</th>
+                  <th>毛利</th>
+                  <th>毛利率</th>
+                  <th>占比</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in pagedFabrics" :key="item.productId">
+                  <td data-label="品种" class="strong-cell">{{ item.productName }}</td>
+                  <td data-label="出货重量">{{ formatWeight(item.outboundWeight) }} 斤</td>
+                  <td data-label="出货金额"><span class="amount-text">{{ formatMoney(item.outboundAmount) }}</span></td>
+                  <td data-label="进货成本">{{ item.purchaseCost == null ? '--' : formatMoney(item.purchaseCost) }}</td>
+                  <td data-label="毛利">{{ item.grossProfit == null ? '--' : formatMoney(item.grossProfit) }}</td>
+                  <td data-label="毛利率">{{ item.grossProfitRate == null ? '--' : formatPercent(item.grossProfitRate) }}</td>
+                  <td data-label="占比">{{ formatPercent(item.amountRatio) }}</td>
+                </tr>
+                <tr v-if="!loading && productAnalysis.length === 0">
+                  <td colspan="7" class="empty">暂无品种分析数据</td>
+                </tr>
+                <tr v-if="loading">
+                  <td colspan="7" class="empty">月报数据加载中...</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </article>
@@ -1745,7 +1757,7 @@ h2 {
   -webkit-overflow-scrolling: touch;
 }
 
-.bar-chart-scroll-wrap {
+.product-panel .table-scroll-wrap {
   overflow-x: auto;
   overflow-y: hidden;
   margin: 0 -4px;
@@ -1913,70 +1925,17 @@ td {
   filter: brightness(0.98);
 }
 
-.bar-chart {
-  display: grid;
-  gap: 18px;
-}
-
-.product-row {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.8fr) 1.4fr;
-  gap: 16px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--panel-line);
-}
-
-.product-main {
-  display: grid;
-  gap: 10px;
-  align-content: center;
-}
-
-.label {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-normal);
-}
-
-.bar-track {
-  height: 10px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 99px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #38b493, #247fd6);
-  transition: none;
-}
-
-.bar-fill.ready {
-  transition: width 0.6s ease;
-}
-
-.product-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 14px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.product-metrics strong {
-  color: var(--accent-blue-deep);
-  font-family: 'Outfit', monospace;
-}
-
-.detail-grid .product-panel .bar-chart {
-  display: flex;
-  gap: 14px;
+.product-panel .table-scroll-wrap {
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  padding-bottom: 8px;
+  margin: 0 -4px;
+  padding: 0 4px 8px;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
+}
+
+.product-panel .table-scroll-wrap .ranking-table {
+  min-width: max-content;
 }
 
 .ranking-panel .table-scroll-wrap .ranking-table {
@@ -2056,10 +2015,38 @@ td {
   }
 
   .filter-panel,
-  .stats-cards,
-  .product-row,
-  .product-metrics {
+  .stats-cards {
     grid-template-columns: 1fr;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table {
+    display: table !important;
+    min-width: max-content;
+    table-layout: auto;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table thead {
+    display: table-header-group !important;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table tbody {
+    display: table-row-group !important;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table tr {
+    display: table-row !important;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table th,
+  .product-panel .table-scroll-wrap .ranking-table td {
+    display: table-cell !important;
+    padding: 13px 10px;
+    border-bottom: 1px solid var(--panel-line);
+    white-space: nowrap;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table td::before {
+    content: none !important;
   }
 
   .filter-panel {
@@ -2121,28 +2108,30 @@ td {
   }
 
   .ranking-panel .table-scroll-wrap .ranking-table {
+    display: table !important;
     min-width: max-content;
+    table-layout: auto;
   }
 
   .ranking-panel .table-scroll-wrap .ranking-table thead {
-    display: table-header-group;
+    display: table-header-group !important;
   }
 
   .ranking-panel .table-scroll-wrap .ranking-table tbody {
-    display: table-row-group;
+    display: table-row-group !important;
   }
 
   .ranking-panel .table-scroll-wrap .ranking-table tr {
-    display: table-row;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
+    display: table-row !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
   }
 
   .ranking-panel .table-scroll-wrap .ranking-table th,
   .ranking-panel .table-scroll-wrap .ranking-table td {
-    display: table-cell;
+    display: table-cell !important;
     padding: 13px 10px;
     border-bottom: 1px solid var(--panel-line);
     white-space: nowrap;
@@ -2152,27 +2141,37 @@ td {
     content: none;
   }
 
+  .ranking-panel .table-scroll-wrap .ranking-table .rank-num {
+    margin-left: 0;
+  }
+
   .table-wrap {
     overflow: visible;
   }
 
-  table,
-  thead,
-  tbody,
-  tr,
-  th,
-  td {
-    display: block;
-    width: 100%;
+  .ranking-panel .table-scroll-wrap .ranking-table td[data-label]::before {
+    content: none;
   }
 
   thead {
     display: none;
   }
 
+  .ranking-panel .table-scroll-wrap .ranking-table thead {
+    display: table-header-group !important;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table tbody {
+    display: table-row-group !important;
+  }
+
   tbody {
-    display: grid;
+    display: grid !important;
     gap: 12px;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table td::before {
+    content: none !important;
   }
 
   tr {
@@ -2181,6 +2180,14 @@ td {
     border: 1px solid var(--panel-line);
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.58);
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table tr {
+    display: table-row !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
   }
 
   td {
@@ -2192,6 +2199,13 @@ td {
     border-bottom: 1px dashed rgba(201, 214, 230, 0.65);
     text-align: right;
     white-space: normal;
+  }
+
+  .ranking-panel .table-scroll-wrap .ranking-table td {
+    display: table-cell !important;
+    padding: 13px 10px;
+    border-bottom: 1px solid var(--panel-line);
+    white-space: nowrap;
   }
 
   td:last-child {
@@ -2232,7 +2246,7 @@ td {
   }
 
   .ranking-table {
-    display: table;
+    display: table !important;
     width: 100%;
     min-width: 760px;
     table-layout: auto;
@@ -2249,10 +2263,6 @@ td {
 
   .ranking-table tr {
     display: table-row;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
   }
 
   .ranking-table th,
@@ -2273,15 +2283,34 @@ td {
     margin-left: 0;
   }
 
-  .detail-grid .product-panel .bar-chart {
-    gap: 12px;
-    margin: 0 -4px;
-    padding: 0 4px 8px;
+  .product-panel .table-scroll-wrap .ranking-table {
+    display: table !important;
+    min-width: max-content;
+    table-layout: auto;
   }
 
-  .detail-grid .product-panel .product-row {
-    min-width: min(82vw, 340px);
-    padding: 14px;
+  .product-panel .table-scroll-wrap .ranking-table thead {
+    display: table-header-group !important;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table tbody {
+    display: table-row-group !important;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table tr {
+    display: table-row !important;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table th,
+  .product-panel .table-scroll-wrap .ranking-table td {
+    display: table-cell !important;
+    padding: 13px 10px;
+    border-bottom: 1px solid var(--panel-line);
+    white-space: nowrap;
+  }
+
+  .product-panel .table-scroll-wrap .ranking-table td::before {
+    content: none !important;
   }
 }
 
