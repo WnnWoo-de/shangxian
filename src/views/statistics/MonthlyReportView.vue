@@ -887,7 +887,7 @@ const exportImage = () => {
       ],
       rows: buildSettlementRows().map((item) => ({
         ...item,
-        amount: formatMoney(item.amount),
+        amount: formatMoney(Math.round(item.amount), { decimals: 0 }),
         relatedOrderCount: `${item.relatedOrderCount}笔`,
       })),
     },
@@ -1275,7 +1275,7 @@ onUnmounted(() => {
             <tbody>
               <tr v-for="item in settlementOverview" :key="item.settlementType">
                 <td data-label="结算类型">{{ item.settlementType }}</td>
-                <td data-label="金额"><span class="amount-text">{{ formatMoney(item.amount) }}</span></td>
+                <td data-label="金额"><span class="amount-text">{{ formatMoney(Math.round(item.amount), { decimals: 0 }) }}</span></td>
                 <td data-label="关联单据数">{{ item.relatedOrderCount }} 笔</td>
                 <td data-label="说明" class="muted-cell">{{ item.description }}</td>
               </tr>
