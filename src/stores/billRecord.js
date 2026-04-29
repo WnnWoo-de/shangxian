@@ -19,9 +19,10 @@ const toFiniteNumber = (value, fallback = 0) => {
 }
 
 const normalizeMoney = (value) => Math.max(toFiniteNumber(value, 0), 0)
+const roundSettlementAmount = (value) => Math.max(Math.round(toFiniteNumber(value, 0)), 0)
 
 const subtractMoney = (amount, settlement) => {
-  return Math.max(Math.round((normalizeMoney(amount) - normalizeMoney(settlement)) * 100) / 100, 0)
+  return Math.max(roundSettlementAmount(amount) - roundSettlementAmount(settlement), 0)
 }
 
 const parseWeightExpression = (input) => {
@@ -119,10 +120,11 @@ const normalizeRecord = (record = {}) => {
   const totalWeightNumber = toFiniteNumber(record.totalWeight ?? record.netWeight, NaN)
   const totalAmountNumber = toFiniteNumber(record.totalAmount ?? record.totalPrice, NaN)
   const totalWeight = items.length ? itemTotalWeight : Number.isFinite(totalWeightNumber) && totalWeightNumber > 0 ? totalWeightNumber : 0
-  const totalAmount = items.length ? itemTotalAmount : Number.isFinite(totalAmountNumber) && totalAmountNumber > 0 ? totalAmountNumber : 0
+  const rawTotalAmount = items.length ? itemTotalAmount : Number.isFinite(totalAmountNumber) && totalAmountNumber > 0 ? totalAmountNumber : 0
+  const totalAmount = roundSettlementAmount(rawTotalAmount)
   const type = record.type === 'sale' ? 'sale' : 'purchase'
-  const paidAmount = Math.min(normalizeMoney(record.paidAmount), totalAmount)
-  const receivedAmount = Math.min(normalizeMoney(record.receivedAmount), totalAmount)
+  const paidAmount = Math.min(roundSettlementAmount(record.paidAmount), totalAmount)
+  const receivedAmount = Math.min(roundSettlementAmount(record.receivedAmount), totalAmount)
   const settlementAmount = type === 'sale' ? receivedAmount : paidAmount
   const unsettledAmount = subtractMoney(totalAmount, settlementAmount)
   const partnerName = record.partnerName || record.customerName || record.supplier || ''

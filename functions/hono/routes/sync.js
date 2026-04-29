@@ -20,6 +20,7 @@ const toMillis = (value) => {
 }
 
 const toMoney = (value) => Math.max(Number(value || 0), 0)
+const roundSettlementAmount = (value) => Math.max(Math.round(Number(value || 0)), 0)
 const parseWeightExpression = (input) => {
   const raw = String(input || '').trim()
   if (!raw) return 0
@@ -57,12 +58,12 @@ const normalizeBillAmounts = (bill = {}) => {
   const items = getItems(bill)
   const itemTotalWeight = items.reduce((sum, item) => sum + getItemWeight(item), 0)
   const itemTotalAmount = items.reduce((sum, item) => sum + getItemWeight(item) * toMoney(item.unitPrice ?? item.unit_price), 0)
-  const totalAmount = Math.round((itemTotalAmount || toMoney(bill.totalAmount)) * 100) / 100
+  const totalAmount = roundSettlementAmount(itemTotalAmount || toMoney(bill.totalAmount))
   const totalWeight = Math.round((itemTotalWeight || toMoney(bill.totalWeight)) * 100) / 100
-  const paidAmount = type === 'purchase' ? Math.min(toMoney(bill.paidAmount), totalAmount) : 0
-  const receivedAmount = type === 'sale' ? Math.min(toMoney(bill.receivedAmount), totalAmount) : 0
+  const paidAmount = type === 'purchase' ? Math.min(roundSettlementAmount(bill.paidAmount), totalAmount) : 0
+  const receivedAmount = type === 'sale' ? Math.min(roundSettlementAmount(bill.receivedAmount), totalAmount) : 0
   const settlementAmount = type === 'sale' ? receivedAmount : paidAmount
-  const unsettledAmount = Math.max(Math.round((totalAmount - settlementAmount) * 100) / 100, 0)
+  const unsettledAmount = Math.max(totalAmount - settlementAmount, 0)
 
   return {
     ...bill,

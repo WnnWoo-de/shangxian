@@ -10,7 +10,8 @@ import { entityConfigs } from '../../_lib/entity-configs.js'
 
 const billConfig = entityConfigs.bills
 const toMoney = (value) => Math.max(Number(value || 0), 0)
-const subtractMoney = (amount, settlement) => Math.max(Math.round((toMoney(amount) - toMoney(settlement)) * 100) / 100, 0)
+const roundSettlementAmount = (value) => Math.max(Math.round(Number(value || 0)), 0)
+const subtractMoney = (amount, settlement) => Math.max(roundSettlementAmount(amount) - roundSettlementAmount(settlement), 0)
 const parseWeightExpression = (input) => {
   const raw = String(input || '').trim()
   if (!raw) return 0
@@ -47,11 +48,11 @@ const normalizeBillAmounts = (bill = {}) => {
   const items = getItems(bill)
   const itemTotalWeight = items.reduce((sum, item) => sum + getItemWeight(item), 0)
   const itemTotalAmount = items.reduce((sum, item) => sum + getItemWeight(item) * toMoney(item.unitPrice ?? item.unit_price), 0)
-  const totalAmount = Math.round((itemTotalAmount || toMoney(bill.totalAmount)) * 100) / 100
+  const totalAmount = roundSettlementAmount(itemTotalAmount || toMoney(bill.totalAmount))
   const totalWeight = Math.round((itemTotalWeight || toMoney(bill.totalWeight)) * 100) / 100
   const type = bill.type === 'sale' ? 'sale' : 'purchase'
-  const paidAmount = type === 'purchase' ? Math.min(toMoney(bill.paidAmount), totalAmount) : 0
-  const receivedAmount = type === 'sale' ? Math.min(toMoney(bill.receivedAmount), totalAmount) : 0
+  const paidAmount = type === 'purchase' ? Math.min(roundSettlementAmount(bill.paidAmount), totalAmount) : 0
+  const receivedAmount = type === 'sale' ? Math.min(roundSettlementAmount(bill.receivedAmount), totalAmount) : 0
   const settlementAmount = type === 'sale' ? receivedAmount : paidAmount
   const unsettledAmount = subtractMoney(totalAmount, settlementAmount)
 

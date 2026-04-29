@@ -55,6 +55,7 @@ const quantityLabel = computed(() => '数量 / 重量')
 const totalWeightLabel = computed(() => '总重量')
 const roundAmount = (value) => Math.round(Number(value) || 0)
 const normalizeMoney = (value) => Math.max(Number(value || 0), 0)
+const normalizeSettlementMoney = (value) => Math.max(Math.round(Number(value || 0)), 0)
 const settlementAmount = computed(() => Math.min(normalizeMoney(form.settlementAmount), totalAmount.value))
 const hasWeighing = computed(() => {
   return Number(form.firstWeight || 0) > 0 ||
@@ -420,6 +421,11 @@ watch(totalAmount, (amount) => {
 })
 
 watch(() => form.settlementAmount, () => {
+  const roundedSettlement = normalizeSettlementMoney(form.settlementAmount)
+  if (form.settlementAmount !== roundedSettlement) {
+    form.settlementAmount = roundedSettlement
+    return
+  }
   form.unsettledAmount = unsettledAmount.value
 })
 
@@ -590,8 +596,8 @@ const saveBill = async () => {
       })),
       totalWeight: totalWeight.value,
       totalAmount: totalAmount.value,
-      paidAmount: props.type === 'purchase' ? settlementAmount.value : 0,
-      receivedAmount: props.type === 'sale' ? settlementAmount.value : 0,
+      paidAmount: props.type === 'purchase' ? normalizeSettlementMoney(settlementAmount.value) : 0,
+      receivedAmount: props.type === 'sale' ? normalizeSettlementMoney(settlementAmount.value) : 0,
       unsettledAmount: unsettledAmount.value,
       firstWeight: form.firstWeight,
       lastWeight: form.lastWeight,
@@ -1226,7 +1232,7 @@ const exportImage = () => {
             v-model.number="primaryRow.unitPrice"
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             autocomplete="off"
           />
           <small v-if="primaryRow" class="field-tip">{{ getPriceSourceText(primaryRow) }}</small>
@@ -1327,13 +1333,13 @@ const exportImage = () => {
           />
         </div>
         <div>
-          <span>未付金额（元）</span>
+          <span>{{ isPurchase ? '未付金额' : '未收金额' }}（元）</span>
           <input
             v-model.number="unsettledAmount"
             class="settlement-input"
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             autocomplete="off"
           />
         </div>
