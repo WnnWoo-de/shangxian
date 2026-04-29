@@ -825,6 +825,7 @@ h3 {
 
 .trend-chart {
   overflow-x: auto;
+  padding-bottom: 4px;
 }
 
 .trend-bars {
@@ -832,7 +833,7 @@ h3 {
   align-items: flex-end;
   justify-content: space-between;
   gap: 8px;
-  height: 90px;
+  min-height: 120px;
   min-width: 300px;
 }
 
@@ -841,7 +842,8 @@ h3 {
   flex: 1;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .bar-values {
@@ -849,13 +851,23 @@ h3 {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  height: 36px;
+  min-height: 40px;
+  max-height: 50px;
+  overflow: hidden;
 }
 
 .bar-value {
   font-size: 10px;
   font-weight: 600;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.bar-value:hover {
+  white-space: normal;
+  overflow: visible;
 }
 
 .bar-pair {
