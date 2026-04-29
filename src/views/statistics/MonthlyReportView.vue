@@ -19,7 +19,6 @@ import { showToast } from '../../utils/toast'
 
 echarts.use([BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
-const CUSTOMER_PAGE_SIZE = 6
 const FABRIC_PAGE_SIZE = 6
 
 const billRecordStore = useBillRecordStore()
@@ -42,7 +41,6 @@ const selectedBillType = ref('all')
 const selectedSettlement = ref('all')
 const loading = ref(false)
 const chartMotionReady = ref(false)
-const customerPage = ref(1)
 const fabricPage = ref(1)
 const trendChartRef = ref(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
@@ -334,9 +332,6 @@ const customerRanking = computed(() => {
     }))
 })
 
-const customerPageCount = computed(() => Math.max(1, Math.ceil(customerRanking.value.length / CUSTOMER_PAGE_SIZE)))
-const pagedCustomers = computed(() => paginate(customerRanking.value, customerPage.value, CUSTOMER_PAGE_SIZE))
-
 const productAnalysis = computed(() => {
   if (Array.isArray(summaryData.value.productAnalysis) && summaryData.value.productAnalysis.length) {
     return summaryData.value.productAnalysis.map((item) => ({
@@ -432,7 +427,6 @@ const settlementOverview = computed(() => {
 })
 
 const resetPanelPages = () => {
-  customerPage.value = 1
   fabricPage.value = 1
 }
 
@@ -469,10 +463,6 @@ const goPrevMonth = () => {
 
 const goNextMonth = () => {
   if (!loading.value && canGoNextMonth.value) selectedMonth.value = shiftMonth(selectedMonth.value, 1)
-}
-
-const goCustomerPage = (page) => {
-  customerPage.value = clampPage(page, customerPageCount.value)
 }
 
 const goFabricPage = (page) => {
@@ -1088,10 +1078,6 @@ watch([selectedCustomer, selectedFabric, selectedBillType, selectedSettlement], 
   await loadStatistics(selectedMonth.value)
 })
 
-watch(customerRanking, () => {
-  customerPage.value = clampPage(customerPage.value, customerPageCount.value)
-})
-
 watch(productAnalysis, () => {
   fabricPage.value = clampPage(fabricPage.value, fabricPageCount.value)
 })
@@ -1317,59 +1303,6 @@ onUnmounted(() => {
     </article>
 
     <div class="detail-grid">
-      <article class="panel stat-panel ranking-panel">
-        <div class="panel-head">
-          <div class="panel-title-group">
-            <h2>客户交易排名 <span class="badge">Ranking</span></h2>
-            <span v-if="customerRanking.length > 0" class="panel-count">{{ customerRanking.length }} 位客户</span>
-          </div>
-          <div v-if="customerRanking.length > 0" class="pager-inline">
-            <span class="scroll-tip">左右滑动查看</span>
-            <button type="button" class="pager-btn" :disabled="customerPage === 1" @click="goCustomerPage(customerPage - 1)">
-              <AppIcon name="chevron-left" />
-            </button>
-            <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
-            <button type="button" class="pager-btn" :disabled="customerPage === customerPageCount" @click="goCustomerPage(customerPage + 1)">
-              <AppIcon name="chevron-right" />
-            </button>
-          </div>
-        </div>
-        <div class="table-scroll-wrap">
-          <div class="table-wrap ranking-wrap">
-            <table class="ranking-table">
-              <thead>
-                <tr>
-                  <th>排名</th>
-                  <th>客户名称</th>
-                  <th>交易笔数</th>
-                  <th>总重量</th>
-                  <th>总金额</th>
-                  <th>未收款</th>
-                  <th>占比</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in pagedCustomers" :key="item.customerId">
-                  <td data-label="排名"><span class="rank-num" :class="{ 'top-3': item.rank <= 3 }">{{ item.rank }}</span></td>
-                  <td data-label="客户名称" class="strong-cell">{{ item.customerName }}</td>
-                  <td data-label="交易笔数">{{ item.transactionCount }} 笔</td>
-                  <td data-label="总重量">{{ formatWeight(item.totalWeight) }} 斤</td>
-                  <td data-label="总金额"><span class="amount-text">{{ formatMoney(item.totalAmount) }}</span></td>
-                  <td data-label="未收款"><span class="danger-text">{{ formatMoney(item.unpaidAmount) }}</span></td>
-                  <td data-label="占比">{{ formatPercent(item.amountRatio) }}</td>
-                </tr>
-                <tr v-if="!loading && customerRanking.length === 0">
-                  <td colspan="7" class="empty">该月份暂无客户交易记录</td>
-                </tr>
-                <tr v-if="loading">
-                  <td colspan="7" class="empty">月报数据加载中...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </article>
-
       <article class="panel stat-panel product-panel">
         <div class="panel-head">
           <div class="panel-title-group">

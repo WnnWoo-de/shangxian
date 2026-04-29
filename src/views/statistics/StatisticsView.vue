@@ -7,7 +7,6 @@ import { BILL_DATA_CHANGED_EVENT } from '../../utils/bill-events'
 import { formatMoney } from '../../utils/money'
 
 const LEDGER_PAGE_SIZE = 5
-const CUSTOMER_PAGE_SIZE = 4
 const FABRIC_PAGE_SIZE = 4
 
 const selectedMonth = ref('')
@@ -17,7 +16,6 @@ const suppressMonthWatch = ref(false)
 const barMotionReady = ref(false)
 
 const ledgerPage = ref(1)
-const customerPage = ref(1)
 const fabricPage = ref(1)
 
 const summaryData = ref({
@@ -43,7 +41,6 @@ const paginate = (list, page, pageSize) => {
 
 const resetPanelPages = () => {
   ledgerPage.value = 1
-  customerPage.value = 1
   fabricPage.value = 1
 }
 
@@ -173,20 +170,6 @@ const insightCards = computed(() => [
   },
 ])
 
-const expenseByCustomer = computed(() => {
-  const list = Array.isArray(summaryData.value.customerRanking) ? summaryData.value.customerRanking : []
-  return list.map((item, index) => ({
-    ...item,
-    rank: index + 1,
-    totalAmount: Math.round(Number(item.totalAmount || 0)),
-    totalWeight: Math.round(Number(item.totalWeight || 0) * 100) / 100,
-    billCount: Number(item.billCount || 0),
-  }))
-})
-
-const customerPageCount = computed(() => Math.max(1, Math.ceil(expenseByCustomer.value.length / CUSTOMER_PAGE_SIZE)))
-const pagedCustomers = computed(() => paginate(expenseByCustomer.value, customerPage.value, CUSTOMER_PAGE_SIZE))
-
 const expenseByFabric = computed(() => {
   const list = Array.isArray(summaryData.value.fabricDistribution) ? summaryData.value.fabricDistribution : []
   const totalAmount = list.reduce((sum, item) => sum + Math.round(Number(item.totalAmount || 0)), 0)
@@ -209,10 +192,6 @@ const pagedFabrics = computed(() => paginate(expenseByFabric.value, fabricPage.v
 
 const goLedgerPage = (page) => {
   ledgerPage.value = clampPage(page, ledgerPageCount.value)
-}
-
-const goCustomerPage = (page) => {
-  customerPage.value = clampPage(page, customerPageCount.value)
 }
 
 const goFabricPage = (page) => {
@@ -239,10 +218,6 @@ watch(selectedMonth, async (value, oldValue) => {
 
 watch(dailyLedger, () => {
   ledgerPage.value = clampPage(ledgerPage.value, ledgerPageCount.value)
-})
-
-watch(expenseByCustomer, () => {
-  customerPage.value = clampPage(customerPage.value, customerPageCount.value)
 })
 
 watch(expenseByFabric, () => {
@@ -445,79 +420,6 @@ onUnmounted(() => {
               <strong>{{ item.value }}</strong>
               <small>{{ item.note }}</small>
             </div>
-          </div>
-        </div>
-      </article>
-
-      <article class="panel customer-panel">
-        <div class="panel-head panel-head--stack">
-          <div class="panel-title-group">
-            <h2>交易对象排行</h2>
-            <div class="panel-meta">
-              <span class="panel-tip">Top Customers</span>
-              <span v-if="expenseByCustomer.length > 0" class="panel-count">{{ expenseByCustomer.length }} 位对象</span>
-            </div>
-          </div>
-          <div v-if="expenseByCustomer.length > CUSTOMER_PAGE_SIZE" class="pager-inline">
-            <button
-              type="button"
-              class="pager-btn"
-              :disabled="customerPage === 1"
-              @click="goCustomerPage(customerPage - 1)"
-            >
-              <AppIcon name="chevron-left" />
-            </button>
-            <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
-            <button
-              type="button"
-              class="pager-btn"
-              :disabled="customerPage === customerPageCount"
-              @click="goCustomerPage(customerPage + 1)"
-            >
-              <AppIcon name="chevron-right" />
-            </button>
-          </div>
-        </div>
-
-        <div class="table-wrap">
-          <table class="customer-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>交易对象</th>
-                <th>笔数</th>
-                <th>累计重量</th>
-                <th>交易金额</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="loading">
-                <td colspan="5" class="empty-cell">加载中...</td>
-              </tr>
-              <tr v-else-if="expenseByCustomer.length === 0">
-                <td colspan="5" class="empty-cell">暂无数据</td>
-              </tr>
-              <tr v-for="item in pagedCustomers" :key="item.customerName">
-                <td>
-                  <span class="rank-badge" :class="{ 'top-3': item.rank <= 3 }">{{ item.rank }}</span>
-                </td>
-                <td class="partner-cell">{{ item.customerName }}</td>
-                <td>{{ item.billCount }} 笔</td>
-                <td class="accent-cell">{{ item.totalWeight.toFixed(1) }} 斤</td>
-                <td class="expense-cell">{{ formatMoney(item.totalAmount) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-if="expenseByCustomer.length > CUSTOMER_PAGE_SIZE" class="panel-bottom-pager">
-          <div class="pager-inline">
-            <button type="button" class="pager-btn" :disabled="customerPage === 1" @click="goCustomerPage(customerPage - 1)">
-              <AppIcon name="chevron-left" />
-            </button>
-            <span class="pager-text">{{ customerPage }} / {{ customerPageCount }}</span>
-            <button type="button" class="pager-btn" :disabled="customerPage === customerPageCount" @click="goCustomerPage(customerPage + 1)">
-              <AppIcon name="chevron-right" />
-            </button>
           </div>
         </div>
       </article>
@@ -1039,14 +941,12 @@ h3 {
   background: var(--surface-strong);
 }
 
-.customer-table,
 .fabric-table {
   width: 100%;
   min-width: 400px;
   border-collapse: collapse;
 }
 
-.customer-table th,
 .fabric-table th {
   padding: 12px 14px;
   color: var(--text-muted);
@@ -1057,19 +957,16 @@ h3 {
   border-bottom: 1px solid var(--panel-line);
 }
 
-.customer-table td,
 .fabric-table td {
   padding: 13px 14px;
   border-bottom: 1px solid var(--panel-line);
   white-space: nowrap;
 }
 
-.customer-table tbody tr:last-child td,
 .fabric-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.customer-table tbody tr:hover td,
 .fabric-table tbody tr:hover td {
   background: rgba(125, 183, 173, 0.06);
 }
