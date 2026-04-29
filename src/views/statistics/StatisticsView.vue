@@ -81,14 +81,24 @@ const loadStatistics = async (month = '') => {
 }
 
 const availableMonths = computed(() => months.value)
-const summary = computed(() => summaryData.value.overview)
+const summary = computed(() => {
+  const s = summaryData.value.overview
+  return {
+    totalIncome: Math.round(Number(s.totalIncome || 0)),
+    totalExpense: Math.round(Number(s.totalExpense || 0)),
+    totalWeight: Math.round(Number(s.totalWeight || 0) * 100) / 100,
+    billCount: Number(s.billCount || 0),
+    netAmount: Math.round(Number(s.netAmount || 0)),
+    totalTransactionAmount: Math.round(Number(s.totalTransactionAmount || 0)),
+  }
+})
 
 const trendData = computed(() => {
   const daily = summaryData.value.daily || []
   return daily.slice(-7).map((item) => ({
     day: item.day,
-    income: Number(item.income || 0),
-    expense: Number(item.expense || 0),
+    income: Math.round(Number(item.income || 0)),
+    expense: Math.round(Number(item.expense || 0)),
   }))
 })
 
@@ -96,15 +106,15 @@ const trendPeak = computed(() => Math.max(...trendData.value.map((item) => Math.
 
 const dailyLedger = computed(() => {
   const source = Array.isArray(summaryData.value.daily) ? summaryData.value.daily : []
-  const maxExpense = Math.max(...source.map((item) => Number(item.expense || 0)), 1)
+  const maxExpense = Math.max(...source.map((item) => Math.round(Number(item.expense || 0))), 1)
 
   return source.map((item) => ({
     ...item,
-    income: Number(item.income || 0),
-    expense: Number(item.expense || 0),
-    net: Number(item.net || 0),
+    income: Math.round(Number(item.income || 0)),
+    expense: Math.round(Number(item.expense || 0)),
+    net: Math.round(Number(item.net || 0)),
     expenseWidth: Number(item.expense || 0) > 0
-      ? Math.max(10, Math.round((Number(item.expense || 0) / maxExpense) * 100))
+      ? Math.max(10, Math.round((Math.round(Number(item.expense || 0)) / maxExpense) * 100))
       : 0,
   }))
 })
@@ -119,12 +129,12 @@ const animatedPagedLedger = computed(() => pagedLedger.value.map((item) => ({
 const expenseDays = computed(() => dailyLedger.value.filter((item) => item.expense > 0).length)
 const averageExpensePerBill = computed(() => (
   summary.value.billCount
-    ? Number(summary.value.totalExpense || 0) / Number(summary.value.billCount || 1)
+    ? Math.round(Number(summary.value.totalExpense || 0) / Number(summary.value.billCount || 1))
     : 0
 ))
 const averageExpensePerDay = computed(() => (
   expenseDays.value
-    ? Number(summary.value.totalExpense || 0) / expenseDays.value
+    ? Math.round(Number(summary.value.totalExpense || 0) / expenseDays.value)
     : 0
 ))
 
@@ -168,8 +178,8 @@ const expenseByCustomer = computed(() => {
   return list.map((item, index) => ({
     ...item,
     rank: index + 1,
-    totalAmount: Number(item.totalAmount || 0),
-    totalWeight: Number(item.totalWeight || 0),
+    totalAmount: Math.round(Number(item.totalAmount || 0)),
+    totalWeight: Math.round(Number(item.totalWeight || 0) * 100) / 100,
     billCount: Number(item.billCount || 0),
   }))
 })
@@ -179,15 +189,15 @@ const pagedCustomers = computed(() => paginate(expenseByCustomer.value, customer
 
 const expenseByFabric = computed(() => {
   const list = Array.isArray(summaryData.value.fabricDistribution) ? summaryData.value.fabricDistribution : []
-  const totalAmount = list.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0)
-  const topAmount = Math.max(...list.map((item) => Number(item.totalAmount || 0)), 1)
+  const totalAmount = list.reduce((sum, item) => sum + Math.round(Number(item.totalAmount || 0)), 0)
+  const topAmount = Math.max(...list.map((item) => Math.round(Number(item.totalAmount || 0))), 1)
 
   return list.map((item) => {
-    const amount = Number(item.totalAmount || 0)
+    const amount = Math.round(Number(item.totalAmount || 0))
     return {
       ...item,
       amount,
-      weight: Number(item.totalWeight || 0),
+      weight: Math.round(Number(item.totalWeight || 0) * 100) / 100,
       ratio: amount > 0 ? Math.max(12, Math.round((amount / topAmount) * 100)) : 0,
       share: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
     }
