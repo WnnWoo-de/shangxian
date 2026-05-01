@@ -19,8 +19,6 @@ import { showToast } from '../../utils/toast'
 
 echarts.use([BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
-const FABRIC_PAGE_SIZE = 6
-
 const billRecordStore = useBillRecordStore()
 const customerStore = useCustomerStore()
 const fabricStore = useFabricStore()
@@ -40,8 +38,6 @@ const selectedFabric = ref('all')
 const selectedBillType = ref('all')
 const selectedSettlement = ref('all')
 const loading = ref(false)
-const chartMotionReady = ref(false)
-const fabricPage = ref(1)
 const trendChartRef = ref(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 
@@ -54,7 +50,6 @@ const summaryData = ref({
   fabricDistribution: [],
   settlementOverview: [],
   purchaseOutboundStats: [],
-  productAnalysis: [],
 })
 
 let trendChartInstance = null
@@ -98,9 +93,6 @@ const getDaysInMonth = (monthKey) => {
   const monthDate = getMonthDate(monthKey)
   return new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate()
 }
-
-const clampPage = (page, pageCount) => Math.min(Math.max(page, 1), pageCount)
-const paginate = (list, page, pageSize) => list.slice((page - 1) * pageSize, page * pageSize)
 
 const getCssVarValue = (name, fallback) => {
   if (typeof window === 'undefined') return fallback
@@ -332,75 +324,6 @@ const customerRanking = computed(() => {
     }))
 })
 
-const productAnalysis = computed(() => {
-  if (Array.isArray(summaryData.value.productAnalysis) && summaryData.value.productAnalysis.length) {
-    return summaryData.value.productAnalysis.map((item) => ({
-      ...item,
-      productId: item.productId || item.fabricName || item.productName,
-      productName: item.productName || item.fabricName || '其他品种',
-      outboundWeight: roundMoney(item.outboundWeight ?? item.totalWeight),
-      outboundAmount: roundMoney(item.outboundAmount ?? item.totalAmount),
-      purchaseCost: item.purchaseCost == null ? null : roundMoney(item.purchaseCost),
-      grossProfit: item.grossProfit == null ? null : roundMoney(item.grossProfit),
-      grossProfitRate: item.grossProfitRate == null ? null : toNumber(item.grossProfitRate),
-      amountRatio: toNumber(item.amountRatio),
-    }))
-  }
-
-  const productMap = new Map()
-
-  filteredRecords.value.forEach((record) => {
-    ;(record.items || []).forEach((item) => {
-      if (selectedFabric.value !== 'all'
-        && String(item.fabricId || '') !== String(selectedFabric.value)
-        && String(item.fabricName || '') !== String(selectedFabric.value)) {
-        return
-      }
-
-      const productName = item.fabricName || '其他品种'
-      const productId = item.fabricId || productName
-      const current = productMap.get(productId) || {
-        productId,
-        productName,
-        outboundWeight: 0,
-        outboundAmount: 0,
-        purchaseCost: 0,
-      }
-      const weight = toNumber(item.totalWeight ?? item.quantity)
-      const amount = toNumber(item.amount)
-
-      if (record.type === 'sale') {
-        current.outboundWeight += weight
-        current.outboundAmount += amount
-      } else {
-        current.purchaseCost += amount
-      }
-
-      productMap.set(productId, current)
-    })
-  })
-
-  const totalOutboundAmount = Array.from(productMap.values()).reduce((sum, item) => sum + item.outboundAmount, 0)
-  return Array.from(productMap.values())
-    .sort((a, b) => b.outboundAmount - a.outboundAmount || b.outboundWeight - a.outboundWeight)
-    .map((item) => {
-      const hasCost = item.purchaseCost > 0
-      const grossProfit = hasCost ? roundMoney(item.outboundAmount - item.purchaseCost) : null
-      return {
-        ...item,
-        outboundWeight: roundMoney(item.outboundWeight),
-        outboundAmount: roundMoney(item.outboundAmount),
-        purchaseCost: hasCost ? roundMoney(item.purchaseCost) : null,
-        grossProfit,
-        grossProfitRate: hasCost && item.outboundAmount > 0 ? grossProfit / item.outboundAmount : null,
-        amountRatio: totalOutboundAmount > 0 ? item.outboundAmount / totalOutboundAmount : 0,
-      }
-    })
-})
-
-const fabricPageCount = computed(() => Math.max(1, Math.ceil(productAnalysis.value.length / FABRIC_PAGE_SIZE)))
-const pagedFabrics = computed(() => paginate(productAnalysis.value, fabricPage.value, FABRIC_PAGE_SIZE))
-
 const settlementOverview = computed(() => {
   if (Array.isArray(summaryData.value.settlementOverview) && summaryData.value.settlementOverview.length) {
     return summaryData.value.settlementOverview.map((item) => ({
@@ -426,10 +349,6 @@ const settlementOverview = computed(() => {
   ].map((item) => ({ ...item, amount: roundMoney(item.amount) }))
 })
 
-const resetPanelPages = () => {
-  fabricPage.value = 1
-}
-
 const loadStatistics = async (month = selectedMonth.value || CURRENT_MONTH_KEY) => {
   loading.value = true
   try {
@@ -450,7 +369,6 @@ const loadStatistics = async (month = selectedMonth.value || CURRENT_MONTH_KEY) 
       fabricDistribution: Array.isArray(data.fabricDistribution) ? data.fabricDistribution : [],
       settlementOverview: Array.isArray(data.settlementOverview) ? data.settlementOverview : [],
       purchaseOutboundStats: Array.isArray(data.purchaseOutboundStats) ? data.purchaseOutboundStats : [],
-      productAnalysis: Array.isArray(data.productAnalysis) ? data.productAnalysis : [],
     }
   } finally {
     loading.value = false
@@ -463,10 +381,6 @@ const goPrevMonth = () => {
 
 const goNextMonth = () => {
   if (!loading.value && canGoNextMonth.value) selectedMonth.value = shiftMonth(selectedMonth.value, 1)
-}
-
-const goFabricPage = (page) => {
-  fabricPage.value = clampPage(page, fabricPageCount.value)
 }
 
 const refreshReport = async () => {
@@ -527,16 +441,6 @@ const buildCustomerRows = () => customerRanking.value.map((item) => ({
   totalWeight: item.totalWeight,
   totalAmount: item.totalAmount,
   unpaidAmount: item.unpaidAmount,
-  amountRatio: formatPercent(item.amountRatio),
-}))
-
-const buildProductRows = () => productAnalysis.value.map((item) => ({
-  productName: item.productName,
-  outboundWeight: item.outboundWeight,
-  outboundAmount: item.outboundAmount,
-  purchaseCost: item.purchaseCost == null ? null : item.purchaseCost,
-  grossProfit: item.grossProfit == null ? null : item.grossProfit,
-  grossProfitRate: item.grossProfitRate == null ? '--' : formatPercent(item.grossProfitRate),
   amountRatio: formatPercent(item.amountRatio),
 }))
 
@@ -681,23 +585,6 @@ const exportExcel = async () => {
       rows: buildCustomerRows(),
       moneyColumns: ['E', 'F'],
       numberColumns: ['D'],
-    })
-
-    addDataSheet(workbook, {
-      name: '品种分析',
-      title: '品种构成分析',
-      columns: [
-        { key: 'productName', label: '品种名称', width: 20 },
-        { key: 'outboundWeight', label: '出货重量', width: 14 },
-        { key: 'outboundAmount', label: '出货金额', width: 16 },
-        { key: 'purchaseCost', label: '进货成本', width: 16 },
-        { key: 'grossProfit', label: '毛利', width: 16 },
-        { key: 'grossProfitRate', label: '毛利率', width: 12 },
-        { key: 'amountRatio', label: '占比', width: 12 },
-      ],
-      rows: buildProductRows(),
-      moneyColumns: ['C', 'D', 'E'],
-      numberColumns: ['B'],
     })
 
     addDataSheet(workbook, {
@@ -848,25 +735,6 @@ const exportImage = () => {
         totalWeight: `${formatWeight(item.totalWeight)}斤`,
         totalAmount: formatMoney(item.totalAmount),
         unpaidAmount: formatMoney(item.unpaidAmount),
-      })),
-    },
-    {
-      title: '品种构成分析',
-      columns: [
-        { key: 'productName', label: '品种名称', width: 220 },
-        { key: 'outboundWeight', label: '出货重量', width: 150, align: 'right' },
-        { key: 'outboundAmount', label: '出货金额', width: 170, align: 'right' },
-        { key: 'purchaseCost', label: '进货成本', width: 170, align: 'right' },
-        { key: 'grossProfit', label: '毛利', width: 160, align: 'right' },
-        { key: 'grossProfitRate', label: '毛利率', width: 110, align: 'right' },
-        { key: 'amountRatio', label: '占比', width: 110, align: 'right' },
-      ],
-      rows: buildProductRows().slice(0, 10).map((item) => ({
-        ...item,
-        outboundWeight: `${formatWeight(item.outboundWeight)}斤`,
-        outboundAmount: formatMoney(item.outboundAmount),
-        purchaseCost: item.purchaseCost == null ? '--' : formatMoney(item.purchaseCost),
-        grossProfit: item.grossProfit == null ? '--' : formatMoney(item.grossProfit),
       })),
     },
     {
@@ -1065,21 +933,13 @@ const handlePageReactiveRefresh = () => {
 
 watch(selectedMonth, async (value, oldValue) => {
   if (!value || value === oldValue) return
-  resetPanelPages()
-  chartMotionReady.value = false
   await loadStatistics(value)
   await nextTick()
-  chartMotionReady.value = true
   renderTrendChart()
 })
 
 watch([selectedCustomer, selectedFabric, selectedBillType, selectedSettlement], async () => {
-  resetPanelPages()
   await loadStatistics(selectedMonth.value)
-})
-
-watch(productAnalysis, () => {
-  fabricPage.value = clampPage(fabricPage.value, fabricPageCount.value)
 })
 
 watch(
@@ -1091,20 +951,9 @@ watch(
   { flush: 'post' }
 )
 
-watch(
-  pagedFabrics,
-  async () => {
-    chartMotionReady.value = false
-    await nextTick()
-    chartMotionReady.value = true
-  },
-  { flush: 'post' }
-)
-
 onMounted(async () => {
   await Promise.all([customerStore.init(), fabricStore.init(), loadStatistics(selectedMonth.value)])
   await nextTick()
-  chartMotionReady.value = true
   renderTrendChart()
   window.addEventListener('resize', resizeTrendChart)
   window.addEventListener('focus', handlePageReactiveRefresh)
@@ -1128,7 +977,7 @@ onUnmounted(() => {
       <div class="title-area">
         <div class="title-copy">
           <h1>月度报表 <span class="subtitle">Monthly Business Report</span></h1>
-          <p class="page-tip">按月份汇总进货、出货、客户欠款与品种毛利，空白日期也会完整保留。</p>
+          <p class="page-tip">按月份汇总进货、出货、客户欠款与结算概览，空白日期也会完整保留。</p>
         </div>
         <div class="header-actions">
           <button type="button" class="tool-btn" :disabled="loading" @click="refreshReport">
@@ -1302,60 +1151,6 @@ onUnmounted(() => {
       </div>
     </article>
 
-    <div class="detail-grid">
-      <article class="panel stat-panel product-panel">
-        <div class="panel-head">
-          <div class="panel-title-group">
-            <h2>品种构成分析 <span class="badge">Profit</span></h2>
-            <span v-if="productAnalysis.length > 0" class="panel-count">{{ productAnalysis.length }} 个品种</span>
-          </div>
-          <div v-if="productAnalysis.length > 0" class="pager-inline">
-            <span class="scroll-tip">左右滑动查看</span>
-            <button type="button" class="pager-btn" :disabled="fabricPage === 1" @click="goFabricPage(fabricPage - 1)">
-              <AppIcon name="chevron-left" />
-            </button>
-            <span class="pager-text">{{ fabricPage }} / {{ fabricPageCount }}</span>
-            <button type="button" class="pager-btn" :disabled="fabricPage === fabricPageCount" @click="goFabricPage(fabricPage + 1)">
-              <AppIcon name="chevron-right" />
-            </button>
-          </div>
-        </div>
-        <div class="table-scroll-wrap">
-          <div class="table-wrap ranking-wrap">
-            <table class="ranking-table">
-              <thead>
-                <tr>
-                  <th>品种</th>
-                  <th>出货重量</th>
-                  <th>出货金额</th>
-                  <th>进货成本</th>
-                  <th>毛利</th>
-                  <th>毛利率</th>
-                  <th>占比</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in pagedFabrics" :key="item.productId">
-                  <td data-label="品种" class="strong-cell">{{ item.productName }}</td>
-                  <td data-label="出货重量">{{ formatWeight(item.outboundWeight) }} 斤</td>
-                  <td data-label="出货金额"><span class="amount-text">{{ formatMoney(item.outboundAmount) }}</span></td>
-                  <td data-label="进货成本">{{ item.purchaseCost == null ? '--' : formatMoney(item.purchaseCost) }}</td>
-                  <td data-label="毛利">{{ item.grossProfit == null ? '--' : formatMoney(item.grossProfit) }}</td>
-                  <td data-label="毛利率">{{ item.grossProfitRate == null ? '--' : formatPercent(item.grossProfitRate) }}</td>
-                  <td data-label="占比">{{ formatPercent(item.amountRatio) }}</td>
-                </tr>
-                <tr v-if="!loading && productAnalysis.length === 0">
-                  <td colspan="7" class="empty">暂无品种分析数据</td>
-                </tr>
-                <tr v-if="loading">
-                  <td colspan="7" class="empty">月报数据加载中...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </article>
-    </div>
   </section>
 </template>
 
@@ -1530,12 +1325,6 @@ onUnmounted(() => {
   gap: 24px;
 }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 24px;
-}
-
 .stat-panel,
 .trend-panel {
   padding: 28px;
@@ -1588,13 +1377,6 @@ h2 {
   font-weight: 700;
 }
 
-.scroll-tip {
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .badge {
   font-size: 11px;
   background: var(--primary-soft);
@@ -1604,7 +1386,6 @@ h2 {
   font-weight: 600;
 }
 
-.pager-inline,
 .month-pager {
   display: flex;
   align-items: center;
@@ -1635,13 +1416,6 @@ h2 {
 .pager-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.pager-text {
-  min-width: 44px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
 }
 
 .month-title-card {
@@ -1684,15 +1458,6 @@ h2 {
 }
 
 .table-scroll-wrap {
-  overflow-x: auto;
-  overflow-y: hidden;
-  margin: 0 -4px;
-  padding: 0 4px 8px;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-}
-
-.product-panel .table-scroll-wrap {
   overflow-x: auto;
   overflow-y: hidden;
   margin: 0 -4px;
@@ -1860,44 +1625,12 @@ td {
   filter: brightness(0.98);
 }
 
-.product-panel .table-scroll-wrap {
-  overflow-x: auto;
-  overflow-y: hidden;
-  margin: 0 -4px;
-  padding: 0 4px 8px;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-}
-
-.product-panel .table-scroll-wrap .ranking-table {
-  min-width: max-content;
-}
-
 .ranking-panel .table-scroll-wrap .ranking-table {
   min-width: max-content;
 }
 
 .ranking-panel .table-scroll-wrap .ranking-table tr {
   scroll-snap-align: start;
-}
-
-.detail-grid .product-panel .product-row {
-  min-width: min(82vw, 380px);
-  scroll-snap-align: start;
-  grid-template-columns: 1fr;
-  align-content: start;
-  padding: 16px;
-  border: 1px solid var(--panel-line);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.58);
-}
-
-.detail-grid .product-panel .product-metrics {
-  grid-template-columns: 1fr;
-}
-
-.detail-grid .product-panel .empty {
-  min-width: 100%;
 }
 
 .empty {
@@ -1918,8 +1651,7 @@ td {
     border-bottom: 1px solid var(--panel-line);
   }
 
-  .report-grid,
-  .detail-grid {
+  .report-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1952,64 +1684,6 @@ td {
   .filter-panel,
   .stats-cards {
     grid-template-columns: 1fr;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table {
-    display: table !important;
-    min-width: max-content;
-    table-layout: auto;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table thead {
-    display: table-header-group !important;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table tbody {
-    display: table-row-group !important;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table tr {
-    display: table-row !important;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table th,
-  .product-panel .table-scroll-wrap .ranking-table td {
-    display: table-cell !important;
-    padding: 13px 10px;
-    border-bottom: 1px solid var(--panel-line);
-    white-space: nowrap;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table td::before {
-    content: none !important;
-  }
-
-  .product-panel {
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-  }
-
-  .product-panel .panel-head {
-    padding: 20px 16px;
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-line);
-    border-radius: 10px;
-    margin-bottom: 0;
-  }
-
-  .product-panel .table-scroll-wrap {
-    padding: 12px 16px;
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-line);
-    border-top: none;
-    border-radius: 0 0 10px 10px;
-    margin: 0;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table {
-    min-width: 100%;
   }
 
   .filter-panel {
@@ -2052,9 +1726,7 @@ td {
   }
 
   .trend-chart-scroll,
-  .table-scroll-wrap,
-  .bar-chart-scroll-wrap,
-  .detail-grid .product-panel .bar-chart {
+  .table-scroll-wrap {
     scrollbar-width: thin;
     -webkit-overflow-scrolling: touch;
   }
@@ -2274,58 +1946,6 @@ td {
     margin-left: 0;
   }
 
-  .product-panel .table-scroll-wrap .ranking-table {
-    display: table !important;
-    min-width: max-content;
-    table-layout: auto;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table thead {
-    display: table-header-group !important;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table tbody {
-    display: table-row-group !important;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table tr {
-    display: table-row !important;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table th,
-  .product-panel .table-scroll-wrap .ranking-table td {
-    display: table-cell !important;
-    padding: 13px 10px;
-    border-bottom: 1px solid var(--panel-line);
-    white-space: nowrap;
-  }
-
-  .product-panel .table-scroll-wrap .ranking-table td::before {
-    content: none !important;
-  }
-
-  .product-panel {
-    padding: 20px 16px;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-  }
-
-  .product-panel .panel-head {
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    margin-bottom: 16px;
-  }
-
-  .product-panel .table-scroll-wrap {
-    padding: 16px;
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-line);
-    border-radius: 10px;
-    margin: 0;
-  }
 }
 
 @media (max-width: 480px) {
