@@ -1,6 +1,7 @@
 <script setup>
 import { computed, reactive, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 
 import AppIcon from '../../components/icons/AppIcon.vue'
 import { useBillRecordStore } from '../../stores/billRecord'
@@ -281,12 +282,71 @@ const clearDraft = () => {
   removeItem('draft_bill')
 }
 
+const hasEditorContent = () => {
+  const formFields = [
+    form.partnerId,
+    form.partnerName,
+    form.note,
+    form.fabricId,
+    form.fabricName,
+    form.unitPrice,
+    form.firstWeight,
+    form.lastWeight,
+    form.settlementAmount,
+    form.unsettledAmount,
+  ]
+  const hasFormValue = formFields.some((value) => {
+    if (typeof value === 'number') return value > 0
+    return String(value || '').trim() !== ''
+  })
+  const hasRowsValue = rows.value.some((row) => {
+    return [
+      row.fabricId,
+      row.fabricName,
+      row.quantityInput,
+      row.quantity,
+      row.unitPrice,
+      row.note,
+    ].some((value) => {
+      if (typeof value === 'number') return value > 0
+      return String(value || '').trim() !== ''
+    })
+  })
+  const hasWeighingRowsValue = weighingRows.value.some((row) => {
+    return [
+      row.fabricId,
+      row.fabricName,
+      row.unitPrice,
+      row.firstWeight,
+      row.lastWeight,
+      row.note,
+    ].some((value) => {
+      if (typeof value === 'number') return value > 0
+      return String(value || '').trim() !== ''
+    })
+  })
+
+  return hasFormValue || hasRowsValue || hasWeighingRowsValue
+}
+
 const prepareBlankEditor = () => {
   resetEditor()
   clearDraft()
 }
 
-const handleClearEditor = () => {
+const handleClearEditor = async () => {
+  if (hasEditorContent()) {
+    try {
+      await ElMessageBox.confirm('清空后当前页面填写的内容会被移除，确定要继续吗？', '确认清空页面', {
+        confirmButtonText: '确认清空',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+    } catch {
+      return
+    }
+  }
+
   prepareBlankEditor()
   showToast('开单页面已清空')
 }
