@@ -58,6 +58,7 @@ const roundAmount = (value) => Math.round(Number(value) || 0)
 const normalizeMoney = (value) => Math.max(Number(value || 0), 0)
 const normalizeSettlementMoney = (value) => Math.max(Math.round(Number(value || 0)), 0)
 const settlementAmount = computed(() => Math.min(normalizeMoney(form.settlementAmount), totalAmount.value))
+const isWeighingDrawerOpen = ref(false)
 const hasWeighing = computed(() => {
   return Number(form.firstWeight || 0) > 0 ||
     Number(form.lastWeight || 0) > 0 ||
@@ -195,6 +196,10 @@ const selectWeighingFabric = (row) => {
   selectFabric(row)
 }
 
+const toggleWeighingDrawer = () => {
+  isWeighingDrawerOpen.value = !isWeighingDrawerOpen.value
+}
+
 const syncRowFabric = (row) => {
   const keyword = row.fabricName.trim()
   const matched = fabrics.value.find((item) => item.name === keyword)
@@ -243,6 +248,12 @@ const fillForm = (record) => {
         note: item.note || '',
       }))
     : []
+  isWeighingDrawerOpen.value = Boolean(
+    savedWeighingDetails.length ||
+    Number(record.firstWeight || 0) > 0 ||
+    Number(record.lastWeight || 0) > 0 ||
+    Number(record.netWeight || 0) > 0
+  )
 
   if (Array.isArray(record.items) && record.items.length) {
     rows.value = record.items.filter((item) => item.source !== 'weighing' && !item.weighingId).map((item) => ({
@@ -274,6 +285,7 @@ const resetEditor = () => {
   form.lastWeight = 0
   form.netWeight = 0
   weighingRows.value = []
+  isWeighingDrawerOpen.value = false
   rows.value = [makeRow()]
 }
 
@@ -556,16 +568,19 @@ const saveBill = async () => {
     const row = effectiveWeighingRows.value[i]
 
     if (!row.fabricId) {
+      isWeighingDrawerOpen.value = true
       showToast(`过磅货物第${i + 1}行：请选择品种`)
       return
     }
 
     if (!row.quantity) {
+      isWeighingDrawerOpen.value = true
       showToast(`过磅货物第${i + 1}行：请输入过磅总重量和车皮重量`)
       return
     }
 
     if (!row.unitPrice) {
+      isWeighingDrawerOpen.value = true
       showToast(`过磅货物第${i + 1}行：请输入单价`)
       return
     }
@@ -1264,13 +1279,31 @@ const exportImage = () => {
       </div>
     </section>
 
-    <section class="panel weighing-panel weighing-card">
-      <div class="panel-title-row">
-        <h3 class="title-with-icon">
-          <AppIcon name="scale" size="18" />
-          <span>过磅信息</span>
-        </h3>
-      </div>
+    <section class="panel weighing-panel weighing-card" :class="{ 'is-collapsed': !isWeighingDrawerOpen }">
+      <button
+        type="button"
+        class="weighing-drawer-toggle"
+        :aria-expanded="String(isWeighingDrawerOpen)"
+        aria-controls="weighing-drawer-body"
+        @click="toggleWeighingDrawer"
+      >
+        <span class="weighing-drawer-heading">
+          <span class="title-with-icon">
+            <AppIcon name="scale" size="18" />
+            <span>过磅信息</span>
+          </span>
+          <small>
+            {{ hasWeighing ? `已录入过磅净重 ${formatKg(netWeight)}，结算 ${netWeightJin.toFixed(2)} 斤` : '如需要添加过磅信息，在右侧点击展开填写，即可添加过磅内容' }}
+          </small>
+        </span>
+        <span class="weighing-drawer-action">
+          <span>{{ isWeighingDrawerOpen ? '收起' : '展开填写' }}</span>
+          <AppIcon name="chevron-down" size="16" />
+        </span>
+      </button>
+
+      <Transition name="weighing-drawer">
+        <div v-show="isWeighingDrawerOpen" id="weighing-drawer-body" class="weighing-drawer-body">
       <div class="weighing-grid">
         <label class="field">
           <span>过磅品种</span>
@@ -1369,6 +1402,8 @@ const exportImage = () => {
         <strong>一车货统一开单</strong>
         <span>过磅货物在这里按品种、单价和净重计算；不走过磅的货物请在“单独计重货物”里录入，系统统一汇总重量和金额。</span>
       </div>
+        </div>
+      </Transition>
     </section>
 
     <footer class="settlement-bar panel">
@@ -1523,6 +1558,73 @@ const exportImage = () => {
   box-shadow: var(--weighing-shadow);
   backdrop-filter: blur(14px);
   overflow: hidden;
+}
+.weighing-drawer-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 0 0 14px;
+  border: none;
+  border-bottom: 1px solid var(--weighing-accent-line);
+  background: transparent;
+  color: var(--text-normal);
+  text-align: left;
+  cursor: pointer;
+}
+.weighing-card.is-collapsed .weighing-drawer-toggle {
+  padding-bottom: 0;
+  border-bottom-color: transparent;
+}
+.weighing-drawer-heading {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.weighing-drawer-heading .title-with-icon {
+  color: var(--weighing-accent-strong);
+  font-size: 20px;
+  font-weight: 700;
+}
+.weighing-drawer-heading small {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.weighing-drawer-action {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--weighing-accent-line);
+  border-radius: 999px;
+  background: var(--weighing-accent-soft);
+  color: var(--weighing-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+.weighing-drawer-action svg {
+  transition: transform 0.2s ease;
+}
+.weighing-drawer-toggle[aria-expanded='true'] .weighing-drawer-action svg {
+  transform: rotate(180deg);
+}
+.weighing-drawer-body {
+  padding-top: 18px;
+}
+.weighing-drawer-enter-active,
+.weighing-drawer-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.weighing-drawer-enter-from,
+.weighing-drawer-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 .weighing-card .panel-title-row {
   padding-bottom: 14px;
@@ -1818,6 +1920,14 @@ const exportImage = () => {
   .single-weight-tip {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .weighing-drawer-toggle {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .weighing-drawer-action {
+    width: 100%;
+    justify-content: center;
   }
   .action-toolbar {
     width: 100%;
