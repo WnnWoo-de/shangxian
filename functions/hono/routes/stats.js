@@ -26,6 +26,23 @@ const getItemAmount = (item = {}) => {
   if (amount > 0) return amount
   return roundMoney(getItemWeight(item) * toNumber(item.unitPrice ?? item.unit_price))
 }
+const getAdjustedItemAmounts = (bill = {}) => {
+  const items = getItems(bill)
+  const rawAmounts = items.map((item) => getItemAmount(item))
+  if (bill.type !== 'sale') return rawAmounts
+
+  const grossItemTotal = rawAmounts.reduce((sum, amount) => sum + amount, 0)
+  const finalBillAmount = Math.round(toNumber(bill.totalAmount))
+  if (grossItemTotal <= 0 || finalBillAmount <= 0) return rawAmounts
+
+  let allocated = 0
+  return rawAmounts.map((amount, index) => {
+    if (index === rawAmounts.length - 1) return Math.max(finalBillAmount - allocated, 0)
+    const next = Math.round(amount * (finalBillAmount / grossItemTotal))
+    allocated += next
+    return next
+  })
+}
 
 const buildDaysInMonth = (month) => {
   const [yearText, monthText] = String(month || '').split('-')
@@ -141,7 +158,8 @@ const buildMonthlyReport = (bills, filters) => {
 
   const productMap = new Map()
   filteredBills.forEach((bill) => {
-    getItems(bill).forEach((item) => {
+    const adjustedItemAmounts = getAdjustedItemAmounts(bill)
+    getItems(bill).forEach((item, index) => {
       if (filters.fabric !== 'all'
         && String(item.fabricId || '') !== filters.fabric
         && String(item.fabricName || '') !== filters.fabric) {
@@ -159,7 +177,7 @@ const buildMonthlyReport = (bills, filters) => {
       }
       if (bill.type === 'sale') {
         current.outboundWeight += getItemWeight(item)
-        current.outboundAmount += getItemAmount(item)
+        current.outboundAmount += adjustedItemAmounts[index] ?? getItemAmount(item)
       } else {
         current.purchaseCost += getItemAmount(item)
       }

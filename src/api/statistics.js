@@ -67,6 +67,30 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
   const customerMap = {}
   const fabricMap = {}
   const productMap = {}
+  const getItemAmount = (item = {}) => {
+    const amount = Number(item.amount || 0)
+    if (Number.isFinite(amount) && amount > 0) return amount
+    const weight = Number(item.totalWeight ?? item.weight ?? item.quantity ?? 0)
+    const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0)
+    return Number.isFinite(weight) && Number.isFinite(unitPrice) ? weight * unitPrice : 0
+  }
+  const getAdjustedItemAmounts = (bill = {}) => {
+    const items = Array.isArray(bill.items) ? bill.items : []
+    const rawAmounts = items.map((item) => getItemAmount(item))
+    if (bill.type !== 'sale') return rawAmounts.map((amount) => Math.round(amount))
+
+    const grossItemTotal = rawAmounts.reduce((sum, amount) => sum + amount, 0)
+    const finalBillAmount = Math.round(Number(bill.totalAmount || 0))
+    if (grossItemTotal <= 0 || finalBillAmount <= 0) return rawAmounts.map((amount) => Math.round(amount))
+
+    let allocated = 0
+    return rawAmounts.map((amount, index) => {
+      if (index === rawAmounts.length - 1) return Math.max(finalBillAmount - allocated, 0)
+      const next = Math.round(amount * (finalBillAmount / grossItemTotal))
+      allocated += next
+      return next
+    })
+  }
 
   bills.forEach(bill => {
     const amount = Math.round(Number(bill.totalAmount || 0))
@@ -107,13 +131,14 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
       customerMap[customerId].unpaidAmount += Math.round(Number(bill.unsettledAmount || 0))
     }
 
-    bill.items?.forEach(item => {
+    const adjustedItemAmounts = getAdjustedItemAmounts(bill)
+    bill.items?.forEach((item, index) => {
       const fabricName = item.fabricName || '其他'
       if (!fabricMap[fabricName]) {
         fabricMap[fabricName] = { fabricName, totalWeight: 0, totalAmount: 0 }
       }
       const itemWeight = Math.round(Number(item.totalWeight ?? item.weight ?? item.quantity ?? 0) * 100) / 100
-      const itemAmount = Math.round(Number(item.amount || 0))
+      const itemAmount = adjustedItemAmounts[index] ?? Math.round(getItemAmount(item))
       fabricMap[fabricName].totalWeight += itemWeight
       fabricMap[fabricName].totalAmount += itemAmount
 
