@@ -89,18 +89,37 @@ const form = reactive({
 const weighingRows = ref([])
 const getWeighingNet = (row) => Math.max(Number(row?.firstWeight || 0) - Number(row?.lastWeight || 0), 0)
 const getWeighingJin = (row) => Number((getWeighingNet(row) * KG_TO_JIN).toFixed(2))
-const getWeighingAmount = (row) => multiplyMoney(getWeighingJin(row), Number(row?.unitPrice || 0))
-const primaryNetWeight = computed(() => getWeighingNet(form))
-const primaryNetWeightJin = computed(() => Number((primaryNetWeight.value * KG_TO_JIN).toFixed(2)))
 const totalFirstWeight = computed(() => Number((Number(form.firstWeight || 0) + weighingRows.value.reduce((sum, row) => sum + Number(row.firstWeight || 0), 0)).toFixed(2)))
 const totalLastWeight = computed(() => Number((Number(form.lastWeight || 0) + weighingRows.value.reduce((sum, row) => sum + Number(row.lastWeight || 0), 0)).toFixed(2)))
-const extraNetWeight = computed(() => weighingRows.value.reduce((sum, row) => sum + getWeighingNet(row), 0))
-const netWeight = computed(() => Number((primaryNetWeight.value + extraNetWeight.value).toFixed(2)))
-const netWeightJin = computed(() => Number((netWeight.value * KG_TO_JIN).toFixed(2)))
+const getAllWeighingRows = () => [form, ...weighingRows.value]
+const manualWeightJin = computed(() => manualItemRows.value.reduce((sum, row) => {
+  const quantity = Number(row.quantity || 0)
+  return sum + (Number.isFinite(quantity) ? quantity : 0)
+}, 0))
+const totalWeighingGrossJin = computed(() => getAllWeighingRows().reduce((sum, row) => sum + getWeighingJin(row), 0))
+const weighingDeductedJin = computed(() => Math.min(manualWeightJin.value, totalWeighingGrossJin.value))
+const getAdjustedWeighingJinByIndex = (targetIndex) => {
+  let remainingDeduction = manualWeightJin.value
 
-watch(netWeight, (value) => {
-  form.netWeight = Number(value || 0)
-}, { immediate: true })
+  for (let index = 0; index <= targetIndex; index += 1) {
+    const row = getAllWeighingRows()[index]
+    const grossJin = getWeighingJin(row)
+    const deductedJin = Math.min(grossJin, remainingDeduction)
+    remainingDeduction = Math.max(remainingDeduction - grossJin, 0)
+
+    if (index === targetIndex) {
+      return Number(Math.max(grossJin - deductedJin, 0).toFixed(2))
+    }
+  }
+
+  return 0
+}
+const getAdjustedWeighingNet = (row, index) => Number((getAdjustedWeighingJinByIndex(index) / KG_TO_JIN).toFixed(2))
+const getAdjustedWeighingAmount = (row, index) => multiplyMoney(getAdjustedWeighingJinByIndex(index), Number(row?.unitPrice || 0))
+const primaryNetWeight = computed(() => getAdjustedWeighingNet(form, 0))
+const primaryNetWeightJin = computed(() => getAdjustedWeighingJinByIndex(0))
+const netWeight = computed(() => Number(((totalWeighingGrossJin.value - weighingDeductedJin.value) / KG_TO_JIN).toFixed(2)))
+const netWeightJin = computed(() => Number((netWeight.value * KG_TO_JIN).toFixed(2)))
 
 const syncPartnerSelection = () => {
   const keyword = form.partnerName.trim()
@@ -421,6 +440,10 @@ const manualItemRows = computed(() => {
   return rowViews.value.filter((item) => item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) > 0)
 })
 
+watch(netWeight, (value) => {
+  form.netWeight = Number(value || 0)
+}, { immediate: true })
+
 const weighingItemViews = computed(() => {
   const primary = {
     id: 'primary-weighing',
@@ -430,14 +453,17 @@ const weighingItemViews = computed(() => {
     firstWeight: Number(form.firstWeight || 0),
     lastWeight: Number(form.lastWeight || 0),
   }
-  return [primary, ...weighingRows.value].map((row) => {
+  return [primary, ...weighingRows.value].map((row, index) => {
     const fabric = fabrics.value.find((item) => item.id === row.fabricId)
-    const quantity = getWeighingJin(row)
+    const grossQuantity = getWeighingJin(row)
+    const quantity = getAdjustedWeighingJinByIndex(index)
     const unitPrice = Number(row.unitPrice || 0)
     return {
       ...row,
       fabric,
       fabricName: row.fabricName || fabric?.name || '',
+      grossQuantity,
+      deductedQuantity: Number(Math.max(grossQuantity - quantity, 0).toFixed(2)),
       quantity,
       quantityInput: formatJinInput(quantity),
       unit: '斤',
@@ -447,7 +473,12 @@ const weighingItemViews = computed(() => {
 })
 
 const effectiveWeighingRows = computed(() => {
-  return weighingItemViews.value.filter((item) => item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) > 0)
+  return weighingItemViews.value.filter((item) => {
+    const hasDraft = item.fabricName?.trim() || Number(item.unitPrice) > 0 || Number(item.grossQuantity) > 0
+    if (!hasDraft) return false
+    if (Number(item.quantity) > 0) return true
+    return Number(item.grossQuantity || 0) <= 0
+  })
 })
 
 const totalWeight = computed(() => {
@@ -470,7 +501,7 @@ const primaryAmount = computed(() => {
 const weighingTotalAmount = computed(() => {
   return addMoney([
     primaryAmount.value,
-    ...weighingRows.value.map((row) => getWeighingAmount(row)),
+    ...weighingRows.value.map((row, index) => getAdjustedWeighingAmount(row, index + 1)),
   ])
 })
 // 未结金额始终跟随当前明细总额和已付/已收金额，避免删除明细后保留旧欠款。
@@ -745,7 +776,9 @@ const saveBill = async () => {
         unitPrice: Number(row.unitPrice || 0),
         firstWeight: Number(row.firstWeight || 0),
         lastWeight: Number(row.lastWeight || 0),
-        netWeight: getWeighingNet(row),
+        netWeight: Number((Number(row.quantity || 0) / KG_TO_JIN).toFixed(2)),
+        grossNetWeight: getWeighingNet(row),
+        deductedWeight: Number((Number(row.deductedQuantity || 0) / KG_TO_JIN).toFixed(2)),
       })),
     }
 
@@ -1356,7 +1389,7 @@ const exportImage = () => {
             <span>过磅信息</span>
           </span>
           <small>
-            {{ hasWeighing ? `已录入过磅净重 ${formatKg(netWeight)}，结算 ${netWeightJin.toFixed(2)} 斤` : '如需要添加过磅信息，在右侧点击展开填写，即可添加过磅内容' }}
+            {{ hasWeighing ? `地磅净重 ${formatKg(netWeight)}，已扣单独计重 ${weighingDeductedJin.toFixed(2)} 斤` : '如需要添加过磅信息，在右侧点击展开填写，即可添加过磅内容' }}
           </small>
         </span>
         <span class="weighing-drawer-action">
@@ -1414,7 +1447,7 @@ const exportImage = () => {
           />
         </label>
         <label class="field readonly-field">
-          <span>主磅净重（公斤）</span>
+          <span>主磅净重（已扣单独计重）</span>
           <input :value="formatKg(primaryNetWeight)" type="text" readonly />
         </label>
         <label class="field readonly-field">
@@ -1451,19 +1484,19 @@ const exportImage = () => {
             <input v-model.number="row.lastWeight" type="number" min="0" step="0.01" autocomplete="off" />
           </label>
           <label class="field readonly-field">
-            <span>净重量（公斤）</span>
-            <input :value="formatKg(getWeighingNet(row))" type="text" readonly />
+            <span>净重量（已扣单独计重）</span>
+            <input :value="formatKg(getAdjustedWeighingNet(row, index + 1))" type="text" readonly />
           </label>
           <label class="field readonly-field amount-field">
             <span>金额</span>
-            <input :value="formatMoney(getWeighingAmount(row))" type="text" readonly />
+            <input :value="formatMoney(getAdjustedWeighingAmount(row, index + 1))" type="text" readonly />
           </label>
           <button type="button" class="btn-text danger weighing-remove-btn" @click="removeWeighingDetail(index)">删除</button>
         </article>
       </div>
       <div class="single-weight-tip">
         <strong>一车货统一开单</strong>
-        <span>过磅货物在这里按品种、单价和净重计算；不走过磅的货物请在“单独计重货物”里录入，系统统一汇总重量和金额。</span>
+        <span>地磅净重会自动扣除“单独计重货物”的重量，避免同一批重量重复计入；系统再统一汇总重量和金额。</span>
       </div>
         </div>
       </Transition>
