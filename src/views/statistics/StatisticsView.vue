@@ -112,15 +112,7 @@ const dailyLedger = computed(() => {
     1
   )
 
-  return source.filter((item) => {
-    return Number(item.billCount || item.count || 0) > 0
-      || toMoney(item.income) > 0
-      || toMoney(item.expense) > 0
-      || toMoney(item.actualIncome) > 0
-      || toMoney(item.actualExpense) > 0
-      || toMoney(item.pendingIncome) > 0
-      || toMoney(item.pendingExpense) > 0
-  }).map((item) => ({
+  return source.map((item) => ({
     ...item,
     income: toMoney(item.income),
     expense: toMoney(item.expense),

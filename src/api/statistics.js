@@ -18,6 +18,14 @@ export const fetchStatisticsOverviewApi = async () => {
   }
 }
 
+const buildDaysInMonth = (month) => {
+  const [yearText, monthText] = String(month || '').split('-')
+  const year = Number(yearText)
+  const monthIndex = Number(monthText) - 1
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) return 31
+  return new Date(year, monthIndex + 1, 0).getDate()
+}
+
 export const fetchStatisticsSummaryApi = async (params = {}) => {
   try {
     const remoteData = await fetchStatsMonthlyApi(params)
@@ -246,6 +254,27 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
+  const selectedMonth = params.month || months[0]
+  const emptyDailyRow = (day) => ({
+    day: String(day).padStart(2, '0'),
+    income: 0,
+    expense: 0,
+    actualIncome: 0,
+    actualExpense: 0,
+    pendingIncome: 0,
+    pendingExpense: 0,
+    net: 0,
+    cashNet: 0,
+    totalAmount: 0,
+    totalWeight: 0,
+    billCount: 0,
+    saleCount: 0,
+    purchaseCount: 0,
+  })
+  const fullDailyRows = Array.from({ length: buildDaysInMonth(selectedMonth) }, (_, index) => {
+    const day = String(index + 1).padStart(2, '0')
+    return dailyMap[day] || emptyDailyRow(day)
+  })
 
   return {
     summary: {
@@ -256,14 +285,14 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
       unsettledAmount: overview.unsettledAmount,
     },
     overview,
-    daily: Object.values(dailyMap).sort((a, b) => Number(a.day) - Number(b.day)),
-    dailyTrend: Object.values(dailyMap).sort((a, b) => Number(a.day) - Number(b.day)),
+    daily: fullDailyRows,
+    dailyTrend: fullDailyRows,
     purchaseOutboundStats,
     customerRanking,
     productAnalysis,
     fabricDistribution: Object.values(fabricMap),
     settlementOverview,
     months,
-    selectedMonth: params.month || months[0]
+    selectedMonth
   }
 }
