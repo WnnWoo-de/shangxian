@@ -120,9 +120,18 @@ const normalizeRecord = (record = {}) => {
   const totalWeightNumber = toFiniteNumber(record.totalWeight ?? record.netWeight, NaN)
   const totalAmountNumber = toFiniteNumber(record.totalAmount ?? record.totalPrice, NaN)
   const totalWeight = items.length ? itemTotalWeight : Number.isFinite(totalWeightNumber) && totalWeightNumber > 0 ? totalWeightNumber : 0
-  const rawTotalAmount = items.length ? itemTotalAmount : Number.isFinite(totalAmountNumber) && totalAmountNumber > 0 ? totalAmountNumber : 0
-  const totalAmount = roundSettlementAmount(rawTotalAmount)
   const type = record.type === 'sale' ? 'sale' : 'purchase'
+  const grossTotalAmountNumber = toFiniteNumber(record.grossTotalAmount ?? record.gross_total_amount, NaN)
+  const rawTotalAmount = items.length
+    ? itemTotalAmount
+    : Number.isFinite(grossTotalAmountNumber) && grossTotalAmountNumber > 0
+      ? grossTotalAmountNumber
+      : Number.isFinite(totalAmountNumber) && totalAmountNumber > 0 ? totalAmountNumber : 0
+  const grossTotalAmount = roundSettlementAmount(rawTotalAmount)
+  const balanceAdjustmentAmount = type === 'sale'
+    ? Math.min(roundSettlementAmount(record.balanceAdjustmentAmount ?? record.balance_adjustment_amount), grossTotalAmount)
+    : 0
+  const totalAmount = Math.max(grossTotalAmount - balanceAdjustmentAmount, 0)
   const paidAmount = Math.min(roundSettlementAmount(record.paidAmount), totalAmount)
   const receivedAmount = Math.min(roundSettlementAmount(record.receivedAmount), totalAmount)
   const settlementAmount = type === 'sale' ? receivedAmount : paidAmount
@@ -150,6 +159,8 @@ const normalizeRecord = (record = {}) => {
     items,
     details: items,
     totalWeight,
+    grossTotalAmount,
+    balanceAdjustmentAmount,
     totalAmount,
     paidAmount,
     receivedAmount,

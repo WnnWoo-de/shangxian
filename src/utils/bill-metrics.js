@@ -63,7 +63,8 @@ export const getRecordTotalAmount = (record = {}) => {
     const unitPrice = toFiniteNumber(item.unitPrice ?? item.unit_price, 0)
     return sum + getRecordItemWeight(item) * unitPrice
   }, 0)
-  if (itemTotal > 0) return Math.max(Math.round(itemTotal), 0)
+  const adjustment = Math.max(Math.round(toFiniteNumber(record.balanceAdjustmentAmount ?? record.balance_adjustment_amount, 0)), 0)
+  if (itemTotal > 0) return Math.max(Math.round(itemTotal) - adjustment, 0)
 
   const direct = toFiniteNumber(record.totalAmount ?? record.totalPrice, NaN)
   if (Number.isFinite(direct) && direct > 0) return Math.max(Math.round(direct), 0)

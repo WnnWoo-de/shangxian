@@ -78,6 +78,7 @@ const form = reactive({
   note: '',
   settlementAmount: 0,
   unsettledAmount: 0,
+  balanceAdjustmentAmount: 0,
   fabricId: '',
   fabricName: '',
   unitPrice: 0,
@@ -248,6 +249,7 @@ const fillForm = (record) => {
   form.note = record.note || ''
   form.settlementAmount = Number(isPurchase.value ? record.paidAmount || 0 : record.receivedAmount || 0)
   form.unsettledAmount = Number(record.unsettledAmount ?? 0)
+  form.balanceAdjustmentAmount = Number(record.balanceAdjustmentAmount || record.balance_adjustment_amount || 0)
   const savedWeighingDetails = Array.isArray(record.weighingDetails) ? record.weighingDetails : []
   const primaryWeighing = savedWeighingDetails[0] || null
   form.fabricId = primaryWeighing?.fabricId || ''
@@ -297,6 +299,7 @@ const resetEditor = () => {
   form.note = ''
   form.settlementAmount = 0
   form.unsettledAmount = 0
+  form.balanceAdjustmentAmount = 0
   form.fabricId = ''
   form.fabricName = ''
   form.unitPrice = 0
@@ -323,6 +326,7 @@ const hasEditorContent = () => {
     form.unitPrice,
     form.firstWeight,
     form.lastWeight,
+    form.balanceAdjustmentAmount,
     form.settlementAmount,
     form.unsettledAmount,
   ]
@@ -488,12 +492,17 @@ const totalWeight = computed(() => {
   }, 0)
 })
 
-const totalAmount = computed(() => {
+const grossTotalAmount = computed(() => {
   const safeAmounts = [...manualItemRows.value, ...effectiveWeighingRows.value].map(row => {
     return isNaN(row.amount) ? 0 : row.amount
   })
   return roundAmount(addMoney(safeAmounts))
 })
+const balanceAdjustmentAmount = computed(() => {
+  if (isPurchase.value) return 0
+  return Math.min(normalizeSettlementMoney(form.balanceAdjustmentAmount), grossTotalAmount.value)
+})
+const totalAmount = computed(() => Math.max(addMoney([grossTotalAmount.value, -balanceAdjustmentAmount.value]), 0))
 
 const primaryAmount = computed(() => {
   return multiplyMoney(primaryNetWeightJin.value, Number(form.unitPrice || 0))
@@ -521,6 +530,22 @@ watch(totalAmount, (amount) => {
     form.settlementAmount = amount
   }
   form.unsettledAmount = unsettledAmount.value
+})
+
+watch(() => form.balanceAdjustmentAmount, () => {
+  const roundedAdjustment = normalizeSettlementMoney(form.balanceAdjustmentAmount)
+  const nextAdjustment = Math.min(roundedAdjustment, grossTotalAmount.value)
+  if (form.balanceAdjustmentAmount !== nextAdjustment) {
+    form.balanceAdjustmentAmount = nextAdjustment
+    return
+  }
+  form.unsettledAmount = unsettledAmount.value
+})
+
+watch(grossTotalAmount, (amount) => {
+  if (form.balanceAdjustmentAmount > amount) {
+    form.balanceAdjustmentAmount = amount
+  }
 })
 
 watch(() => form.settlementAmount, () => {
@@ -762,6 +787,8 @@ const saveBill = async () => {
         note: '',
       })),
       totalWeight: totalWeight.value,
+      grossTotalAmount: grossTotalAmount.value,
+      balanceAdjustmentAmount: balanceAdjustmentAmount.value,
       totalAmount: totalAmount.value,
       paidAmount: props.type === 'purchase' ? normalizeSettlementMoney(settlementAmount.value) : 0,
       receivedAmount: props.type === 'sale' ? normalizeSettlementMoney(settlementAmount.value) : 0,
@@ -1509,7 +1536,23 @@ const exportImage = () => {
           <strong>{{ totalWeight.toFixed(2) }} 斤</strong>
         </div>
         <div>
-          <span>合计金额</span>
+          <span>{{ isPurchase ? '合计金额' : '明细金额' }}</span>
+          <strong>{{ formatMoney(grossTotalAmount) }}</strong>
+        </div>
+        <div v-if="!isPurchase" class="balance-adjustment-card">
+          <span>平账抹零（元）</span>
+          <input
+            v-model.number="form.balanceAdjustmentAmount"
+            class="settlement-input"
+            type="number"
+            min="0"
+            step="1"
+            autocomplete="off"
+            placeholder="0"
+          />
+        </div>
+        <div v-if="!isPurchase" class="net-total-card">
+          <span>平账后应收</span>
           <strong>{{ formatMoney(totalAmount) }}</strong>
         </div>
         <div>
@@ -1882,7 +1925,7 @@ const exportImage = () => {
 }
 .settlement-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 16px;
   flex: 1;
 }
@@ -1901,6 +1944,13 @@ const exportImage = () => {
 }
 .settlement-summary strong {
   font-size: 20px;
+}
+.balance-adjustment-card {
+  border-color: rgba(198, 90, 25, 0.22) !important;
+  background: rgba(255, 248, 239, 0.88) !important;
+}
+.net-total-card strong {
+  color: #c65a19;
 }
 .settlement-input {
   width: 100%;

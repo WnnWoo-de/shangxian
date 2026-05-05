@@ -60,6 +60,8 @@ const form = reactive({
   partnerId: '',
   supplier: '',
   note: '',
+  grossTotalAmount: 0,
+  balanceAdjustmentAmount: 0,
   firstWeight: 0,
   lastWeight: 0,
   netWeight: 0,
@@ -96,6 +98,8 @@ const fillForm = (record) => {
   form.partnerId = record.partnerId || record.customerId || ''
   form.supplier = record.partnerName
   form.note = record.note
+  form.grossTotalAmount = Number(record.grossTotalAmount || record.gross_total_amount || 0)
+  form.balanceAdjustmentAmount = Number(record.balanceAdjustmentAmount || record.balance_adjustment_amount || 0)
   form.firstWeight = Number(record.firstWeight || 0)
   form.lastWeight = Number(record.lastWeight || 0)
   form.netWeight = Number(record.netWeight || Math.max(form.firstWeight - form.lastWeight, 0))
@@ -373,6 +377,14 @@ const totalWeight = computed(() => {
 })
 
 const totalAmount = computed(() => {
+  const rowTotal = rowViews.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+  const savedTotal = Number(currentRecord.value?.totalAmount || 0)
+  if (Number(form.balanceAdjustmentAmount || 0) > 0 && savedTotal >= 0) return savedTotal
+  return rowTotal
+})
+const grossTotalAmount = computed(() => {
+  const savedGross = Number(form.grossTotalAmount || 0)
+  if (savedGross > 0) return savedGross
   return rowViews.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
 })
 
@@ -710,9 +722,12 @@ const exportImage = () => {
           <small>支持 `10+10+10`、`10 10 10`、`10.10.10`、`10×3` 快速计算</small>
         </article>
         <article class="overview-card accent-gold">
-          <span class="overview-label">总金额</span>
+          <span class="overview-label">{{ form.balanceAdjustmentAmount > 0 ? '平账后金额' : '总金额' }}</span>
           <strong>{{ formatMoney(totalAmount) }}</strong>
-          <small>累计金额 {{ formatMoney(totalAmount) }}</small>
+          <small v-if="form.balanceAdjustmentAmount > 0">
+            明细 {{ formatMoney(grossTotalAmount) }}，平账 {{ formatMoney(form.balanceAdjustmentAmount) }}
+          </small>
+          <small v-else>累计金额 {{ formatMoney(totalAmount) }}</small>
         </article>
       </section>
 
@@ -896,8 +911,9 @@ const exportImage = () => {
             <strong>{{ totalWeight.toFixed(2) }} 斤</strong>
           </div>
           <div class="sum-block">
-            <span>总金额</span>
+            <span>{{ form.balanceAdjustmentAmount > 0 ? '平账后金额' : '总金额' }}</span>
             <strong>{{ formatMoney(totalAmount) }}</strong>
+            <small v-if="form.balanceAdjustmentAmount > 0">已平账 {{ formatMoney(form.balanceAdjustmentAmount) }}</small>
           </div>
         </div>
         <div class="summary-actions">

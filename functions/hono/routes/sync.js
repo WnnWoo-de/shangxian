@@ -58,7 +58,11 @@ const normalizeBillAmounts = (bill = {}) => {
   const items = getItems(bill)
   const itemTotalWeight = items.reduce((sum, item) => sum + getItemWeight(item), 0)
   const itemTotalAmount = items.reduce((sum, item) => sum + getItemWeight(item) * toMoney(item.unitPrice ?? item.unit_price), 0)
-  const totalAmount = roundSettlementAmount(itemTotalAmount || toMoney(bill.totalAmount))
+  const grossTotalAmount = roundSettlementAmount(itemTotalAmount || toMoney(bill.grossTotalAmount ?? bill.totalAmount))
+  const balanceAdjustmentAmount = type === 'sale'
+    ? Math.min(roundSettlementAmount(bill.balanceAdjustmentAmount ?? bill.balance_adjustment_amount), grossTotalAmount)
+    : 0
+  const totalAmount = Math.max(grossTotalAmount - balanceAdjustmentAmount, 0)
   const totalWeight = Math.round((itemTotalWeight || toMoney(bill.totalWeight)) * 100) / 100
   const paidAmount = type === 'purchase' ? Math.min(roundSettlementAmount(bill.paidAmount), totalAmount) : 0
   const receivedAmount = type === 'sale' ? Math.min(roundSettlementAmount(bill.receivedAmount), totalAmount) : 0
@@ -68,6 +72,8 @@ const normalizeBillAmounts = (bill = {}) => {
   return {
     ...bill,
     type,
+    grossTotalAmount,
+    balanceAdjustmentAmount,
     totalAmount,
     totalWeight,
     paidAmount,
@@ -135,6 +141,8 @@ const buildRecordByEntity = (entity, input, existingData, recordId, updatedAt) =
     billDate: String(merged.billDate || now.slice(0, 10)),
     customerName: String(merged.customerName || merged.partnerName || ''),
     status: String(merged.status || 'confirmed'),
+    grossTotalAmount: Number(merged.grossTotalAmount || merged.totalAmount || 0),
+    balanceAdjustmentAmount: Number(merged.balanceAdjustmentAmount || 0),
     totalAmount: Number(merged.totalAmount || 0),
     totalWeight: Number(merged.totalWeight || 0),
     deletedAt: null,

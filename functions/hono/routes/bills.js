@@ -48,9 +48,13 @@ const normalizeBillAmounts = (bill = {}) => {
   const items = getItems(bill)
   const itemTotalWeight = items.reduce((sum, item) => sum + getItemWeight(item), 0)
   const itemTotalAmount = items.reduce((sum, item) => sum + getItemWeight(item) * toMoney(item.unitPrice ?? item.unit_price), 0)
-  const totalAmount = roundSettlementAmount(itemTotalAmount || toMoney(bill.totalAmount))
   const totalWeight = Math.round((itemTotalWeight || toMoney(bill.totalWeight)) * 100) / 100
   const type = bill.type === 'sale' ? 'sale' : 'purchase'
+  const grossTotalAmount = roundSettlementAmount(itemTotalAmount || toMoney(bill.grossTotalAmount ?? bill.totalAmount))
+  const balanceAdjustmentAmount = type === 'sale'
+    ? Math.min(roundSettlementAmount(bill.balanceAdjustmentAmount ?? bill.balance_adjustment_amount), grossTotalAmount)
+    : 0
+  const totalAmount = Math.max(grossTotalAmount - balanceAdjustmentAmount, 0)
   const paidAmount = type === 'purchase' ? Math.min(roundSettlementAmount(bill.paidAmount), totalAmount) : 0
   const receivedAmount = type === 'sale' ? Math.min(roundSettlementAmount(bill.receivedAmount), totalAmount) : 0
   const settlementAmount = type === 'sale' ? receivedAmount : paidAmount
@@ -59,6 +63,8 @@ const normalizeBillAmounts = (bill = {}) => {
   return {
     ...bill,
     type,
+    grossTotalAmount,
+    balanceAdjustmentAmount,
     totalAmount,
     totalWeight,
     paidAmount,
@@ -85,6 +91,8 @@ export const registerBillRoutes = (app) => {
       billDate: String(body.billDate || now.slice(0, 10)),
       customerName: String(body.customerName || body.partnerName || ''),
       status: String(body.status || 'confirmed'),
+      grossTotalAmount: Number(body.grossTotalAmount || body.totalAmount || 0),
+      balanceAdjustmentAmount: Number(body.balanceAdjustmentAmount || 0),
       totalAmount: Number(body.totalAmount || 0),
       totalWeight: Number(body.totalWeight || 0),
       createdAt: body.createdAt || now,
