@@ -132,6 +132,7 @@
 html,
 body {
   min-height: 100%;
+  min-height: var(--app-height, 100dvh);
   background:
     radial-gradient(circle at top left, rgba(240, 222, 198, 0.16), transparent 26%),
     radial-gradient(circle at 85% 10%, rgba(227, 187, 122, 0.18), transparent 28%),
@@ -196,6 +197,7 @@ textarea {
   border: 1px solid rgba(255, 255, 255, 0.55);
   box-shadow: $card-shadow;
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 :root[data-theme='dark'] {
@@ -417,6 +419,7 @@ textarea {
 
 #app {
   min-height: 100vh;
+  min-height: var(--app-height, 100dvh);
   width: 100%;
   color: $text-primary;
   font-family: inherit;
@@ -743,6 +746,7 @@ textarea {
   margin: 0 auto;
   padding: $spacing-lg;
   min-height: calc(100vh - #{$card-padding * 2});
+  min-height: calc(var(--app-height, 100dvh) - #{$card-padding * 2});
 
   @include respond-to(md) {
     padding: $spacing-md;
@@ -837,6 +841,7 @@ textarea {
   border-radius: $radius-lg;
   box-shadow: $shadow-sm;
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 
   .empty-icon {
     font-size: 3rem;
@@ -851,6 +856,34 @@ textarea {
   .empty-desc {
     font-size: $font-sm;
     color: $text-muted;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .el-card,
+  .empty-state,
+  .top-bar,
+  .sidebar-shell,
+  .sidebar-panel,
+  .inner-page__hero,
+  .inner-page__toolbar,
+  .inner-page__panel,
+  .inner-page__modal {
+    background-color: rgba(255, 250, 241, 0.96) !important;
+  }
+
+  :root[data-theme='dark'] {
+    .el-card,
+    .empty-state,
+    .top-bar,
+    .sidebar-shell,
+    .sidebar-panel,
+    .inner-page__hero,
+    .inner-page__toolbar,
+    .inner-page__panel,
+    .inner-page__modal {
+      background-color: rgba(32, 35, 33, 0.96) !important;
+    }
   }
 }
 

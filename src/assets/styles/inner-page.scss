@@ -484,7 +484,7 @@
 
   .inner-page__modal {
     width: 100%;
-    max-height: calc(100dvh - 24px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+    max-height: calc(var(--visual-height, 100dvh) - 24px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -703,6 +703,7 @@
 
 .not-found-page {
   min-height: calc(100vh - 122px);
+  min-height: calc(var(--app-height, 100dvh) - 122px);
   justify-content: center;
 }
 

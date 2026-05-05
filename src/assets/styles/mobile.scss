@@ -6,6 +6,10 @@
 
 // 全局移动端优化
 :root {
+  --vh: 1vh;
+  --app-height: 100dvh;
+  --visual-height: 100dvh;
+  --keyboard-inset: 0px;
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
@@ -15,6 +19,7 @@
 html {
   width: 100%;
   min-width: 320px;
+  min-height: 100%;
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
@@ -23,11 +28,16 @@ html {
 body {
   width: 100%;
   min-width: 320px;
+  min-height: 100vh;
+  min-height: var(--app-height, 100dvh);
   overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 #app {
   min-width: 0;
+  min-height: 100vh;
+  min-height: var(--app-height, 100dvh);
 }
 
 button,
@@ -75,6 +85,67 @@ textarea,
 .el-table__header-wrapper,
 .el-scrollbar__wrap {
   -webkit-overflow-scrolling: touch;
+}
+
+.page-content,
+.table-responsive,
+.inner-page__table-wrap,
+.price-table-wrap,
+.el-dialog__body,
+.el-drawer__body,
+.el-scrollbar__wrap {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.full-screen,
+.app-screen,
+.mobile-screen {
+  min-height: 100vh;
+  min-height: var(--app-height, 100dvh);
+}
+
+html.is-harmony-browser {
+  body {
+    overflow-anchor: none;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  select,
+  textarea,
+  .el-input__inner,
+  .el-textarea__inner,
+  .el-select__wrapper {
+    font-size: 16px !important;
+  }
+
+  .el-overlay,
+  .el-drawer,
+  .el-dialog,
+  .inner-page__modal,
+  .mobile-overlay,
+  .fixed-bottom {
+    transform: translateZ(0);
+  }
+
+  .el-message {
+    top: max(12px, var(--safe-area-inset-top)) !important;
+  }
+}
+
+html.is-harmony-keyboard {
+  .fixed-bottom,
+  .el-message-box,
+  .inner-page__modal {
+    margin-bottom: var(--keyboard-inset);
+  }
 }
 
 // 超小屏幕 (360px以下)
@@ -270,7 +341,7 @@ textarea,
   }
 
   .el-dialog__body {
-    max-height: calc(100dvh - 168px);
+    max-height: calc(var(--visual-height, 100dvh) - 168px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -526,12 +597,13 @@ textarea,
 .full-screen {
   height: 100vh;
   height: calc(var(--vh, 1vh) * 100);
+  height: var(--app-height, calc(var(--vh, 1vh) * 100));
 }
 
 // 固定底部
 .fixed-bottom {
   position: fixed;
-  bottom: 0;
+  bottom: var(--keyboard-inset, 0px);
   left: 0;
   right: 0;
   padding-bottom: var(--safe-area-inset-bottom);

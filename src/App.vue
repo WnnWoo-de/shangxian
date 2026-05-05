@@ -31,6 +31,7 @@ onMounted(() => {
 #app {
   width: 100%;
   min-height: 100vh;
+  min-height: var(--app-height, 100dvh);
   font-family: inherit;
 }
 </style>

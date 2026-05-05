@@ -17,10 +17,12 @@ import { setupPwaAutoUpdate } from '@/pwa'
 import { setupPwaInstallPrompt } from '@/utils/pwa-install'
 import { incrementalSync, startAutoSync, stopAutoSync } from '@/utils/sync'
 import { initTheme } from '@/utils/theme'
+import { setupBrowserCompatibility } from '@/utils/browser-compat'
 
 const app = createApp(App)
 const pinia = createPinia()
 
+setupBrowserCompatibility()
 initTheme()
 
 app.use(pinia)

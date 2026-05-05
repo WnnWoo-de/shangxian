@@ -452,6 +452,7 @@ const recentPartners = computed(() => {
 .order-list-page {
   background: linear-gradient(180deg, #fffaf3 0%, #f5ebde 100%);
   min-height: 100vh;
+  min-height: var(--app-height, 100dvh);
   padding: 20px;
 }
 

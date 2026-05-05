@@ -51,6 +51,7 @@ const goHome = () => {
 <style scoped>
 .not-found-page {
   min-height: 100vh;
+  min-height: var(--app-height, 100dvh);
   background-color: var(--bg-main);
   display: flex;
   flex-direction: column;

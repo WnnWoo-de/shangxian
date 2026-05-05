@@ -87,7 +87,9 @@ const updateTime = () => {
 }
 
 let timer = null
-const handleResize = () => { if (window.innerWidth > 768) mobileMenuOpen.value = false }
+const handleResize = () => {
+  if (window.innerWidth > 768) mobileMenuOpen.value = false
+}
 const handleLogout = async () => {
   try {
     await authStore.logout()
@@ -258,6 +260,7 @@ onBeforeUnmount(() => {
   --sidebar-width:320px;
   height:100vh;
   height:100dvh;
+  height:var(--app-height, 100dvh);
   display:flex;
   align-items:flex-start;
   overflow:hidden;
@@ -268,6 +271,7 @@ onBeforeUnmount(() => {
   inset:0;
   background:rgba(45,36,28,.2);
   backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
   z-index:40;
   @media (min-width: 769px){display:none}
 }
@@ -275,6 +279,7 @@ onBeforeUnmount(() => {
   width:var(--sidebar-width);
   height:100vh;
   height:100dvh;
+  height:var(--app-height, 100dvh);
   flex:0 0 var(--sidebar-width);
   position:fixed;
   inset:0 auto 0 0;
@@ -286,6 +291,7 @@ onBeforeUnmount(() => {
 .sidebar-shell{
   position:relative;
   height:100%;
+  min-height:0;
   display:flex;
   flex-direction:column;
   gap:10px;
@@ -358,11 +364,13 @@ onBeforeUnmount(() => {
   min-height:0;
   display:flex;
   flex-direction:column;
+  overflow:hidden;
   padding:12px 10px 10px;
   border-radius:20px;
   background:rgba(255,255,255,.42);
   border:1px solid rgba(255,255,255,.72);
-  backdrop-filter:blur(10px)
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px)
 }
 .panel-caption{
   display:inline-flex;
@@ -383,8 +391,13 @@ onBeforeUnmount(() => {
 .sidebar-nav{
   flex:1;
   min-height:0;
-  overflow:hidden;
+  overflow-x:hidden;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
   padding-right:4px;
+  scrollbar-gutter:stable;
   @include scrollbar-beautiful
 }
 .menu-group{
@@ -533,6 +546,7 @@ onBeforeUnmount(() => {
   min-width:0;
   height:100vh;
   height:100dvh;
+  height:var(--app-height, 100dvh);
   display:flex;
   flex-direction:column;
   overflow:hidden;
@@ -556,6 +570,7 @@ onBeforeUnmount(() => {
   background:rgba(255,252,247,.78);
   border:1px solid rgba(255,255,255,.72);
   backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
   box-shadow:0 18px 36px rgba(179,153,123,.12);
   @include respond-to(md){
     min-height:92px;
@@ -930,6 +945,7 @@ onBeforeUnmount(() => {
   .main-layout {
     --sidebar-width: min(92vw, 316px);
     height: 100dvh;
+    height: var(--app-height, 100dvh);
     background:
       linear-gradient(180deg, rgba(255, 250, 243, .98) 0%, rgba(245, 235, 222, .98) 100%);
   }

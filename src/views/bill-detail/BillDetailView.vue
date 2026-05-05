@@ -915,6 +915,7 @@ const exportImage = () => {
 .weight-page {
   background: var(--bg-gradient);
   min-height: calc(100vh - 20px);
+  min-height: calc(var(--app-height, 100dvh) - 20px);
   display: flex;
   flex-direction: column;
   padding: 10px;

@@ -665,7 +665,7 @@ const moveCustomer = async (item, direction) => {
   }
 
   .price-table-wrap {
-    max-height: calc(100dvh - 220px);
+    max-height: calc(var(--visual-height, 100dvh) - 220px);
   }
 }
 
