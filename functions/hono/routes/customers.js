@@ -5,14 +5,14 @@ import {
   listActiveEntities,
   softDeleteEntity,
   updateEntity,
-} from '../../_lib/entity-repository.js'
-import { entityConfigs } from '../../_lib/entity-configs.js'
+} from '../../../server/db/entity-repository.js'
+import { entityConfigs } from '../../../server/db/entity-configs.js'
 
 const customerConfig = entityConfigs.customers
 
 export const registerCustomerRoutes = (app) => {
   app.get('/api/customers', async (c) => {
-    const customers = await listActiveEntities(c.env.DB, customerConfig.table)
+    const customers = await listActiveEntities(c.env, customerConfig.table)
     return ok(c, { data: customers })
   })
 
@@ -32,7 +32,7 @@ export const registerCustomerRoutes = (app) => {
       return fail(c, '客户名称不能为空', 400)
     }
 
-    await insertEntity(c.env.DB, customerConfig, customer)
+    await insertEntity(c.env, customerConfig, customer)
 
     return ok(c, { data: customer }, 201)
   })
@@ -41,7 +41,7 @@ export const registerCustomerRoutes = (app) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少客户ID', 400)
 
-    const existing = await getEntityById(c.env.DB, customerConfig.table, id)
+    const existing = await getEntityById(c.env, customerConfig.table, id)
     if (!existing) return fail(c, '客户不存在', 404)
 
     const payload = await parseBody(c)
@@ -52,7 +52,7 @@ export const registerCustomerRoutes = (app) => {
       updatedAt: new Date().toISOString(),
     }
 
-    await updateEntity(c.env.DB, customerConfig, id, updated)
+    await updateEntity(c.env, customerConfig, id, updated)
 
     return ok(c, { data: updated })
   })
@@ -60,7 +60,7 @@ export const registerCustomerRoutes = (app) => {
   app.delete('/api/customers/:id', async (c) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少客户ID', 400)
-    const existing = await getEntityById(c.env.DB, customerConfig.table, id, { includeDeleted: true })
+    const existing = await getEntityById(c.env, customerConfig.table, id, { includeDeleted: true })
     if (!existing) return ok(c, { data: { id } })
 
     const now = new Date().toISOString()
@@ -72,7 +72,7 @@ export const registerCustomerRoutes = (app) => {
       deletedAt: now,
     }
 
-    await softDeleteEntity(c.env.DB, customerConfig, id, deleted)
+    await softDeleteEntity(c.env, customerConfig, id, deleted)
 
     return ok(c, { data: { id, deletedAt: now } })
   })

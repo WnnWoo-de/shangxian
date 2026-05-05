@@ -1,4 +1,5 @@
 import { getEntityConfig } from './entity-configs.js'
+import { getDatabase } from './db.js'
 
 export const getSyncEntityConfig = (entity) => getEntityConfig(entity)
 
@@ -11,10 +12,11 @@ export const parseStoredData = (raw) => {
 }
 
 export const getSyncRecordSnapshot = async (db, entity, recordId) => {
+  const database = getDatabase(db)
   const config = getSyncEntityConfig(entity)
   if (!config) return null
 
-  const row = await db
+  const row = await database
     .prepare(`SELECT data, updated_at FROM ${config.table} WHERE id = ?1`)
     .bind(recordId)
     .first()
@@ -28,8 +30,10 @@ export const getSyncRecordSnapshot = async (db, entity, recordId) => {
 }
 
 export const upsertSyncRecord = async (db, entity, record) => {
+  const database = getDatabase(db)
+
   if (entity === 'customers') {
-    await db
+    await database
       .prepare(
         `INSERT OR REPLACE INTO customers (id, name, status, data, created_at, updated_at, deleted_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)`
@@ -40,7 +44,7 @@ export const upsertSyncRecord = async (db, entity, record) => {
   }
 
   if (entity === 'fabrics') {
-    await db
+    await database
       .prepare(
         `INSERT OR REPLACE INTO fabrics (id, code, name, status, data, created_at, updated_at, deleted_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)`
@@ -50,7 +54,7 @@ export const upsertSyncRecord = async (db, entity, record) => {
     return
   }
 
-  await db
+  await database
     .prepare(
       `INSERT OR REPLACE INTO bills
       (id, bill_no, type, bill_date, customer_name, status, total_amount, total_weight, data, created_at, updated_at, deleted_at)
@@ -73,10 +77,11 @@ export const upsertSyncRecord = async (db, entity, record) => {
 }
 
 export const softDeleteSyncRecord = async (db, entity, recordId, record) => {
+  const database = getDatabase(db)
   const config = getSyncEntityConfig(entity)
   if (!config) return
 
-  await db
+  await database
     .prepare(
       `UPDATE ${config.table}
          SET data = ?2,
@@ -90,12 +95,13 @@ export const softDeleteSyncRecord = async (db, entity, recordId, record) => {
 }
 
 export const listEntityChanges = async (db, entity, since, toIsoString) => {
+  const database = getDatabase(db)
   const config = getSyncEntityConfig(entity)
   if (!config) {
     return { upserts: [], deletes: [] }
   }
 
-  const upserts = await db
+  const upserts = await database
     .prepare(
       `SELECT data FROM ${config.table}
        WHERE deleted_at IS NULL
@@ -105,7 +111,7 @@ export const listEntityChanges = async (db, entity, since, toIsoString) => {
     .bind(since)
     .all()
 
-  const deletes = await db
+  const deletes = await database
     .prepare(
       `SELECT id, deleted_at FROM ${config.table}
        WHERE deleted_at IS NOT NULL

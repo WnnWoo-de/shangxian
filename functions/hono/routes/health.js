@@ -1,10 +1,10 @@
 import { fail, ok } from '../helpers/http.js'
-import { checkConnection } from '../../_lib/db.js'
+import { checkConnection } from '../../../server/db/db.js'
 
 export const registerHealthRoutes = (app) => {
   app.get('/api/health', async (c) => {
     try {
-      await checkConnection(c.env.DB)
+      await checkConnection(c.env)
       return ok(c, {
         data: {
           database: 'connected',

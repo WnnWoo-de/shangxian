@@ -1,4 +1,4 @@
-import { listRows, mapRow } from './db.js'
+import { getDatabase, listRows, mapRow } from './db.js'
 
 const placeholders = (count) => Array.from({ length: count }, () => '?').join(', ')
 
@@ -9,12 +9,14 @@ export const listActiveEntities = async (db, table, orderBy = 'datetime(updated_
 }
 
 export const getEntityById = async (db, table, id, options = {}) => {
+  const database = getDatabase(db)
   const deletedClause = options.includeDeleted ? '' : ' AND deleted_at IS NULL'
-  const row = await db.prepare(`SELECT data FROM ${table} WHERE id = ?${deletedClause}`).bind(id).first()
+  const row = await database.prepare(`SELECT data FROM ${table} WHERE id = ?${deletedClause}`).bind(id).first()
   return mapRow(row)
 }
 
 export const insertEntity = async (db, config, entity) => {
+  const database = getDatabase(db)
   const columns = [
     'id',
     ...config.fields.map((field) => field.column),
@@ -32,13 +34,14 @@ export const insertEntity = async (db, config, entity) => {
     null,
   ]
 
-  await db
+  await database
     .prepare(`INSERT OR REPLACE INTO ${config.table} (${columns.join(', ')}) VALUES (${placeholders(columns.length)})`)
     .bind(...values)
     .run()
 }
 
 export const updateEntity = async (db, config, id, entity) => {
+  const database = getDatabase(db)
   const setColumns = [
     ...config.fields.map((field) => field.column),
     'data',
@@ -53,16 +56,17 @@ export const updateEntity = async (db, config, id, entity) => {
     id,
   ]
 
-  await db
+  await database
     .prepare(`UPDATE ${config.table} SET ${setColumns.map((column) => `${column} = ?`).join(', ')} WHERE id = ?`)
     .bind(...values)
     .run()
 }
 
 export const softDeleteEntity = async (db, config, id, entity) => {
+  const database = getDatabase(db)
   const status = String(entity.status || 'inactive')
 
-  await db
+  await database
     .prepare(`UPDATE ${config.table} SET status = ?, data = ?, updated_at = ?, deleted_at = ? WHERE id = ?`)
     .bind(status, JSON.stringify(entity), entity.updatedAt, entity.deletedAt, id)
     .run()

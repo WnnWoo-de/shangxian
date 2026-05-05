@@ -5,8 +5,8 @@ import {
   listActiveEntities,
   softDeleteEntity,
   updateEntity,
-} from '../../_lib/entity-repository.js'
-import { entityConfigs } from '../../_lib/entity-configs.js'
+} from '../../../server/db/entity-repository.js'
+import { entityConfigs } from '../../../server/db/entity-configs.js'
 
 const billConfig = entityConfigs.bills
 const toMoney = (value) => Math.max(Number(value || 0), 0)
@@ -76,7 +76,7 @@ const normalizeBillAmounts = (bill = {}) => {
 
 export const registerBillRoutes = (app) => {
   app.get('/api/bills', async (c) => {
-    const bills = await listActiveEntities(c.env.DB, billConfig.table, 'date(bill_date) DESC, datetime(updated_at) DESC')
+    const bills = await listActiveEntities(c.env, billConfig.table, 'date(bill_date) DESC, datetime(updated_at) DESC')
     return ok(c, { data: bills })
   })
 
@@ -101,7 +101,7 @@ export const registerBillRoutes = (app) => {
 
     if (!bill.id) return fail(c, '单据ID无效', 400)
 
-    await insertEntity(c.env.DB, billConfig, bill)
+    await insertEntity(c.env, billConfig, bill)
 
     return ok(c, { data: bill }, 201)
   })
@@ -110,7 +110,7 @@ export const registerBillRoutes = (app) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少单据ID', 400)
 
-    const existing = await getEntityById(c.env.DB, billConfig.table, id)
+    const existing = await getEntityById(c.env, billConfig.table, id)
     if (!existing) return fail(c, '单据不存在', 404)
 
     const payload = await parseBody(c)
@@ -124,7 +124,7 @@ export const registerBillRoutes = (app) => {
       updatedAt: new Date().toISOString(),
     })
 
-    await updateEntity(c.env.DB, billConfig, id, updated)
+    await updateEntity(c.env, billConfig, id, updated)
 
     return ok(c, { data: updated })
   })
@@ -132,7 +132,7 @@ export const registerBillRoutes = (app) => {
   app.delete('/api/bills/:id', async (c) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少单据ID', 400)
-    const existing = await getEntityById(c.env.DB, billConfig.table, id, { includeDeleted: true })
+    const existing = await getEntityById(c.env, billConfig.table, id, { includeDeleted: true })
     if (!existing) return ok(c, { data: { id } })
 
     const now = new Date().toISOString()
@@ -144,7 +144,7 @@ export const registerBillRoutes = (app) => {
       deletedAt: now,
     }
 
-    await softDeleteEntity(c.env.DB, billConfig, id, deleted)
+    await softDeleteEntity(c.env, billConfig, id, deleted)
 
     return ok(c, { data: { id, deletedAt: now } })
   })

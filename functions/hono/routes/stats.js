@@ -1,7 +1,7 @@
 import { ok } from '../helpers/http.js'
-import { countActiveRows } from '../../_lib/db.js'
-import { listActiveEntities } from '../../_lib/entity-repository.js'
-import { entityConfigs } from '../../_lib/entity-configs.js'
+import { countActiveRows } from '../../../server/db/db.js'
+import { listActiveEntities } from '../../../server/db/entity-repository.js'
+import { entityConfigs } from '../../../server/db/entity-configs.js'
 
 const toNumber = (value) => {
   const number = Number(value)
@@ -326,9 +326,9 @@ const buildMonthlyReport = (bills, filters) => {
 export const registerStatsRoutes = (app) => {
   app.get('/api/stats/overview', async (c) => {
     const [billCount, customerCount, fabricCount] = await Promise.all([
-      countActiveRows(c.env.DB, 'bills'),
-      countActiveRows(c.env.DB, 'customers'),
-      countActiveRows(c.env.DB, 'fabrics'),
+      countActiveRows(c.env, 'bills'),
+      countActiveRows(c.env, 'customers'),
+      countActiveRows(c.env, 'fabrics'),
     ])
 
     return ok(c, {
@@ -351,7 +351,7 @@ export const registerStatsRoutes = (app) => {
       settlement: String(c.req.query('settlement') || 'all'),
     }
 
-    const bills = await listActiveEntities(c.env.DB, entityConfigs.bills.table, 'date(bill_date) ASC, datetime(updated_at) ASC')
+    const bills = await listActiveEntities(c.env, entityConfigs.bills.table, 'date(bill_date) ASC, datetime(updated_at) ASC')
     return ok(c, { data: buildMonthlyReport(bills, filters) })
   })
 }

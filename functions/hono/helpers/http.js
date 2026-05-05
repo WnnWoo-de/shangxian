@@ -1,5 +1,5 @@
 import { fail as sharedFail, ok as sharedOk, parseBody as sharedParseBody } from '../../_lib/response.js'
-import { listRows } from '../../_lib/db.js'
+import { listRows } from '../../../server/db/db.js'
 
 export const ok = (c, data = {}, status = 200) => sharedOk(data, status)
 

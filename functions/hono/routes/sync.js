@@ -5,7 +5,7 @@ import {
   listEntityChanges,
   softDeleteSyncRecord,
   upsertSyncRecord,
-} from '../../_lib/sync-repository.js'
+} from '../../../server/db/sync-repository.js'
 
 const EPOCH_ISO = '1970-01-01T00:00:00.000Z'
 
@@ -220,9 +220,9 @@ export const registerSyncRoutes = (app) => {
     const since = forceFull ? EPOCH_ISO : toIsoString(c.req.query('since') || EPOCH_ISO)
 
     const [customers, fabrics, bills] = await Promise.all([
-      listEntityChanges(c.env.DB, 'customers', since, toIsoString),
-      listEntityChanges(c.env.DB, 'fabrics', since, toIsoString),
-      listEntityChanges(c.env.DB, 'bills', since, toIsoString),
+      listEntityChanges(c.env, 'customers', since, toIsoString),
+      listEntityChanges(c.env, 'fabrics', since, toIsoString),
+      listEntityChanges(c.env, 'bills', since, toIsoString),
     ])
 
     return ok(c, {
@@ -246,7 +246,7 @@ export const registerSyncRoutes = (app) => {
     const invalid = []
 
     for (const operation of operations) {
-      const result = await applyOperation(c.env.DB, operation)
+      const result = await applyOperation(c.env, operation)
       if (result.status === 'applied') {
         appliedOpIds.push(operation.opId)
       } else if (result.status === 'conflict') {

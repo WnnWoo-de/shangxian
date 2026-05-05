@@ -1,5 +1,5 @@
 import { fail, ok, parseBody, publicUser } from '../helpers/http.js'
-import { getUserByUsername } from '../../_lib/db.js'
+import { getUserByUsername } from '../../../server/db/db.js'
 
 export const registerAuthRoutes = (app) => {
   app.post('/api/auth/login', async (c) => {
@@ -11,7 +11,7 @@ export const registerAuthRoutes = (app) => {
       return fail(c, '用户名和密码不能为空', 400)
     }
 
-    const user = await getUserByUsername(c.env.DB, username)
+    const user = await getUserByUsername(c.env, username)
     if (!user) {
       return fail(c, '用户名或密码错误', 401)
     }

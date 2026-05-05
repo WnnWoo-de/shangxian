@@ -5,14 +5,14 @@ import {
   listActiveEntities,
   softDeleteEntity,
   updateEntity,
-} from '../../_lib/entity-repository.js'
-import { entityConfigs } from '../../_lib/entity-configs.js'
+} from '../../../server/db/entity-repository.js'
+import { entityConfigs } from '../../../server/db/entity-configs.js'
 
 const fabricConfig = entityConfigs.fabrics
 
 export const registerFabricRoutes = (app) => {
   app.get('/api/fabrics', async (c) => {
-    const fabrics = await listActiveEntities(c.env.DB, fabricConfig.table)
+    const fabrics = await listActiveEntities(c.env, fabricConfig.table)
     return ok(c, { data: fabrics })
   })
 
@@ -33,7 +33,7 @@ export const registerFabricRoutes = (app) => {
       return fail(c, '布料名称不能为空', 400)
     }
 
-    await insertEntity(c.env.DB, fabricConfig, fabric)
+    await insertEntity(c.env, fabricConfig, fabric)
 
     return ok(c, { data: fabric }, 201)
   })
@@ -42,7 +42,7 @@ export const registerFabricRoutes = (app) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少布料ID', 400)
 
-    const existing = await getEntityById(c.env.DB, fabricConfig.table, id)
+    const existing = await getEntityById(c.env, fabricConfig.table, id)
     if (!existing) return fail(c, '布料不存在', 404)
 
     const payload = await parseBody(c)
@@ -53,7 +53,7 @@ export const registerFabricRoutes = (app) => {
       updatedAt: new Date().toISOString(),
     }
 
-    await updateEntity(c.env.DB, fabricConfig, id, updated)
+    await updateEntity(c.env, fabricConfig, id, updated)
 
     return ok(c, { data: updated })
   })
@@ -61,7 +61,7 @@ export const registerFabricRoutes = (app) => {
   app.delete('/api/fabrics/:id', async (c) => {
     const id = String(c.req.param('id') || '')
     if (!id) return fail(c, '缺少布料ID', 400)
-    const existing = await getEntityById(c.env.DB, fabricConfig.table, id, { includeDeleted: true })
+    const existing = await getEntityById(c.env, fabricConfig.table, id, { includeDeleted: true })
     if (!existing) return ok(c, { data: { id } })
 
     const now = new Date().toISOString()
@@ -73,7 +73,7 @@ export const registerFabricRoutes = (app) => {
       deletedAt: now,
     }
 
-    await softDeleteEntity(c.env.DB, fabricConfig, id, deleted)
+    await softDeleteEntity(c.env, fabricConfig, id, deleted)
     return ok(c, { data: { id, deletedAt: now } })
   })
 }
