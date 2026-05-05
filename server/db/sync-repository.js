@@ -1,25 +1,26 @@
 import { getEntityConfig } from './entity-configs.js'
-import { getDatabase } from './db.js'
+import { bindablePlaceholders, all, first, getSqlDialect, run } from './db.js'
 
 export const getSyncEntityConfig = (entity) => getEntityConfig(entity)
 
 export const parseStoredData = (raw) => {
   try {
-    return JSON.parse(raw || '{}')
+    return typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
   } catch {
     return {}
   }
 }
 
+const buildUpsertSql = (db, table, columns) => {
+  const dialect = getSqlDialect(db)
+  return `${dialect.upsertKeyword} INTO ${table} (${columns.join(', ')}) VALUES (${bindablePlaceholders(columns.length, db)})`
+}
+
 export const getSyncRecordSnapshot = async (db, entity, recordId) => {
-  const database = getDatabase(db)
   const config = getSyncEntityConfig(entity)
   if (!config) return null
 
-  const row = await database
-    .prepare(`SELECT data, updated_at FROM ${config.table} WHERE id = ?1`)
-    .bind(recordId)
-    .first()
+  const row = await first(db, `SELECT data, updated_at FROM ${config.table} WHERE id = ?`, [recordId])
 
   if (!row) return null
   return {
@@ -30,37 +31,41 @@ export const getSyncRecordSnapshot = async (db, entity, recordId) => {
 }
 
 export const upsertSyncRecord = async (db, entity, record) => {
-  const database = getDatabase(db)
-
   if (entity === 'customers') {
-    await database
-      .prepare(
-        `INSERT OR REPLACE INTO customers (id, name, status, data, created_at, updated_at, deleted_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)`
-      )
-      .bind(record.id, record.name, record.status, JSON.stringify(record), record.createdAt, record.updatedAt)
-      .run()
+    await run(
+      db,
+      buildUpsertSql(db, 'customers', ['id', 'name', 'status', 'data', 'created_at', 'updated_at', 'deleted_at']),
+      [record.id, record.name, record.status, JSON.stringify(record), record.createdAt, record.updatedAt, null]
+    )
     return
   }
 
   if (entity === 'fabrics') {
-    await database
-      .prepare(
-        `INSERT OR REPLACE INTO fabrics (id, code, name, status, data, created_at, updated_at, deleted_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)`
-      )
-      .bind(record.id, record.code, record.name, record.status, JSON.stringify(record), record.createdAt, record.updatedAt)
-      .run()
+    await run(
+      db,
+      buildUpsertSql(db, 'fabrics', ['id', 'code', 'name', 'status', 'data', 'created_at', 'updated_at', 'deleted_at']),
+      [record.id, record.code, record.name, record.status, JSON.stringify(record), record.createdAt, record.updatedAt, null]
+    )
     return
   }
 
-  await database
-    .prepare(
-      `INSERT OR REPLACE INTO bills
-      (id, bill_no, type, bill_date, customer_name, status, total_amount, total_weight, data, created_at, updated_at, deleted_at)
-      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL)`
-    )
-    .bind(
+  await run(
+    db,
+    buildUpsertSql(db, 'bills', [
+      'id',
+      'bill_no',
+      'type',
+      'bill_date',
+      'customer_name',
+      'status',
+      'total_amount',
+      'total_weight',
+      'data',
+      'created_at',
+      'updated_at',
+      'deleted_at',
+    ]),
+    [
       record.id,
       record.billNo,
       record.type,
@@ -71,55 +76,56 @@ export const upsertSyncRecord = async (db, entity, record) => {
       record.totalWeight,
       JSON.stringify(record),
       record.createdAt,
-      record.updatedAt
-    )
-    .run()
+      record.updatedAt,
+      null,
+    ]
+  )
 }
 
 export const softDeleteSyncRecord = async (db, entity, recordId, record) => {
-  const database = getDatabase(db)
   const config = getSyncEntityConfig(entity)
   if (!config) return
 
-  await database
-    .prepare(
-      `UPDATE ${config.table}
-         SET data = ?2,
-             status = ?3,
-             updated_at = ?4,
-             deleted_at = ?5
-       WHERE id = ?1`
-    )
-    .bind(recordId, JSON.stringify(record), record.status, record.updatedAt, record.deletedAt)
-    .run()
+  await run(
+    db,
+    `UPDATE ${config.table}
+       SET data = ?,
+           status = ?,
+           updated_at = ?,
+           deleted_at = ?
+     WHERE id = ?`,
+    [JSON.stringify(record), record.status, record.updatedAt, record.deletedAt, recordId]
+  )
 }
 
 export const listEntityChanges = async (db, entity, since, toIsoString) => {
-  const database = getDatabase(db)
   const config = getSyncEntityConfig(entity)
   if (!config) {
     return { upserts: [], deletes: [] }
   }
 
-  const upserts = await database
-    .prepare(
-      `SELECT data FROM ${config.table}
-       WHERE deleted_at IS NULL
-         AND datetime(updated_at) > datetime(?1)
-       ORDER BY datetime(updated_at) ASC`
-    )
-    .bind(since)
-    .all()
+  const dialect = getSqlDialect(db)
+  const updatedAt = dialect.dateTime('updated_at')
+  const deletedAt = dialect.dateTime('deleted_at')
+  const sinceValue = dialect.dateTime('?')
 
-  const deletes = await database
-    .prepare(
-      `SELECT id, deleted_at FROM ${config.table}
-       WHERE deleted_at IS NOT NULL
-         AND datetime(deleted_at) > datetime(?1)
-       ORDER BY datetime(deleted_at) ASC`
-    )
-    .bind(since)
-    .all()
+  const upserts = await all(
+    db,
+    `SELECT data FROM ${config.table}
+     WHERE deleted_at IS NULL
+       AND ${updatedAt} > ${sinceValue}
+     ORDER BY ${updatedAt} ASC`,
+    [since]
+  )
+
+  const deletes = await all(
+    db,
+    `SELECT id, deleted_at FROM ${config.table}
+     WHERE deleted_at IS NOT NULL
+       AND ${deletedAt} > ${sinceValue}
+     ORDER BY ${deletedAt} ASC`,
+    [since]
+  )
 
   return {
     upserts: (upserts?.results || []).map((row) => parseStoredData(row.data)).filter((row) => !!row.id),

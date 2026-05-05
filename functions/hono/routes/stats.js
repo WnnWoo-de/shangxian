@@ -1,5 +1,5 @@
 import { ok } from '../helpers/http.js'
-import { countActiveRows } from '../../../server/db/db.js'
+import { countActiveRows, getSqlDialect } from '../../../server/db/db.js'
 import { listActiveEntities } from '../../../server/db/entity-repository.js'
 import { entityConfigs } from '../../../server/db/entity-configs.js'
 
@@ -351,7 +351,12 @@ export const registerStatsRoutes = (app) => {
       settlement: String(c.req.query('settlement') || 'all'),
     }
 
-    const bills = await listActiveEntities(c.env, entityConfigs.bills.table, 'date(bill_date) ASC, datetime(updated_at) ASC')
+    const dialect = getSqlDialect(c.env)
+    const bills = await listActiveEntities(
+      c.env,
+      entityConfigs.bills.table,
+      `${dialect.date('bill_date')} ASC, ${dialect.dateTime('updated_at')} ASC`
+    )
     return ok(c, { data: buildMonthlyReport(bills, filters) })
   })
 }
