@@ -103,23 +103,49 @@ const trendPeak = computed(() => Math.max(...trendData.value.map((item) => Math.
 
 const dailyLedger = computed(() => {
   const source = Array.isArray(summaryData.value.daily) ? summaryData.value.daily : []
-  const maxExpense = Math.max(...source.map((item) => Math.round(Number(item.expense || 0))), 1)
+  const toMoney = (value) => Math.round(Number(value || 0))
+  const maxActualAmount = Math.max(
+    ...source.flatMap((item) => [
+      toMoney(item.actualIncome ?? item.income),
+      toMoney(item.actualExpense ?? item.expense),
+    ]),
+    1
+  )
 
-  return source.map((item) => ({
+  return source.filter((item) => {
+    return Number(item.billCount || item.count || 0) > 0
+      || toMoney(item.income) > 0
+      || toMoney(item.expense) > 0
+      || toMoney(item.actualIncome) > 0
+      || toMoney(item.actualExpense) > 0
+      || toMoney(item.pendingIncome) > 0
+      || toMoney(item.pendingExpense) > 0
+  }).map((item) => ({
     ...item,
-    income: Math.round(Number(item.income || 0)),
-    expense: Math.round(Number(item.expense || 0)),
-    net: Math.round(Number(item.net || 0)),
-    expenseWidth: Number(item.expense || 0) > 0
-      ? Math.max(10, Math.round((Math.round(Number(item.expense || 0)) / maxExpense) * 100))
+    income: toMoney(item.income),
+    expense: toMoney(item.expense),
+    actualIncome: toMoney(item.actualIncome ?? item.income),
+    actualExpense: toMoney(item.actualExpense ?? item.expense),
+    pendingIncome: toMoney(item.pendingIncome),
+    pendingExpense: toMoney(item.pendingExpense),
+    billCount: Number(item.billCount || item.count || 0),
+    saleCount: Number(item.saleCount || 0),
+    purchaseCount: Number(item.purchaseCount || 0),
+    net: toMoney(item.cashNet ?? item.net ?? item.netAmount ?? (Number(item.actualIncome || 0) - Number(item.actualExpense || 0))),
+    incomeWidth: Number((item.actualIncome ?? item.income) || 0) > 0
+      ? Math.max(10, Math.round((toMoney(item.actualIncome ?? item.income) / maxActualAmount) * 100))
       : 0,
-  }))
+    expenseWidth: Number((item.actualExpense ?? item.expense) || 0) > 0
+      ? Math.max(10, Math.round((toMoney(item.actualExpense ?? item.expense) / maxActualAmount) * 100))
+      : 0,
+  })).sort((a, b) => Number(a.day) - Number(b.day))
 })
 
 const ledgerPageCount = computed(() => Math.max(1, Math.ceil(dailyLedger.value.length / LEDGER_PAGE_SIZE)))
 const pagedLedger = computed(() => paginate(dailyLedger.value, ledgerPage.value, LEDGER_PAGE_SIZE))
 const animatedPagedLedger = computed(() => pagedLedger.value.map((item) => ({
   ...item,
+  renderIncomeWidth: barMotionReady.value ? item.incomeWidth : 0,
   renderExpenseWidth: barMotionReady.value ? item.expenseWidth : 0,
 })))
 
@@ -375,22 +401,46 @@ onUnmounted(() => {
           <div v-else-if="dailyLedger.length === 0" class="empty">暂无统计数据</div>
           <div v-for="item in animatedPagedLedger" :key="item.day" class="ledger-row">
             <div class="day-pill">{{ item.day }}日</div>
-            <div class="bar-track">
-              <div
-                class="bar-fill expense-fill"
-                :class="{ ready: barMotionReady }"
-                :style="{ width: `${item.renderExpenseWidth}%` }"
-              ></div>
-            </div>
-            <div class="ledger-values">
-              <span class="income-text">
-                <AppIcon name="arrow-up" />
-                {{ formatMoney(item.income) }}
-              </span>
-              <span class="expense-text">
-                <AppIcon name="arrow-down" />
-                {{ formatMoney(item.expense) }}
-              </span>
+            <div class="ledger-main">
+              <div class="ledger-values">
+                <span class="income-text">
+                  <AppIcon name="arrow-up" />
+                  已收 {{ formatMoney(item.actualIncome) }}
+                </span>
+                <span class="expense-text">
+                  <AppIcon name="arrow-down" />
+                  已付 {{ formatMoney(item.actualExpense) }}
+                </span>
+                <span class="pending-income-text">未收 {{ formatMoney(item.pendingIncome) }}</span>
+                <span class="pending-expense-text">未付 {{ formatMoney(item.pendingExpense) }}</span>
+              </div>
+              <div class="ledger-bars">
+                <div class="ledger-bar-line">
+                  <span class="ledger-bar-label income-text">收</span>
+                  <div class="bar-track">
+                    <div
+                      class="bar-fill income-fill"
+                      :class="{ ready: barMotionReady }"
+                      :style="{ width: `${item.renderIncomeWidth}%` }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="ledger-bar-line">
+                  <span class="ledger-bar-label expense-text">付</span>
+                  <div class="bar-track">
+                    <div
+                      class="bar-fill expense-fill"
+                      :class="{ ready: barMotionReady }"
+                      :style="{ width: `${item.renderExpenseWidth}%` }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <div class="ledger-footnote">
+                <span>应收 {{ formatMoney(item.income) }}</span>
+                <span>应付 {{ formatMoney(item.expense) }}</span>
+                <span>{{ item.billCount }} 笔</span>
+              </div>
             </div>
             <span class="net-badge" :class="item.net >= 0 ? 'net-positive' : 'net-negative'">
               {{ item.net >= 0 ? '+' : '-' }}{{ formatMoney(Math.abs(item.net)) }}
@@ -1023,7 +1073,7 @@ h3 {
 
 .ledger-row {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto auto;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   padding: 12px 0;
@@ -1070,22 +1120,58 @@ h3 {
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.income-fill {
+  background: linear-gradient(90deg, #67d58d 0%, #169b62 100%);
+}
+
 .expense-fill {
   background: linear-gradient(90deg, #ff8a8a 0%, #d25959 100%);
 }
 
-.ledger-values {
+.ledger-main {
+  min-width: 0;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: 8px;
+}
+
+.ledger-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ledger-bar-line {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.ledger-bar-label {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.ledger-values {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
   font-size: 12px;
 }
 
 .ledger-values span {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  align-items: flex-start;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .ledger-values svg {
@@ -1102,8 +1188,25 @@ h3 {
   color: #d25959;
 }
 
+.pending-income-text {
+  color: #5d8f72;
+}
+
+.pending-expense-text {
+  color: #b57637;
+}
+
+.ledger-footnote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .net-badge {
-  min-width: 74px;
+  min-width: 92px;
   padding: 4px 8px;
   border-radius: 999px;
   text-align: center;
@@ -1377,11 +1480,17 @@ h3 {
   }
 
   .ledger-row {
-    grid-template-columns: 52px minmax(0, 1fr) auto;
+    grid-template-columns: 52px minmax(0, 1fr);
+    align-items: flex-start;
   }
 
   .ledger-values {
-    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .net-badge {
+    grid-column: 2;
+    justify-self: flex-start;
   }
 
   .customer-row {

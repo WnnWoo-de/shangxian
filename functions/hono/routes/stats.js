@@ -19,6 +19,16 @@ const getItems = (bill = {}) => (Array.isArray(bill.items) ? bill.items : Array.
 
 const getPartnerName = (bill = {}) => bill.partnerName || bill.customerName || bill.supplier || '未命名客户'
 const getPartnerId = (bill = {}) => bill.partnerId || bill.customerId || getPartnerName(bill)
+const getBillAmount = (bill = {}) => roundMoney(bill.totalAmount)
+const getSettledAmount = (bill = {}) => {
+  const amount = bill.type === 'sale' ? bill.receivedAmount : bill.paidAmount
+  return Math.min(roundMoney(amount), getBillAmount(bill))
+}
+const getPendingAmount = (bill = {}) => {
+  const direct = roundMoney(bill.unsettledAmount)
+  if (direct > 0) return direct
+  return Math.max(getBillAmount(bill) - getSettledAmount(bill), 0)
+}
 
 const getItemWeight = (item = {}) => toNumber(item.totalWeight ?? item.quantity ?? item.weight)
 const getItemAmount = (item = {}) => {
@@ -106,23 +116,77 @@ const buildMonthlyReport = (bills, filters) => {
   const dailyMap = new Map()
   filteredBills.forEach((bill) => {
     const day = Number(String(bill.billDate || '').slice(8, 10)) || 1
-    const current = dailyMap.get(day) || { income: 0, expense: 0 }
-    if (bill.type === 'sale') current.income += toNumber(bill.totalAmount)
-    else current.expense += toNumber(bill.totalAmount)
+    const current = dailyMap.get(day) || {
+      income: 0,
+      expense: 0,
+      actualIncome: 0,
+      actualExpense: 0,
+      pendingIncome: 0,
+      pendingExpense: 0,
+      totalAmount: 0,
+      totalWeight: 0,
+      billCount: 0,
+      saleCount: 0,
+      purchaseCount: 0,
+    }
+    const amount = getBillAmount(bill)
+    const settledAmount = getSettledAmount(bill)
+    const pendingAmount = getPendingAmount(bill)
+
+    current.totalAmount += amount
+    current.totalWeight += toNumber(bill.totalWeight)
+    current.billCount += 1
+    if (bill.type === 'sale') {
+      current.income += amount
+      current.actualIncome += settledAmount
+      current.pendingIncome += pendingAmount
+      current.saleCount += 1
+    } else {
+      current.expense += amount
+      current.actualExpense += settledAmount
+      current.pendingExpense += pendingAmount
+      current.purchaseCount += 1
+    }
     dailyMap.set(day, current)
   })
 
   const dailyTrend = Array.from({ length: buildDaysInMonth(filters.month) }, (_, index) => {
     const day = index + 1
-    const current = dailyMap.get(day) || { income: 0, expense: 0 }
+    const current = dailyMap.get(day) || {
+      income: 0,
+      expense: 0,
+      actualIncome: 0,
+      actualExpense: 0,
+      pendingIncome: 0,
+      pendingExpense: 0,
+      totalAmount: 0,
+      totalWeight: 0,
+      billCount: 0,
+      saleCount: 0,
+      purchaseCount: 0,
+    }
     const income = roundMoney(current.income)
     const expense = roundMoney(current.expense)
+    const actualIncome = roundMoney(current.actualIncome)
+    const actualExpense = roundMoney(current.actualExpense)
+    const cashNet = roundMoney(actualIncome - actualExpense)
     return {
       date: `${filters.month}-${String(day).padStart(2, '0')}`,
       day,
       dayLabel: `${day}日`,
       income,
       expense,
+      actualIncome,
+      actualExpense,
+      pendingIncome: roundMoney(current.pendingIncome),
+      pendingExpense: roundMoney(current.pendingExpense),
+      cashNet,
+      totalAmount: roundMoney(current.totalAmount),
+      totalWeight: roundMoney(current.totalWeight),
+      billCount: current.billCount,
+      saleCount: current.saleCount,
+      purchaseCount: current.purchaseCount,
+      net: cashNet,
       netAmount: roundMoney(income - expense),
     }
   })

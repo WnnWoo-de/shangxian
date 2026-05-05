@@ -67,6 +67,16 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
   const customerMap = {}
   const fabricMap = {}
   const productMap = {}
+  const roundMoneyValue = (value) => Math.round(Number(value || 0))
+  const getSettledAmount = (bill = {}) => {
+    const amount = bill.type === 'sale' ? bill.receivedAmount : bill.paidAmount
+    return Math.min(roundMoneyValue(amount), roundMoneyValue(bill.totalAmount))
+  }
+  const getPendingAmount = (bill = {}) => {
+    const direct = roundMoneyValue(bill.unsettledAmount)
+    if (direct > 0) return direct
+    return Math.max(roundMoneyValue(bill.totalAmount) - getSettledAmount(bill), 0)
+  }
   const getItemAmount = (item = {}) => {
     const amount = Number(item.amount || 0)
     if (Number.isFinite(amount) && amount > 0) return amount
@@ -95,6 +105,8 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
   bills.forEach(bill => {
     const amount = Math.round(Number(bill.totalAmount || 0))
     const weight = Math.round(Number(bill.totalWeight || 0) * 100) / 100
+    const settledAmount = getSettledAmount(bill)
+    const pendingAmount = getPendingAmount(bill)
     const billDate = String(bill.billDate || '')
     const day = billDate.substring(8, 10) || '01'
 
@@ -107,16 +119,39 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
     overview.totalTransactionAmount += amount
 
     if (!dailyMap[day]) {
-      dailyMap[day] = { day, income: 0, expense: 0, net: 0, totalAmount: 0, totalWeight: 0 }
+      dailyMap[day] = {
+        day,
+        income: 0,
+        expense: 0,
+        actualIncome: 0,
+        actualExpense: 0,
+        pendingIncome: 0,
+        pendingExpense: 0,
+        net: 0,
+        cashNet: 0,
+        totalAmount: 0,
+        totalWeight: 0,
+        billCount: 0,
+        saleCount: 0,
+        purchaseCount: 0,
+      }
     }
     dailyMap[day].totalAmount += amount
     dailyMap[day].totalWeight += weight
+    dailyMap[day].billCount += 1
     if (bill.type === 'sale') {
       dailyMap[day].income += amount
+      dailyMap[day].actualIncome += settledAmount
+      dailyMap[day].pendingIncome += pendingAmount
+      dailyMap[day].saleCount += 1
     } else {
       dailyMap[day].expense += amount
+      dailyMap[day].actualExpense += settledAmount
+      dailyMap[day].pendingExpense += pendingAmount
+      dailyMap[day].purchaseCount += 1
     }
     dailyMap[day].net = dailyMap[day].income - dailyMap[day].expense
+    dailyMap[day].cashNet = dailyMap[day].actualIncome - dailyMap[day].actualExpense
 
     if (bill.type === 'sale' && (bill.customerName || bill.partnerName)) {
       const customerName = bill.partnerName || bill.customerName
@@ -221,8 +256,8 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
       unsettledAmount: overview.unsettledAmount,
     },
     overview,
-    daily: Object.values(dailyMap),
-    dailyTrend: Object.values(dailyMap),
+    daily: Object.values(dailyMap).sort((a, b) => Number(a.day) - Number(b.day)),
+    dailyTrend: Object.values(dailyMap).sort((a, b) => Number(a.day) - Number(b.day)),
     purchaseOutboundStats,
     customerRanking,
     productAnalysis,
