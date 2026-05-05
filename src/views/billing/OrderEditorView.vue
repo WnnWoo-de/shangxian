@@ -1918,32 +1918,38 @@ const exportImage = () => {
   justify-content: flex-end;
 }
 .settlement-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+  align-items: end;
+  gap: 18px;
 }
 .settlement-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 16px;
-  flex: 1;
+  grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+  gap: 12px;
+  min-width: 0;
 }
 .settlement-summary div {
-  padding: 14px 16px;
-  border-radius: 16px;
+  min-height: 86px;
+  padding: 14px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.92);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: center;
+  gap: 9px;
 }
 .settlement-summary span {
   color: var(--text-muted);
   font-size: 12px;
+  line-height: 1.25;
 }
 .settlement-summary strong {
+  min-width: 0;
   font-size: 20px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 .balance-adjustment-card {
   border-color: rgba(198, 90, 25, 0.22) !important;
@@ -1974,9 +1980,12 @@ const exportImage = () => {
   gap: 12px;
 }
 .action-toolbar {
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  justify-self: end;
+  gap: 12px;
+  width: 100%;
 }
 .btn-primary,
 .btn-ghost,
@@ -1988,8 +1997,16 @@ const exportImage = () => {
   font-weight: 700;
   cursor: pointer;
 }
+.action-toolbar button {
+  min-height: 52px;
+  padding: 12px 16px;
+  white-space: nowrap;
+}
 .btn-primary {
   color: #fff;
+}
+.action-toolbar .btn-primary {
+  grid-column: 1 / -1;
 }
 .purchase-theme .btn-primary {
   background: linear-gradient(135deg, #167c63, #23b48c);
@@ -2034,7 +2051,9 @@ const exportImage = () => {
 .btn-content {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  width: 100%;
 }
 .purchase-theme .hero {
   background: linear-gradient(135deg, rgba(22, 124, 99, 0.12), rgba(35, 180, 140, 0.08));
@@ -2047,15 +2066,23 @@ const exportImage = () => {
   font-weight: 700;
 }
 @media (max-width: 1100px) {
-  .hero,
-  .settlement-bar {
+  .hero {
     flex-direction: column;
   }
-  .settlement-summary,
+
+  .settlement-bar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
   .base-grid,
   .detail-grid,
   .weighing-grid {
     grid-template-columns: 1fr;
+  }
+  .settlement-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
   }
   .weighing-detail-row {
     grid-template-columns: 1fr;
@@ -2077,13 +2104,14 @@ const exportImage = () => {
   }
   .action-toolbar {
     width: 100%;
-    justify-content: stretch;
+    justify-self: stretch;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   .add-detail-tag {
     margin-right: 0;
   }
-  .action-toolbar button {
-    flex: 1 1 calc(50% - 6px);
+  .action-toolbar .btn-primary {
+    grid-column: auto;
   }
 }
 
@@ -2161,9 +2189,14 @@ const exportImage = () => {
     width: 100%;
     gap: 10px;
   }
+  .action-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .action-toolbar .btn-primary {
+    grid-column: 1 / -1;
+  }
   .action-toolbar button,
   .actions button {
-    flex: 1 1 calc(50% - 5px);
     min-height: 44px;
     padding: 10px 12px;
   }
@@ -2206,7 +2239,13 @@ const exportImage = () => {
 
   .action-toolbar button,
   .actions button {
-    flex-basis: 100%;
+    min-height: 46px;
+  }
+  .action-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .action-toolbar .btn-primary {
+    grid-column: auto;
   }
   .btn-content {
     justify-content: center;
