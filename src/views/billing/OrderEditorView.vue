@@ -552,6 +552,65 @@ const removeRow = (index) => {
   rows.value.splice(index, 1)
 }
 
+const normalizeUnitPrice = (value) => {
+  const number = Number(value)
+  if (!Number.isFinite(number) || number <= 0) return 0
+  return Math.round(number * 100) / 100
+}
+
+const isSamePrice = (left, right) => Math.abs(normalizeUnitPrice(left) - normalizeUnitPrice(right)) < 0.001
+
+const getDefaultUnitPrice = (fabric) => {
+  if (!fabric) return 0
+  return normalizeUnitPrice(isPurchase.value ? fabric.defaultPurchasePrice : fabric.defaultSalePrice)
+}
+
+const shouldSyncCustomerPrice = (row, fabric) => {
+  const unitPrice = normalizeUnitPrice(row?.unitPrice)
+  if (!form.partnerId || !fabric?.id || unitPrice <= 0) return false
+
+  const saved = customerPriceStore.getPrice(form.partnerId, fabric.id)
+  const savedUnitPrice = props.type === 'sale'
+    ? normalizeUnitPrice(saved?.salePrice)
+    : normalizeUnitPrice(saved?.purchasePrice)
+  if (savedUnitPrice > 0) return !isSamePrice(savedUnitPrice, unitPrice)
+
+  return !isSamePrice(unitPrice, getDefaultUnitPrice(fabric))
+}
+
+const persistCustomerPriceDrafts = () => {
+  if (!form.partnerId) return 0
+
+  const rowsToPersist = new Map()
+  ;[...manualItemRows.value, ...effectiveWeighingRows.value].forEach((row) => {
+    const fabric = fabrics.value.find((item) => item.id === row.fabricId)
+    if (!shouldSyncCustomerPrice(row, fabric)) return
+
+    const unitPrice = normalizeUnitPrice(row.unitPrice)
+    const key = `${form.partnerId}::${fabric.id}`
+    const existingDraft = rowsToPersist.get(key)
+    if (existingDraft && !isSamePrice(existingDraft.unitPrice, unitPrice)) return
+
+    rowsToPersist.set(key, { row, fabric, unitPrice })
+  })
+
+  let count = 0
+  rowsToPersist.forEach(({ fabric, unitPrice }) => {
+    const saved = customerPriceStore.getPrice(form.partnerId, fabric.id)
+    customerPriceStore.upsertPrice({
+      customerId: form.partnerId,
+      customerName: form.partnerName.trim(),
+      fabricId: fabric.id,
+      fabricName: fabric.name,
+      purchasePrice: props.type === 'purchase' ? unitPrice : saved?.purchasePrice,
+      salePrice: props.type === 'sale' ? unitPrice : saved?.salePrice,
+    })
+    count += 1
+  })
+
+  return count
+}
+
 const saveBill = async () => {
   // 验证必填项
   if (!form.partnerName.trim()) {
@@ -624,6 +683,8 @@ const saveBill = async () => {
       }
     }
 
+    const syncedPriceCount = persistCustomerPriceDrafts()
+
     const itemRows = [
       ...manualItemRows.value,
       ...effectiveWeighingRows.value.map((row) => ({
@@ -695,7 +756,7 @@ const saveBill = async () => {
     }
 
     clearDraft()
-    showToast(`保存${props.type === 'purchase' ? '进货' : '出货'}单成功`)
+    showToast(`保存${props.type === 'purchase' ? '进货' : '出货'}单成功${syncedPriceCount ? `，已同步${syncedPriceCount}个客户专属价` : ''}`)
 
     // 导航到单据列表页面
     if (props.type === 'purchase') {
@@ -757,11 +818,13 @@ const getPreferredUnitPrice = (fabric) => {
   if (!fabric) return 0
   const customerPrice = customerPriceStore.getUnitPrice(form.partnerId, fabric.id, props.type)
   if (customerPrice > 0) return customerPrice
-  return Number(isPurchase.value ? fabric.defaultPurchasePrice : fabric.defaultSalePrice) || 0
+  return getDefaultUnitPrice(fabric)
 }
 
 const getPriceSourceText = (row) => {
   if (!row?.fabricId) return '选择品种后自动带价'
+  const fabric = fabrics.value.find((item) => item.id === row.fabricId)
+  if (shouldSyncCustomerPrice(row, fabric)) return '保存后同步为客户专属价'
   if (customerPriceStore.getUnitPrice(form.partnerId, row.fabricId, props.type) > 0) return '客户专属价'
   return '品种默认价'
 }
