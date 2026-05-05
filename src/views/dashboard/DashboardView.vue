@@ -158,7 +158,7 @@ watch([() => recentBills.value.length, recentPageSize], () => {
 // 快捷提示
 const getQuickTip = () => {
   if (recentBills.value.length === 0) {
-    return '欢迎使用！点击上方按钮开始创建第一张单据。'
+    return '欢迎使用！点击下方按钮开始创建第一张单据。'
   }
   const todayCount = todayBills.value.length
   if (todayCount === 0) {
