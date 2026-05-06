@@ -26,6 +26,23 @@ const buildDaysInMonth = (month) => {
   return new Date(year, monthIndex + 1, 0).getDate()
 }
 
+const buildMonthsFromBills = (bills = []) => {
+  const billMonths = Array.from(new Set(
+    bills
+      .map((bill) => String(bill.billDate || '').slice(0, 7))
+      .filter((month) => /^\d{4}-\d{2}$/.test(month))
+  )).sort((a, b) => b.localeCompare(a))
+
+  const calendarMonths = []
+  const now = new Date()
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    calendarMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  return Array.from(new Set([...billMonths, ...calendarMonths]))
+}
+
 export const fetchStatisticsSummaryApi = async (params = {}) => {
   try {
     const remoteData = await fetchStatsMonthlyApi(params)
@@ -40,24 +57,30 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
   await billRecordStore.init()
 
   const sourceBills = billRecordStore.records
+  const months = buildMonthsFromBills(sourceBills)
+  const selectedMonth = params.month || months[0] || ''
+  const filters = {
+    ...params,
+    month: selectedMonth,
+  }
   const bills = sourceBills.filter((bill) => {
-    if (params.month && !String(bill.billDate || '').startsWith(params.month)) return false
-    if (params.type && params.type !== 'all' && bill.type !== params.type) return false
-    if (params.customer && params.customer !== 'all') {
-      const matched = String(bill.partnerId || bill.customerId || '') === String(params.customer)
-        || String(bill.partnerName || bill.customerName || bill.supplier || '') === String(params.customer)
+    if (filters.month && !String(bill.billDate || '').startsWith(filters.month)) return false
+    if (filters.type && filters.type !== 'all' && bill.type !== filters.type) return false
+    if (filters.customer && filters.customer !== 'all') {
+      const matched = String(bill.partnerId || bill.customerId || '') === String(filters.customer)
+        || String(bill.partnerName || bill.customerName || bill.supplier || '') === String(filters.customer)
       if (!matched) return false
     }
-    if (params.fabric && params.fabric !== 'all') {
+    if (filters.fabric && filters.fabric !== 'all') {
       const matched = (bill.items || []).some((item) => (
-        String(item.fabricId || '') === String(params.fabric) || String(item.fabricName || '') === String(params.fabric)
+        String(item.fabricId || '') === String(filters.fabric) || String(item.fabricName || '') === String(filters.fabric)
       ))
       if (!matched) return false
     }
-    if (params.settlement && params.settlement !== 'all') {
+    if (filters.settlement && filters.settlement !== 'all') {
       const unsettledAmount = Number(bill.unsettledAmount || 0)
-      if (params.settlement === 'settled' && unsettledAmount > 0) return false
-      if (params.settlement === 'unsettled' && unsettledAmount <= 0) return false
+      if (filters.settlement === 'settled' && unsettledAmount > 0) return false
+      if (filters.settlement === 'unsettled' && unsettledAmount <= 0) return false
     }
     return true
   })
@@ -187,12 +210,22 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
 
       const productId = item.fabricId || fabricName
       if (!productMap[productId]) {
-        productMap[productId] = { productId, productName: fabricName, outboundWeight: 0, outboundAmount: 0, purchaseCost: 0 }
+        productMap[productId] = {
+          productId,
+          productName: fabricName,
+          outboundWeight: 0,
+          outboundAmount: 0,
+          purchaseWeight: 0,
+          purchaseAmount: 0,
+          purchaseCost: 0,
+        }
       }
       if (bill.type === 'sale') {
         productMap[productId].outboundWeight += itemWeight
         productMap[productId].outboundAmount += itemAmount
       } else {
+        productMap[productId].purchaseWeight += itemWeight
+        productMap[productId].purchaseAmount += itemAmount
         productMap[productId].purchaseCost += itemAmount
       }
     })
@@ -232,6 +265,10 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
       const grossProfit = item.purchaseCost > 0 ? item.outboundAmount - item.purchaseCost : null
       return {
         ...item,
+        purchaseWeight: Math.round(Number(item.purchaseWeight || 0) * 100) / 100,
+        purchaseAmount: Math.round(Number(item.purchaseAmount || 0)),
+        totalWeight: Math.round(Number(item.outboundWeight + item.purchaseWeight || 0) * 100) / 100,
+        totalAmount: Math.round(Number(item.outboundAmount + item.purchaseAmount || 0)),
         purchaseCost: item.purchaseCost > 0 ? item.purchaseCost : null,
         grossProfit,
         grossProfitRate: grossProfit != null && item.outboundAmount > 0 ? grossProfit / item.outboundAmount : null,
@@ -248,13 +285,6 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
     { settlementType: '供应商未付款', amount: Math.round(purchaseBills.reduce((sum, bill) => sum + Number(bill.unsettledAmount || 0), 0)), relatedOrderCount: purchaseBills.filter((bill) => Number(bill.unsettledAmount || 0) > 0).length, description: '进货单待付款金额' },
   ]
 
-  const months = []
-  const now = new Date()
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
-  }
-  const selectedMonth = params.month || months[0]
   const emptyDailyRow = (day) => ({
     day: String(day).padStart(2, '0'),
     income: 0,
@@ -290,7 +320,13 @@ export const fetchStatisticsSummaryApi = async (params = {}) => {
     purchaseOutboundStats,
     customerRanking,
     productAnalysis,
-    fabricDistribution: Object.values(fabricMap),
+    fabricDistribution: Object.values(fabricMap)
+      .map((item) => ({
+        ...item,
+        totalWeight: Math.round(Number(item.totalWeight || 0) * 100) / 100,
+        totalAmount: Math.round(Number(item.totalAmount || 0)),
+      }))
+      .sort((a, b) => b.totalAmount - a.totalAmount || b.totalWeight - a.totalWeight),
     settlementOverview,
     months,
     selectedMonth

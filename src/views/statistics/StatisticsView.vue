@@ -29,7 +29,7 @@ const summaryData = ref({
   },
   daily: [],
   customerRanking: [],
-  fabricDistribution: [],
+  productAnalysis: [],
 })
 
 const clampPage = (page, pageCount) => Math.min(Math.max(page, 1), pageCount)
@@ -71,6 +71,7 @@ const loadStatistics = async (month = '') => {
       daily: Array.isArray(data.daily) ? data.daily : [],
       customerRanking: Array.isArray(data.customerRanking) ? data.customerRanking : [],
       fabricDistribution: Array.isArray(data.fabricDistribution) ? data.fabricDistribution : [],
+      productAnalysis: Array.isArray(data.productAnalysis) ? data.productAnalysis : [],
     }
   } finally {
     loading.value = false
@@ -91,12 +92,29 @@ const summary = computed(() => {
 })
 
 const trendData = computed(() => {
-  const daily = summaryData.value.daily || []
-  return daily.slice(-7).map((item) => ({
-    day: item.day,
-    income: Math.round(Number(item.income || 0)),
-    expense: Math.round(Number(item.expense || 0)),
-  }))
+  const daily = Array.isArray(summaryData.value.daily) ? summaryData.value.daily : []
+  const hasActivity = (item) => [
+    item.income,
+    item.expense,
+    item.actualIncome,
+    item.actualExpense,
+    item.pendingIncome,
+    item.pendingExpense,
+    item.totalAmount,
+    item.billCount,
+    item.saleCount,
+    item.purchaseCount,
+  ].some((value) => Number(value || 0) > 0)
+
+  return daily
+    .filter(hasActivity)
+    .slice(-7)
+    .map((item) => ({
+      day: item.day,
+      dayLabel: item.dayLabel || `${item.day}日`,
+      income: Math.round(Number(item.income || 0)),
+      expense: Math.round(Number(item.expense || 0)),
+    }))
 })
 
 const trendPeak = computed(() => Math.max(...trendData.value.map((item) => Math.max(item.income, item.expense)), 1))
@@ -189,20 +207,43 @@ const insightCards = computed(() => [
 ])
 
 const expenseByFabric = computed(() => {
-  const list = Array.isArray(summaryData.value.fabricDistribution) ? summaryData.value.fabricDistribution : []
-  const totalAmount = list.reduce((sum, item) => sum + Math.round(Number(item.totalAmount || 0)), 0)
-  const topAmount = Math.max(...list.map((item) => Math.round(Number(item.totalAmount || 0))), 1)
+  const primary = Array.isArray(summaryData.value.fabricDistribution) ? summaryData.value.fabricDistribution : []
+  const fallback = Array.isArray(summaryData.value.productAnalysis)
+    ? summaryData.value.productAnalysis.map((item) => ({
+      fabricName: item.productName || item.fabricName || '其他品种',
+      totalWeight: Number(item.totalWeight ?? item.outboundWeight ?? item.purchaseWeight ?? 0),
+      totalAmount: Number(item.totalAmount ?? item.outboundAmount ?? item.purchaseCost ?? 0),
+      saleAmount: Number(item.saleAmount ?? item.outboundAmount ?? 0),
+      purchaseAmount: Number(item.purchaseAmount ?? item.purchaseCost ?? 0),
+    }))
+    : []
+  const source = primary.length > 0 ? primary : fallback
+  const normalized = source
+    .map((item) => {
+      const saleAmount = Number(item.saleAmount ?? item.outboundAmount ?? 0)
+      const purchaseAmount = Number(item.purchaseAmount ?? item.purchaseCost ?? 0)
+      const amountSource = item.totalAmount ?? item.amount ?? (saleAmount + purchaseAmount)
+      const amount = Math.round(Number(amountSource || 0))
+      return {
+        ...item,
+        fabricName: item.fabricName || item.productName || '其他品种',
+        amount,
+        saleAmount: Math.round(saleAmount),
+        purchaseAmount: Math.round(purchaseAmount),
+        weight: Math.round(Number(item.totalWeight ?? item.weight ?? item.outboundWeight ?? item.purchaseWeight ?? 0) * 100) / 100,
+      }
+    })
+    .filter((item) => item.amount > 0 || item.weight > 0)
+    .sort((a, b) => b.amount - a.amount || b.weight - a.weight)
 
-  return list.map((item) => {
-    const amount = Math.round(Number(item.totalAmount || 0))
-    return {
-      ...item,
-      amount,
-      weight: Math.round(Number(item.totalWeight || 0) * 100) / 100,
-      ratio: amount > 0 ? Math.max(12, Math.round((amount / topAmount) * 100)) : 0,
-      share: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
-    }
-  })
+  const totalAmount = normalized.reduce((sum, item) => sum + item.amount, 0)
+  const topAmount = Math.max(...normalized.map((item) => item.amount), 1)
+
+  return normalized.map((item) => ({
+    ...item,
+    ratio: item.amount > 0 ? Math.max(12, Math.round((item.amount / topAmount) * 100)) : 0,
+    share: totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
+  }))
 })
 
 const fabricPageCount = computed(() => Math.max(1, Math.ceil(expenseByFabric.value.length / FABRIC_PAGE_SIZE)))
@@ -287,7 +328,7 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <div v-if="trendData.length > 1" class="trend-section panel">
+    <div v-if="trendData.length > 0" class="trend-section panel">
       <div class="trend-header">
         <h3>近7日趋势</h3>
         <span class="trend-legend">
@@ -312,7 +353,7 @@ onUnmounted(() => {
                 :style="{ height: `${Math.max(4, (item.expense / trendPeak) * 60)}px` }"
               ></div>
             </div>
-            <span class="bar-label">{{ item.day }}日</span>
+            <span class="bar-label">{{ item.dayLabel }}</span>
           </div>
         </div>
       </div>
@@ -516,7 +557,12 @@ onUnmounted(() => {
               <tr v-for="item in pagedFabrics" :key="item.fabricName">
                 <td class="partner-cell">{{ item.fabricName }}</td>
                 <td class="accent-cell">{{ item.weight.toFixed(1) }} 斤</td>
-                <td class="expense-cell">{{ formatMoney(item.amount) }}</td>
+                <td class="expense-cell">
+                  {{ formatMoney(item.amount) }}
+                  <small v-if="item.saleAmount || item.purchaseAmount" class="amount-breakdown">
+                    出 {{ formatMoney(item.saleAmount) }} / 进 {{ formatMoney(item.purchaseAmount) }}
+                  </small>
+                </td>
                 <td>{{ item.share.toFixed(1) }}%</td>
               </tr>
             </tbody>
@@ -1043,6 +1089,15 @@ h3 {
 .expense-cell {
   color: #d25959;
   font-weight: 800;
+}
+
+.amount-breakdown {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .empty-cell {

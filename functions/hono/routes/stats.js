@@ -62,6 +62,23 @@ const buildDaysInMonth = (month) => {
   return new Date(year, monthIndex + 1, 0).getDate()
 }
 
+const buildAvailableMonths = (bills = []) => {
+  const billMonths = Array.from(new Set(
+    bills
+      .map((bill) => String(bill.billDate || '').slice(0, 7))
+      .filter((month) => /^\d{4}-\d{2}$/.test(month))
+  )).sort((a, b) => b.localeCompare(a))
+
+  const calendarMonths = []
+  const now = new Date()
+  for (let i = 0; i < 12; i += 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    calendarMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  return Array.from(new Set([...billMonths, ...calendarMonths]))
+}
+
 const matchesFilter = (bill, filters) => {
   if (filters.month && !String(bill.billDate || '').startsWith(filters.month)) return false
   if (filters.type !== 'all' && bill.type !== filters.type) return false
@@ -88,7 +105,13 @@ const matchesFilter = (bill, filters) => {
 }
 
 const buildMonthlyReport = (bills, filters) => {
-  const filteredBills = bills.filter((bill) => matchesFilter(bill, filters))
+  const months = buildAvailableMonths(bills)
+  const selectedMonth = filters.month || months[0] || ''
+  const resolvedFilters = {
+    ...filters,
+    month: selectedMonth,
+  }
+  const filteredBills = bills.filter((bill) => matchesFilter(bill, resolvedFilters))
   const saleBills = filteredBills.filter((bill) => bill.type === 'sale')
   const purchaseBills = filteredBills.filter((bill) => bill.type !== 'sale')
   const monthlyIncome = roundMoney(saleBills.reduce((sum, bill) => sum + toNumber(bill.totalAmount), 0))
@@ -150,7 +173,7 @@ const buildMonthlyReport = (bills, filters) => {
     dailyMap.set(day, current)
   })
 
-  const dailyTrend = Array.from({ length: buildDaysInMonth(filters.month) }, (_, index) => {
+  const dailyTrend = Array.from({ length: buildDaysInMonth(resolvedFilters.month) }, (_, index) => {
     const day = index + 1
     const current = dailyMap.get(day) || {
       income: 0,
@@ -171,7 +194,7 @@ const buildMonthlyReport = (bills, filters) => {
     const actualExpense = roundMoney(current.actualExpense)
     const cashNet = roundMoney(actualIncome - actualExpense)
     return {
-      date: `${filters.month}-${String(day).padStart(2, '0')}`,
+      date: `${resolvedFilters.month}-${String(day).padStart(2, '0')}`,
       day,
       dayLabel: `${day}日`,
       income,
@@ -224,9 +247,9 @@ const buildMonthlyReport = (bills, filters) => {
   filteredBills.forEach((bill) => {
     const adjustedItemAmounts = getAdjustedItemAmounts(bill)
     getItems(bill).forEach((item, index) => {
-      if (filters.fabric !== 'all'
-        && String(item.fabricId || '') !== filters.fabric
-        && String(item.fabricName || '') !== filters.fabric) {
+      if (resolvedFilters.fabric !== 'all'
+        && String(item.fabricId || '') !== resolvedFilters.fabric
+        && String(item.fabricName || '') !== resolvedFilters.fabric) {
         return
       }
 
@@ -237,12 +260,16 @@ const buildMonthlyReport = (bills, filters) => {
         productName,
         outboundWeight: 0,
         outboundAmount: 0,
+        purchaseWeight: 0,
+        purchaseAmount: 0,
         purchaseCost: 0,
       }
       if (bill.type === 'sale') {
         current.outboundWeight += getItemWeight(item)
         current.outboundAmount += adjustedItemAmounts[index] ?? getItemAmount(item)
       } else {
+        current.purchaseWeight += getItemWeight(item)
+        current.purchaseAmount += getItemAmount(item)
         current.purchaseCost += getItemAmount(item)
       }
       productMap.set(productId, current)
@@ -257,6 +284,10 @@ const buildMonthlyReport = (bills, filters) => {
         ...item,
         outboundWeight: roundMoney(item.outboundWeight),
         outboundAmount: roundMoney(item.outboundAmount),
+        purchaseWeight: roundMoney(item.purchaseWeight),
+        purchaseAmount: roundMoney(item.purchaseAmount),
+        totalWeight: roundMoney(item.outboundWeight + item.purchaseWeight),
+        totalAmount: roundMoney(item.outboundAmount + item.purchaseAmount),
         purchaseCost: item.purchaseCost > 0 ? roundMoney(item.purchaseCost) : null,
         grossProfit,
         grossProfitRate: grossProfit != null && item.outboundAmount > 0 ? grossProfit / item.outboundAmount : null,
@@ -292,7 +323,7 @@ const buildMonthlyReport = (bills, filters) => {
   ]
 
   return {
-    month: filters.month,
+    month: resolvedFilters.month,
     summary: {
       monthlyIncome,
       monthlyExpense,
@@ -316,10 +347,16 @@ const buildMonthlyReport = (bills, filters) => {
     productAnalysis,
     fabricDistribution: productAnalysis.map((item) => ({
       fabricName: item.productName,
-      totalWeight: item.outboundWeight,
-      totalAmount: item.outboundAmount,
+      totalWeight: item.totalWeight,
+      totalAmount: item.totalAmount,
+      saleAmount: item.outboundAmount,
+      purchaseAmount: item.purchaseAmount,
+      outboundWeight: item.outboundWeight,
+      purchaseWeight: item.purchaseWeight,
     })),
     settlementOverview,
+    months,
+    selectedMonth,
   }
 }
 
@@ -341,10 +378,8 @@ export const registerStatsRoutes = (app) => {
   })
 
   app.get('/api/stats/monthly', async (c) => {
-    const now = new Date()
-    const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const filters = {
-      month: String(c.req.query('month') || defaultMonth),
+      month: String(c.req.query('month') || ''),
       customer: String(c.req.query('customer') || 'all'),
       fabric: String(c.req.query('fabric') || 'all'),
       type: String(c.req.query('type') || 'all'),
