@@ -15,6 +15,72 @@
     <title>进出货结算系统 - v3.2</title>
     <meta name="build-version" content="v3.2">
     <meta name="build-time" content="2026-04-08">
+    <script>
+      (function() {
+        var RECOVERY_KEY = 'wsbs_pwa_recovery_attempted';
+
+        function clearPwaCaches() {
+          var clearCaches = window.caches
+            ? caches.keys().then(function(keys) {
+                return Promise.all(keys.map(function(key) {
+                  if (/workbox|precache|runtime|navigation|wsbs|vite-pwa/i.test(key)) {
+                    return caches.delete(key);
+                  }
+                  return Promise.resolve(false);
+                }));
+              })
+            : Promise.resolve();
+
+          var updateWorker = navigator.serviceWorker
+            ? navigator.serviceWorker.getRegistration().then(function(registration) {
+                return registration ? registration.update().catch(function() {}) : null;
+              })
+            : Promise.resolve();
+
+          return Promise.all([clearCaches, updateWorker]);
+        }
+
+        function recoverFromPwaWhiteScreen(reason) {
+          if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+          if (sessionStorage.getItem(RECOVERY_KEY) === '1') return;
+          sessionStorage.setItem(RECOVERY_KEY, '1');
+
+          clearPwaCaches().finally(function() {
+            var url = new URL(window.location.href);
+            url.searchParams.set('pwa-recovered', String(Date.now()));
+            console.warn('PWA cache recovery triggered:', reason);
+            window.location.replace(url.toString());
+          });
+        }
+
+        window.__WSBS_RECOVER_PWA__ = recoverFromPwaWhiteScreen;
+        window.__WSBS_APP_MOUNTED__ = false;
+        window.addEventListener('wsbs-app-mounted', function() {
+          window.__WSBS_APP_MOUNTED__ = true;
+          sessionStorage.removeItem(RECOVERY_KEY);
+        });
+        window.addEventListener('error', function(event) {
+          var target = event.target;
+          var isAssetError = target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK');
+          var message = String(event.message || '');
+          if (isAssetError || /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i.test(message)) {
+            recoverFromPwaWhiteScreen('asset-load-error');
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(event) {
+          var message = String(event.reason && (event.reason.message || event.reason) || '');
+          if (/Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i.test(message)) {
+            recoverFromPwaWhiteScreen('chunk-load-error');
+          }
+        });
+        window.setTimeout(function() {
+          var app = document.getElementById('app');
+          if (!window.__WSBS_APP_MOUNTED__ && app && !app.children.length) {
+            recoverFromPwaWhiteScreen('mount-timeout');
+          }
+        }, 6000);
+      })();
+    </script>
     <!-- Eruda 移动端控制台工具 - 开发环境 -->
     <script>
       // 使用URL参数或长按页面5秒来显示Eruda控制台

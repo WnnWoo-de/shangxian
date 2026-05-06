@@ -41,7 +41,6 @@ export const setupPwaAutoUpdate = () => {
         registration.update().catch(() => {})
       }
 
-      registration.active?.postMessage({ type: 'SKIP_WAITING' })
       checkForUpdates()
       window.addEventListener('focus', checkForUpdates)
       document.addEventListener('visibilitychange', checkForUpdates)

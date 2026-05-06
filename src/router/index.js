@@ -248,6 +248,7 @@ router.onError((error, to) => {
   const hasRetried = sessionStorage.getItem(CHUNK_RELOAD_GUARD_KEY) === '1'
   if (hasRetried) {
     console.error('Chunk load failed after retry:', error)
+    window.__WSBS_RECOVER_PWA__?.('router-chunk-load-error')
     return
   }
 

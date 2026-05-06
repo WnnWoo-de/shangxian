@@ -68,10 +68,25 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,json}'],
+        globPatterns: ['**/*.{js,css,ico,png,svg,jpg,json,webmanifest}'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
+        navigateFallback: null,
         skipWaiting: true,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'wsbs-navigation',
+              networkTimeoutSeconds: 3,
+              expiration: {
+                maxEntries: 4,
+                maxAgeSeconds: 24 * 60 * 60,
+              },
+            },
+          },
+        ],
       },
       registerType: 'autoUpdate',
     }),

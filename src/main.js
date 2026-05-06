@@ -65,3 +65,5 @@ setupPwaInstallPrompt()
 
 // 挂载应用
 app.mount('#app')
+window.__WSBS_APP_MOUNTED__ = true
+window.dispatchEvent(new Event('wsbs-app-mounted'))
