@@ -1385,6 +1385,11 @@ const exportImage = () => {
             </label>
 
             <label class="field readonly-field">
+              <span>小计重量</span>
+              <input :value="`${rowView.quantity.toFixed(2)} 斤`" type="text" readonly />
+            </label>
+
+            <label class="field readonly-field">
               <span>小计金额</span>
               <input :value="formatMoney(rowView.amount)" type="text" readonly />
             </label>
