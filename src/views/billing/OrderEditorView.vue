@@ -1321,10 +1321,10 @@ const exportImage = () => {
                 rows="3"
                 class="weight-detail-input"
                 autocomplete="off"
-                placeholder="示例：10+10+10 / 10 10 10 / 10×3 / 10×8 60"
+                placeholder="示例：10+10+10 / 10 10 10 / 10×3 "
               ></textarea>
               <small class="field-tip">
-                不走过磅的货物填这里，支持多次重量相加、10×3 和 10×8 60 自动计算
+                不走过磅的货物填这里，支持多次重量相加、10×3 自动计算
               </small>
             </label>
 
