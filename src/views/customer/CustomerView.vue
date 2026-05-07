@@ -153,7 +153,7 @@ const savePriceSettings = () => {
     const purchasePrice = Number(row.purchasePrice || 0)
     const salePrice = Number(row.salePrice || 0)
 
-    if (purchasePrice > 0 || salePrice > 0) {
+    if (purchasePrice !== 0 || salePrice !== 0) {
       customerPriceStore.upsertPrice({
         customerId: priceCustomer.value.id,
         customerName: priceCustomer.value.name,
@@ -439,9 +439,9 @@ const moveCustomer = async (item, direction) => {
                 <tr v-for="row in priceRows" :key="row.fabricId">
                   <td><strong>{{ row.fabricName }}</strong></td>
                   <td>¥ {{ row.defaultPurchasePrice.toFixed(2) }}</td>
-                  <td><input v-model.number="row.purchasePrice" type="number" min="0" step="0.01" placeholder="默认" /></td>
+                  <td><input v-model.number="row.purchasePrice" type="number" step="0.01" placeholder="默认" /></td>
                   <td>¥ {{ row.defaultSalePrice.toFixed(2) }}</td>
-                  <td><input v-model.number="row.salePrice" type="number" min="0" step="0.01" placeholder="默认" /></td>
+                  <td><input v-model.number="row.salePrice" type="number" step="0.01" placeholder="默认" /></td>
                 </tr>
               </tbody>
             </table>

@@ -200,7 +200,7 @@ const handleFabricNameInput = (row) => {
   }
   row.fabricId = matched.id
   row.fabricName = matched.name
-  if (!Number(row.unitPrice || 0)) row.unitPrice = getPreferredUnitPrice(matched)
+  if (Number(row.unitPrice || 0) === 0) row.unitPrice = getPreferredUnitPrice(matched)
 }
 
 const refreshRowPricesForPartner = () => {
@@ -307,7 +307,7 @@ const hasEditorContent = () => {
     form.unsettledAmount,
   ]
   const hasFormValue = formFields.some((value) => {
-    if (typeof value === 'number') return value > 0
+    if (typeof value === 'number') return value !== 0
     return String(value || '').trim() !== ''
   })
   const hasRowsValue = rows.value.some((row) => {
@@ -319,7 +319,7 @@ const hasEditorContent = () => {
       row.unitPrice,
       row.note,
     ].some((value) => {
-      if (typeof value === 'number') return value > 0
+      if (typeof value === 'number') return value !== 0
       return String(value || '').trim() !== ''
     })
   })
@@ -332,7 +332,7 @@ const hasEditorContent = () => {
       row.lastWeight,
       row.note,
     ].some((value) => {
-      if (typeof value === 'number') return value > 0
+      if (typeof value === 'number') return value !== 0
       return String(value || '').trim() !== ''
     })
   })
@@ -417,7 +417,7 @@ const rowViews = computed(() => {
 })
 
 const manualItemRows = computed(() => {
-  return rowViews.value.filter((item) => item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) > 0)
+  return rowViews.value.filter((item) => item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) !== 0)
 })
 
 watch(netWeight, (value) => {
@@ -454,7 +454,7 @@ const weighingItemViews = computed(() => {
 
 const effectiveWeighingRows = computed(() => {
   return weighingItemViews.value.filter((item) => {
-    const hasDraft = item.fabricName?.trim() || Number(item.unitPrice) > 0 || Number(item.grossQuantity) > 0
+    const hasDraft = item.fabricName?.trim() || Number(item.unitPrice) !== 0 || Number(item.grossQuantity) > 0
     if (!hasDraft) return false
     if (Number(item.quantity) > 0) return true
     return Number(item.grossQuantity || 0) <= 0
@@ -586,7 +586,7 @@ const removeRow = (index) => {
 
 const normalizeUnitPrice = (value) => {
   const number = Number(value)
-  if (!Number.isFinite(number) || number <= 0) return 0
+  if (!Number.isFinite(number)) return 0
   return Math.round(number * 100) / 100
 }
 
@@ -599,13 +599,13 @@ const getDefaultUnitPrice = (fabric) => {
 
 const shouldSyncCustomerPrice = (row, fabric) => {
   const unitPrice = normalizeUnitPrice(row?.unitPrice)
-  if (!form.partnerId || !fabric?.id || unitPrice <= 0) return false
+  if (!form.partnerId || !fabric?.id || unitPrice === 0) return false
 
   const saved = customerPriceStore.getPrice(form.partnerId, fabric.id)
   const savedUnitPrice = props.type === 'sale'
     ? normalizeUnitPrice(saved?.salePrice)
     : normalizeUnitPrice(saved?.purchasePrice)
-  if (savedUnitPrice > 0) return !isSamePrice(savedUnitPrice, unitPrice)
+  if (savedUnitPrice !== 0) return !isSamePrice(savedUnitPrice, unitPrice)
 
   return !isSamePrice(unitPrice, getDefaultUnitPrice(fabric))
 }
@@ -655,7 +655,7 @@ const ensureFabricForRow = async (row) => {
     if (!target) return
     target.fabricId = fabric.id
     target.fabricName = fabric.name || name
-    if (!Number(target.unitPrice || 0)) target.unitPrice = getPreferredUnitPrice(fabric)
+    if (Number(target.unitPrice || 0) === 0) target.unitPrice = getPreferredUnitPrice(fabric)
   }
 
   const selected = findFabricById(row.fabricId)
@@ -669,7 +669,7 @@ const ensureFabricForRow = async (row) => {
   if (matched) {
     row.fabricId = matched.id
     row.fabricName = matched.name
-    if (!Number(row.unitPrice || 0)) row.unitPrice = getPreferredUnitPrice(matched)
+    if (Number(row.unitPrice || 0) === 0) row.unitPrice = getPreferredUnitPrice(matched)
     applyFabricToSourceRow(matched)
     return matched
   }
@@ -730,7 +730,7 @@ const saveBill = async () => {
       return
     }
 
-    if (!row.unitPrice) {
+    if (Number(row.unitPrice || 0) === 0) {
       isWeighingDrawerOpen.value = true
       showToast(`过磅货物第${i + 1}行：请输入单价`)
       return
@@ -751,7 +751,7 @@ const saveBill = async () => {
       return
     }
 
-    if (!row.unitPrice) {
+    if (Number(row.unitPrice || 0) === 0) {
       showToast(`单独计重第${i + 1}行：请输入单价`)
       return
     }
@@ -914,7 +914,7 @@ onMounted(async () => {
 const getPreferredUnitPrice = (fabric) => {
   if (!fabric) return 0
   const customerPrice = customerPriceStore.getUnitPrice(form.partnerId, fabric.id, props.type)
-  if (customerPrice > 0) return customerPrice
+  if (customerPrice !== 0) return customerPrice
   return getDefaultUnitPrice(fabric)
 }
 
@@ -922,7 +922,7 @@ const getPriceSourceText = (row) => {
   if (!row?.fabricId) return normalizeFabricName(row?.fabricName) ? '保存后新增品种' : '输入或选择品种后自动带价'
   const fabric = findFabricById(row.fabricId)
   if (shouldSyncCustomerPrice(row, fabric)) return '保存后同步为客户专属价'
-  if (customerPriceStore.getUnitPrice(form.partnerId, row.fabricId, props.type) > 0) return '客户专属价'
+  if (customerPriceStore.getUnitPrice(form.partnerId, row.fabricId, props.type) !== 0) return '客户专属价'
   return '品种默认价'
 }
 
@@ -933,7 +933,7 @@ onUnmounted(() => {
 const buildExportRows = () => {
   return [...effectiveWeighingRows.value, ...manualItemRows.value].filter((item) => {
     if (!item) return false
-    return item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) > 0
+    return item.fabricName?.trim() || item.quantity > 0 || Number(item.unitPrice) !== 0
   })
 }
 
@@ -1426,7 +1426,7 @@ const exportImage = () => {
 
             <label class="field">
               <span>{{ priceLabel }}</span>
-              <input v-model.number="rows[idx].unitPrice" type="number" min="0" step="0.01" autocomplete="off" />
+              <input v-model.number="rows[idx].unitPrice" type="number" step="0.01" autocomplete="off" />
               <small class="field-tip">{{ getPriceSourceText(rows[idx]) }}</small>
             </label>
 
@@ -1502,7 +1502,6 @@ const exportImage = () => {
             v-if="primaryRow"
             v-model.number="primaryRow.unitPrice"
             type="number"
-            min="0"
             step="1"
             autocomplete="off"
           />
@@ -1559,7 +1558,7 @@ const exportImage = () => {
           </label>
           <label class="field">
             <span>{{ priceLabel }}（元/斤）</span>
-            <input v-model.number="row.unitPrice" type="number" min="0" step="0.01" autocomplete="off" />
+            <input v-model.number="row.unitPrice" type="number" step="0.01" autocomplete="off" />
           </label>
           <label class="field">
             <span>过磅总重量（公斤）</span>

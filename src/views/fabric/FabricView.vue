@@ -104,8 +104,8 @@ const moveFabric = async (item, direction) => {
     <section class="inner-page__stats-grid">
       <article class="inner-page__stat-card"><span>启用品种</span><strong>{{ list.filter(item => item.status === 'active').length }}</strong></article>
       <article class="inner-page__stat-card"><span>分页页数</span><strong>{{ totalPages }}</strong></article>
-      <article class="inner-page__stat-card"><span>含进货价</span><strong>{{ list.filter(item => Number(item.defaultPurchasePrice || 0) > 0).length }}</strong></article>
-      <article class="inner-page__stat-card"><span>含出货价</span><strong>{{ list.filter(item => Number(item.defaultSalePrice || 0) > 0).length }}</strong></article>
+      <article class="inner-page__stat-card"><span>含进货价</span><strong>{{ list.filter(item => Number(item.defaultPurchasePrice || 0) !== 0).length }}</strong></article>
+      <article class="inner-page__stat-card"><span>含出货价</span><strong>{{ list.filter(item => Number(item.defaultSalePrice || 0) !== 0).length }}</strong></article>
     </section>
 
     <section class="inner-page__panel inner-page__desktop-only">
@@ -154,8 +154,8 @@ const moveFabric = async (item, direction) => {
           <div class="inner-page__form-grid">
             <div class="inner-page__field"><span>品种名称</span><input v-model="form.name" type="text" placeholder="例如：X灰条" /></div>
             <div class="inner-page__field"><span>品种编号</span><input v-model="form.code" type="text" placeholder="不填则自动生成" /></div>
-            <div class="inner-page__field"><span>进货价 (元/斤)</span><input v-model.number="form.defaultPurchasePrice" type="number" step="0.01" min="0" /></div>
-            <div class="inner-page__field"><span>出货价 (元/斤)</span><input v-model.number="form.defaultSalePrice" type="number" step="0.01" min="0" /></div>
+            <div class="inner-page__field"><span>进货价 (元/斤)</span><input v-model.number="form.defaultPurchasePrice" type="number" step="0.01" /></div>
+            <div class="inner-page__field"><span>出货价 (元/斤)</span><input v-model.number="form.defaultSalePrice" type="number" step="0.01" /></div>
             <div class="inner-page__field"><span>状态</span><select v-model="form.status"><option value="active">启用</option><option value="disabled">停用</option></select></div>
           </div>
           <footer class="inner-page__modal-actions"><button type="button" class="inner-page__btn-ghost" @click="showModal = false">取消</button><button type="button" class="inner-page__btn" @click="submit">保存</button></footer>

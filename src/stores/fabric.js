@@ -278,10 +278,12 @@ export const useFabricStore = defineStore('fabric', () => {
   async function updatePrice(id, purchasePrice, salePrice) {
     const updates = {}
     if (purchasePrice !== undefined) {
-      updates.defaultPurchasePrice = parseFloat(purchasePrice) || 0
+      const nextPurchasePrice = parseFloat(purchasePrice)
+      updates.defaultPurchasePrice = Number.isFinite(nextPurchasePrice) ? nextPurchasePrice : 0
     }
     if (salePrice !== undefined) {
-      updates.defaultSalePrice = parseFloat(salePrice) || 0
+      const nextSalePrice = parseFloat(salePrice)
+      updates.defaultSalePrice = Number.isFinite(nextSalePrice) ? nextSalePrice : 0
     }
 
     return await updateFabric(id, updates)
