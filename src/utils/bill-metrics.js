@@ -7,29 +7,33 @@ export const parseWeightExpression = (input) => {
   const raw = String(input || '').trim()
   if (!raw) return 0
 
-  const normalized = raw
-    .replace(/[，,、；;]/g, ' ')
-    .replace(/[＋]/g, '+')
+  const tokens = raw
     .replace(/[×xX]/g, '*')
+    .replace(/\s*\*\s*/g, '*')
+    .replace(/[，,、；;＋+]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+    .split(' ')
+    .filter(Boolean)
 
-  if (!normalized) return 0
+  if (!tokens.length) return 0
 
   let value = 0
-  normalized.split('+').forEach((part) => {
-    const multiplyParts = part.split('*')
-    if (multiplyParts.length === 2) {
-      const left = Number(multiplyParts[0])
-      const right = Number(multiplyParts[1])
-      if (Number.isFinite(left) && Number.isFinite(right)) value += left * right
+  tokens.forEach((token) => {
+    if (!token.includes('*') && (token.match(/\./g) || []).length > 1) {
+      const dotParts = token.split('.')
+      const numbers = dotParts.map((part) => Number(part))
+      if (numbers.length === dotParts.length && numbers.every(Number.isFinite)) {
+        value += numbers.reduce((sum, number) => sum + number, 0)
+      }
       return
     }
 
-    part.split(' ').forEach((numStr) => {
-      const number = Number(numStr)
-      if (Number.isFinite(number)) value += number
-    })
+    const factors = token.split('*')
+    const numbers = factors.map((part) => Number(part)).filter(Number.isFinite)
+    if (numbers.length !== factors.length || numbers.length === 0) return
+
+    value += numbers.reduce((product, number) => product * number, 1)
   })
 
   return Number.isFinite(value) ? value : 0

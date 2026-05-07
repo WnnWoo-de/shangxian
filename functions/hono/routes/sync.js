@@ -24,24 +24,30 @@ const roundSettlementAmount = (value) => Math.max(Math.round(Number(value || 0))
 const parseWeightExpression = (input) => {
   const raw = String(input || '').trim()
   if (!raw) return 0
+
   return raw
-    .replace(/[，,、；;]/g, ' ')
-    .replace(/[＋]/g, '+')
     .replace(/[×xX]/g, '*')
+    .replace(/\s*\*\s*/g, '*')
+    .replace(/[，,、；;＋+]/g, ' ')
     .replace(/\s+/g, ' ')
-    .split('+')
-    .reduce((sum, part) => {
-      const factors = part.split('*')
-      if (factors.length === 2) {
-        const left = Number(factors[0])
-        const right = Number(factors[1])
-        return sum + (Number.isFinite(left) && Number.isFinite(right) ? left * right : 0)
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .reduce((sum, token) => {
+      if (!token.includes('*') && (token.match(/\./g) || []).length > 1) {
+        const dotParts = token.split('.')
+        const numbers = dotParts.map((part) => Number(part))
+        if (numbers.length === dotParts.length && numbers.every(Number.isFinite)) {
+          return sum + numbers.reduce((dotSum, number) => dotSum + number, 0)
+        }
+        return sum
       }
 
-      return sum + part.split(' ').reduce((partSum, token) => {
-        const number = Number(token)
-        return partSum + (Number.isFinite(number) ? number : 0)
-      }, 0)
+      const factors = token.split('*')
+      const numbers = factors.map((part) => Number(part))
+      if (numbers.length !== factors.length || !numbers.every(Number.isFinite)) return sum
+
+      return sum + numbers.reduce((product, number) => product * number, 1)
     }, 0)
 }
 

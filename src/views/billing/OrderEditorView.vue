@@ -17,6 +17,7 @@ import { countExcelTextLines, formatExcelWrapText, getExcelWrappedRowHeight } fr
 import { MASTER_DATA_CHANGED_EVENT } from '../../utils/master-data-events'
 import { getExportImageBrandName } from '../../utils/app-config'
 import { today } from '../../utils/date'
+import { parseWeightExpression } from '../../utils/bill-metrics'
 
 const props = defineProps({
   type: {
@@ -137,57 +138,6 @@ const makeRow = () => ({
   unitPrice: 0,
   note: '',
 })
-
-const parseWeightExpression = (input) => {
-  const raw = String(input || '').trim()
-  if (!raw) return 0
-
-  const normalized = raw
-    .replace(/[，,、；;]/g, ' ')
-    .replace(/[＋]/g, '+')
-    .replace(/[×xX]/g, '*')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  if (!normalized) return 0
-
-  try {
-    // 简单的表达式解析
-    // 支持加法、乘法和空格分隔的数值组合
-    let value = 0
-    const addParts = normalized.split('+')
-    for (const part of addParts) {
-      const multiplyParts = part.split('*')
-      if (multiplyParts.length === 2) {
-        const left = Number(multiplyParts[0])
-        const right = Number(multiplyParts[1])
-        if (!isNaN(left) && !isNaN(right)) {
-          value += left * right
-        }
-      } else {
-        // 检查是否包含空格分隔的多个数值
-        if (part.includes(' ')) {
-          const spaceParts = part.split(' ')
-          for (const numStr of spaceParts) {
-            const num = Number(numStr)
-            if (!isNaN(num)) {
-              value += num
-            }
-          }
-        } else {
-          const num = Number(part)
-          if (!isNaN(num)) {
-            value += num
-          }
-        }
-      }
-    }
-    return isNaN(value) ? 0 : value
-  } catch (error) {
-    console.error('解析重量表达式失败:', error)
-    return 0
-  }
-}
 
 const rows = ref([makeRow()])
 
@@ -1371,10 +1321,10 @@ const exportImage = () => {
                 rows="3"
                 class="weight-detail-input"
                 autocomplete="off"
-                placeholder="示例：10+10+10 / 10 10 10 / 10×3"
+                placeholder="示例：10+10+10 / 10 10 10 / 10×8 60"
               ></textarea>
               <small class="field-tip">
-                不走过磅的货物填这里，支持多次重量相加和 10×3 自动计算
+                不走过磅的货物填这里，支持多次重量相加、10×3 和 10×8 60 自动计算
               </small>
             </label>
 

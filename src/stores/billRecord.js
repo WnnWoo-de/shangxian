@@ -7,6 +7,7 @@ import { storage, StorageTypes } from '@/utils'
 import { emitBillDataChanged } from '@/utils/bill-events'
 import { today } from '@/utils/date'
 import { enqueueSyncOperation } from '@/utils/sync-queue'
+import { parseWeightExpression } from '@/utils/bill-metrics'
 
 const STORAGE_KEY = StorageTypes.BILLS
 const ENABLE_DEMO_SEED = String(import.meta.env.VITE_ENABLE_DEMO_SEED || '').trim() === '1'
@@ -23,38 +24,6 @@ const roundSettlementAmount = (value) => Math.max(Math.round(toFiniteNumber(valu
 
 const subtractMoney = (amount, settlement) => {
   return Math.max(roundSettlementAmount(amount) - roundSettlementAmount(settlement), 0)
-}
-
-const parseWeightExpression = (input) => {
-  const raw = String(input || '').trim()
-  if (!raw) return 0
-
-  const normalized = raw
-    .replace(/[，,、；;]/g, ' ')
-    .replace(/[＋]/g, '+')
-    .replace(/[×xX]/g, '*')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  if (!normalized) return 0
-
-  let value = 0
-  normalized.split('+').forEach((part) => {
-    const multiplyParts = part.split('*')
-    if (multiplyParts.length === 2) {
-      const left = Number(multiplyParts[0])
-      const right = Number(multiplyParts[1])
-      if (Number.isFinite(left) && Number.isFinite(right)) value += left * right
-      return
-    }
-
-    part.split(' ').forEach((numStr) => {
-      const number = Number(numStr)
-      if (Number.isFinite(number)) value += number
-    })
-  })
-
-  return Number.isFinite(value) ? value : 0
 }
 
 const normalizeItem = (item = {}, index = 0) => {
