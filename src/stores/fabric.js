@@ -11,6 +11,7 @@ const ENABLE_DEMO_SEED = String(import.meta.env.VITE_ENABLE_DEMO_SEED || '').tri
 const saveLocal = (list) => storage.set(STORAGE_KEY, list)
 const orderList = (list) => [...list].sort((a, b) => Number(a.sortOrder ?? 999999) - Number(b.sortOrder ?? 999999))
 const withSortOrder = (list) => list.map((item, index) => ({ ...item, sortOrder: Number(item.sortOrder ?? index) }))
+const normalizeFabricName = (name) => String(name || '').trim().replace(/\s+/g, ' ')
 
 export const useFabricStore = defineStore('fabric', () => {
   const fabrics = ref([])
@@ -73,6 +74,34 @@ export const useFabricStore = defineStore('fabric', () => {
     return fabrics.value.find(fabric => fabric.id === id)
   }
 
+  function getFabricByName(name) {
+    const target = normalizeFabricName(name).toLowerCase()
+    if (!target) return null
+    return fabrics.value.find(fabric => normalizeFabricName(fabric.name).toLowerCase() === target) || null
+  }
+
+  function makeFabricIdentity() {
+    const usedIds = new Set(fabrics.value.map(item => String(item.id || '')))
+    const usedCodes = new Set(fabrics.value.map(item => String(item.code || '')))
+    const numbers = fabrics.value.flatMap((item) => {
+      const idNumber = String(item.id || '').match(/^fab-(\d+)$/i)?.[1]
+      const codeNumber = String(item.code || '').match(/^FAB(\d+)$/i)?.[1]
+      return [idNumber, codeNumber].filter(Boolean).map(Number)
+    })
+    let sequence = Math.max(0, ...numbers) + 1
+    let id = ''
+    let code = ''
+
+    do {
+      const padded = String(sequence).padStart(3, '0')
+      id = `fab-${padded}`
+      code = `FAB${padded}`
+      sequence += 1
+    } while (usedIds.has(id) || usedCodes.has(code))
+
+    return { id, code }
+  }
+
   function getFabricName(id) {
     const fabric = getFabricById(id)
     return fabric ? fabric.name : ''
@@ -102,14 +131,21 @@ export const useFabricStore = defineStore('fabric', () => {
     loading.value = true
 
     try {
+      const name = normalizeFabricName(data?.name)
+      if (!name) throw new Error('请输入品种名称')
+      const existing = getFabricByName(name)
+      if (existing) throw new Error('品种已存在')
+      const identity = makeFabricIdentity()
       const draft = {
-        id: `fab-${Date.now().toString().slice(-6)}`,
-        code: `FAB${Date.now().toString().slice(-4)}`,
+        id: identity.id,
+        code: identity.code,
         status: 'active',
         sortOrder: fabrics.value.length,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        ...data
+        ...data,
+        name,
+        code: normalizeFabricName(data?.code) || data?.code || identity.code
       }
 
       let created = draft
@@ -140,10 +176,16 @@ export const useFabricStore = defineStore('fabric', () => {
       if (index === -1) {
         throw new Error('布料不存在')
       }
+      const name = normalizeFabricName(data?.name)
+      const duplicated = getFabricByName(name)
+      if (name && duplicated && duplicated.id !== id) {
+        throw new Error('品种已存在')
+      }
 
       const next = {
         ...fabrics.value[index],
         ...data,
+        ...(name ? { name } : {}),
         updatedAt: new Date().toISOString()
       }
 
@@ -261,6 +303,7 @@ export const useFabricStore = defineStore('fabric', () => {
     init,
     refresh,
     getFabricById,
+    getFabricByName,
     getFabricName,
     getFabricCode,
     getFabricUnit,

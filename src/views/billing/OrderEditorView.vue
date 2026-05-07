@@ -37,6 +37,7 @@ const detailPanelRef = ref(null)
 const detailFabricSelectRefs = ref({})
 const isPurchase = computed(() => props.type === 'purchase')
 const DRAFT_STORAGE_KEY = computed(() => props.type === 'sale' ? 'sale-order-editor-draft' : 'purchase-order-editor-draft')
+const FABRIC_DATALIST_ID = computed(() => `fabric-options-${props.type}`)
 
 const recordId = computed(() => String(route.params.id || ''))
 const isEditing = computed(() => Boolean(recordId.value))
@@ -152,8 +153,20 @@ const currentPartner = computed(() => {
 })
 customerPriceStore.init()
 
+const normalizeFabricName = (name) => String(name || '').trim().replace(/\s+/g, ' ')
+const findFabricByName = (name) => {
+  if (typeof fabricStore.getFabricByName === 'function') return fabricStore.getFabricByName(name)
+  const target = normalizeFabricName(name).toLowerCase()
+  if (!target) return null
+  return fabrics.value.find((item) => normalizeFabricName(item.name).toLowerCase() === target) || null
+}
+const findFabricById = (id) => {
+  if (!id) return null
+  return fabricStore.getFabricById(id) || fabrics.value.find((item) => item.id === id) || null
+}
+
 const selectFabric = (row) => {
-  const selected = fabrics.value.find((item) => item.id === row.fabricId)
+  const selected = findFabricById(row.fabricId)
   row.fabricName = selected?.name || ''
   if (selected) row.unitPrice = getPreferredUnitPrice(selected)
 }
@@ -171,22 +184,35 @@ const toggleWeighingDrawer = () => {
 }
 
 const syncRowFabric = (row) => {
-  const keyword = row.fabricName.trim()
-  const matched = fabrics.value.find((item) => item.name === keyword)
+  const keyword = normalizeFabricName(row.fabricName)
+  row.fabricName = keyword
+  const matched = findFabricByName(keyword)
   row.fabricId = matched?.id || ''
   if (matched) row.unitPrice = getPreferredUnitPrice(matched)
+}
+
+const handleFabricNameInput = (row) => {
+  if (!row) return
+  const matched = findFabricByName(row.fabricName)
+  if (!matched) {
+    row.fabricId = ''
+    return
+  }
+  row.fabricId = matched.id
+  row.fabricName = matched.name
+  if (!Number(row.unitPrice || 0)) row.unitPrice = getPreferredUnitPrice(matched)
 }
 
 const refreshRowPricesForPartner = () => {
   if (isEditing.value) return
   rows.value.forEach((row) => {
     if (!row.fabricId) return
-    const selected = fabrics.value.find((item) => item.id === row.fabricId)
+    const selected = findFabricById(row.fabricId)
     if (selected) row.unitPrice = getPreferredUnitPrice(selected)
   })
   weighingRows.value.forEach((row) => {
     if (!row.fabricId) return
-    const selected = fabrics.value.find((item) => item.id === row.fabricId)
+    const selected = findFabricById(row.fabricId)
     if (selected) row.unitPrice = getPreferredUnitPrice(selected)
   })
 }
@@ -372,7 +398,7 @@ const rowViews = computed(() => {
       }
     }
 
-    const fabric = fabrics.value.find((item) => item.id === row.fabricId)
+    const fabric = findFabricById(row.fabricId)
     const quantity = parseWeightExpression(row.quantityInput ?? row.quantity)
     const unitPrice = Number(row.unitPrice || 0)
     const amount = multiplyMoney(quantity, unitPrice)
@@ -408,7 +434,7 @@ const weighingItemViews = computed(() => {
     lastWeight: Number(form.lastWeight || 0),
   }
   return [primary, ...weighingRows.value].map((row, index) => {
-    const fabric = fabrics.value.find((item) => item.id === row.fabricId)
+    const fabric = findFabricById(row.fabricId)
     const grossQuantity = getWeighingJin(row)
     const quantity = getAdjustedWeighingJinByIndex(index)
     const unitPrice = Number(row.unitPrice || 0)
@@ -589,7 +615,7 @@ const persistCustomerPriceDrafts = () => {
 
   const rowsToPersist = new Map()
   ;[...manualItemRows.value, ...effectiveWeighingRows.value].forEach((row) => {
-    const fabric = fabrics.value.find((item) => item.id === row.fabricId)
+    const fabric = findFabricById(row.fabricId)
     if (!shouldSyncCustomerPrice(row, fabric)) return
 
     const unitPrice = normalizeUnitPrice(row.unitPrice)
@@ -617,6 +643,66 @@ const persistCustomerPriceDrafts = () => {
   return count
 }
 
+const ensureFabricForRow = async (row) => {
+  const name = normalizeFabricName(row?.fabricName)
+  if (!name) return null
+
+  const applyFabricToSourceRow = (fabric) => {
+    if (!fabric?.id) return
+    const target = row.id === 'primary-weighing'
+      ? form
+      : rows.value.find((item) => item.id === row.id) || weighingRows.value.find((item) => item.id === row.id)
+    if (!target) return
+    target.fabricId = fabric.id
+    target.fabricName = fabric.name || name
+    if (!Number(target.unitPrice || 0)) target.unitPrice = getPreferredUnitPrice(fabric)
+  }
+
+  const selected = findFabricById(row.fabricId)
+  if (selected && normalizeFabricName(selected.name).toLowerCase() === name.toLowerCase()) {
+    row.fabricName = selected.name
+    applyFabricToSourceRow(selected)
+    return selected
+  }
+
+  const matched = findFabricByName(name)
+  if (matched) {
+    row.fabricId = matched.id
+    row.fabricName = matched.name
+    if (!Number(row.unitPrice || 0)) row.unitPrice = getPreferredUnitPrice(matched)
+    applyFabricToSourceRow(matched)
+    return matched
+  }
+
+  const unitPrice = normalizeUnitPrice(row.unitPrice)
+  const created = await fabricStore.addFabric({
+    name,
+    status: 'active',
+    defaultPurchasePrice: props.type === 'purchase' ? unitPrice : 0,
+    defaultSalePrice: props.type === 'sale' ? unitPrice : 0,
+  })
+  row.fabricId = created?.id || ''
+  row.fabricName = created?.name || name
+  applyFabricToSourceRow(created)
+  return created
+}
+
+const ensureFabricsForRows = async () => {
+  let createdCount = 0
+  const rowsToResolve = [...manualItemRows.value, ...effectiveWeighingRows.value]
+
+  for (const row of rowsToResolve) {
+    const existedBefore = Boolean(findFabricByName(row.fabricName) || findFabricById(row.fabricId))
+    const fabric = await ensureFabricForRow(row)
+    if (!fabric?.id) {
+      throw new Error(`品种“${normalizeFabricName(row.fabricName) || '未填写'}”保存失败`)
+    }
+    if (!existedBefore) createdCount += 1
+  }
+
+  return createdCount
+}
+
 const saveBill = async () => {
   // 验证必填项
   if (!form.partnerName.trim()) {
@@ -632,9 +718,9 @@ const saveBill = async () => {
   for (let i = 0; i < effectiveWeighingRows.value.length; i++) {
     const row = effectiveWeighingRows.value[i]
 
-    if (!row.fabricId) {
+    if (!normalizeFabricName(row.fabricName)) {
       isWeighingDrawerOpen.value = true
-      showToast(`过磅货物第${i + 1}行：请选择品种`)
+      showToast(`过磅货物第${i + 1}行：请输入品种`)
       return
     }
 
@@ -655,8 +741,8 @@ const saveBill = async () => {
     const row = manualItemRows.value[i]
     const quantity = Number(row.quantity || 0)
 
-    if (!row.fabricId) {
-      showToast(`单独计重第${i + 1}行：请选择品种`)
+    if (!normalizeFabricName(row.fabricName)) {
+      showToast(`单独计重第${i + 1}行：请输入品种`)
       return
     }
 
@@ -689,6 +775,7 @@ const saveBill = async () => {
       }
     }
 
+    const createdFabricCount = await ensureFabricsForRows()
     const syncedPriceCount = persistCustomerPriceDrafts()
 
     const itemRows = [
@@ -766,7 +853,7 @@ const saveBill = async () => {
     }
 
     clearDraft()
-    showToast(`保存${props.type === 'purchase' ? '进货' : '出货'}单成功${syncedPriceCount ? `，已同步${syncedPriceCount}个客户专属价` : ''}`)
+    showToast(`保存${props.type === 'purchase' ? '进货' : '出货'}单成功${createdFabricCount ? `，已新增${createdFabricCount}个品种` : ''}${syncedPriceCount ? `，已同步${syncedPriceCount}个客户专属价` : ''}`)
 
     // 导航到单据列表页面
     if (props.type === 'purchase') {
@@ -832,8 +919,8 @@ const getPreferredUnitPrice = (fabric) => {
 }
 
 const getPriceSourceText = (row) => {
-  if (!row?.fabricId) return '选择品种后自动带价'
-  const fabric = fabrics.value.find((item) => item.id === row.fabricId)
+  if (!row?.fabricId) return normalizeFabricName(row?.fabricName) ? '保存后新增品种' : '输入或选择品种后自动带价'
+  const fabric = findFabricById(row.fabricId)
   if (shouldSyncCustomerPrice(row, fabric)) return '保存后同步为客户专属价'
   if (customerPriceStore.getUnitPrice(form.partnerId, row.fabricId, props.type) > 0) return '客户专属价'
   return '品种默认价'
@@ -1279,6 +1366,11 @@ const exportImage = () => {
             </option>
           </datalist>
         </label>
+        <datalist :id="FABRIC_DATALIST_ID">
+          <option v-for="item in fabrics" :key="item.id" :value="item.name">
+            {{ item.code || '' }}
+          </option>
+        </datalist>
 
       </div>
     </section>
@@ -1302,16 +1394,20 @@ const exportImage = () => {
           <div class="detail-grid">
             <label class="field">
               <span>品种</span>
-              <select
-                v-model="rows[idx].fabricId"
+              <input
+                v-model.trim="rows[idx].fabricName"
                 :ref="(element) => setDetailFabricSelectRef(rowView.id, element)"
-                @change="selectFabric(rows[idx])"
-              >
-                <option value="">请选择品种</option>
-                <option v-for="item in fabrics" :key="item.id" :value="item.id">
-                  {{ item.name }}
-                </option>
-              </select>
+                :list="FABRIC_DATALIST_ID"
+                type="text"
+                autocomplete="off"
+                placeholder="输入或选择品种"
+                @input="handleFabricNameInput(rows[idx])"
+                @change="syncRowFabric(rows[idx])"
+                @blur="syncRowFabric(rows[idx])"
+              />
+              <small class="field-tip">
+                新品种保存单据后会自动加入品种管理
+              </small>
             </label>
 
             <label class="field">
@@ -1385,16 +1481,20 @@ const exportImage = () => {
       <div class="weighing-grid">
         <label class="field">
           <span>过磅品种</span>
-          <select
+          <input
             v-if="primaryRow"
-            v-model="primaryRow.fabricId"
-            @change="selectPrimaryFabric"
-          >
-            <option value="">请选择品种</option>
-            <option v-for="item in fabrics" :key="item.id" :value="item.id">
-              {{ item.name }}
-            </option>
-          </select>
+            v-model.trim="primaryRow.fabricName"
+            :list="FABRIC_DATALIST_ID"
+            type="text"
+            autocomplete="off"
+            placeholder="输入或选择品种"
+            @input="handleFabricNameInput(primaryRow)"
+            @change="syncRowFabric(primaryRow)"
+            @blur="syncRowFabric(primaryRow)"
+          />
+          <small v-if="primaryRow" class="field-tip">
+            未维护的品种会在保存后自动加入品种管理
+          </small>
         </label>
         <label class="field">
           <span>{{ priceLabel }}（元/斤）</span>
@@ -1446,12 +1546,16 @@ const exportImage = () => {
           <div class="weighing-detail-index">过磅明细 #{{ index + 1 }}</div>
           <label class="field">
             <span>品种</span>
-            <select v-model="row.fabricId" @change="selectWeighingFabric(row)">
-              <option value="">请选择品种</option>
-              <option v-for="item in fabrics" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </option>
-            </select>
+            <input
+              v-model.trim="row.fabricName"
+              :list="FABRIC_DATALIST_ID"
+              type="text"
+              autocomplete="off"
+              placeholder="输入或选择品种"
+              @input="handleFabricNameInput(row)"
+              @change="syncRowFabric(row)"
+              @blur="syncRowFabric(row)"
+            />
           </label>
           <label class="field">
             <span>{{ priceLabel }}（元/斤）</span>

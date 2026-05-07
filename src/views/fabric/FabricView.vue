@@ -50,8 +50,8 @@ const confirmDelete = async () => {
 
 const submit = async () => {
   if (!form.name.trim()) return showToast('请输入品种名称', 'error')
-  if (!form.code.trim()) return showToast('请输入品种编号', 'error')
-  const payload = { name: form.name.trim(), code: form.code.trim(), status: form.status, defaultPurchasePrice: Number(form.defaultPurchasePrice || 0), defaultSalePrice: Number(form.defaultSalePrice || 0) }
+  const payload = { name: form.name.trim(), status: form.status, defaultPurchasePrice: Number(form.defaultPurchasePrice || 0), defaultSalePrice: Number(form.defaultSalePrice || 0) }
+  if (form.code.trim()) payload.code = form.code.trim()
   try {
     if (mode.value === 'create') {
       await fabricStore.addFabric(payload)
@@ -153,7 +153,7 @@ const moveFabric = async (item, direction) => {
           <h3>{{ mode === 'create' ? '新增品种' : '编辑品种' }}</h3>
           <div class="inner-page__form-grid">
             <div class="inner-page__field"><span>品种名称</span><input v-model="form.name" type="text" placeholder="例如：X灰条" /></div>
-            <div class="inner-page__field"><span>品种编号</span><input v-model="form.code" type="text" /></div>
+            <div class="inner-page__field"><span>品种编号</span><input v-model="form.code" type="text" placeholder="不填则自动生成" /></div>
             <div class="inner-page__field"><span>进货价 (元/斤)</span><input v-model.number="form.defaultPurchasePrice" type="number" step="0.01" min="0" /></div>
             <div class="inner-page__field"><span>出货价 (元/斤)</span><input v-model.number="form.defaultSalePrice" type="number" step="0.01" min="0" /></div>
             <div class="inner-page__field"><span>状态</span><select v-model="form.status"><option value="active">启用</option><option value="disabled">停用</option></select></div>
