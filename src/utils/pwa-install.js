@@ -2,6 +2,15 @@ let deferredPrompt = null
 const listeners = new Set()
 let initialized = false
 
+const getDeviceType = () => {
+  if (typeof window === 'undefined') return 'other'
+  const userAgent = window.navigator.userAgent || ''
+  const isIpadOS = window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1
+  if (/iPad|iPhone|iPod/i.test(userAgent) || isIpadOS) return 'ios'
+  if (/harmonyos|harmony|arkweb|huawei|honor|huaweibrowser|android/i.test(userAgent)) return 'android'
+  return 'other'
+}
+
 const notify = () => {
   listeners.forEach((listener) => listener())
 }
@@ -15,23 +24,21 @@ export const canPromptPwaInstall = () => Boolean(deferredPrompt) && !isPwaStanda
 
 export const getPwaInstallLabel = () => {
   if (isPwaStandalone()) return '已安装'
-  if (canPromptPwaInstall()) return '安装到桌面'
-  return '安装到桌面'
+  if (canPromptPwaInstall()) return '安装到主屏幕'
+  return getDeviceType() === 'ios' ? '添加到主屏幕' : '安装到主屏幕'
 }
 
 export const getPwaInstallGuide = () => {
   if (typeof window === 'undefined') return '请在浏览器菜单中选择“安装应用”或“添加到主屏幕”。'
 
-  const userAgent = window.navigator.userAgent || ''
-  const isIos = /iPad|iPhone|iPod/.test(userAgent) || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
-  const isAndroid = /Android/i.test(userAgent)
+  const deviceType = getDeviceType()
 
-  if (isIos) {
-    return '请点击浏览器底部或顶部的分享按钮，然后选择“添加到主屏幕”。'
+  if (deviceType === 'ios') {
+    return '请在 Safari 中点击分享按钮，然后选择“添加到主屏幕”。在 iPad 上如果地址栏位于顶部，分享按钮通常也在顶部工具栏。'
   }
 
-  if (isAndroid) {
-    return '请点击浏览器右上角菜单，然后选择“安装应用”或“添加到主屏幕”。'
+  if (deviceType === 'android') {
+    return '请点击浏览器右上角菜单，然后选择“安装应用”或“添加到主屏幕”。鸿蒙平板如果使用华为浏览器，也可在菜单中查找“添加到桌面”或“安装应用”。'
   }
 
   return '请在浏览器地址栏或菜单中选择“安装应用”或“添加到主屏幕”。'

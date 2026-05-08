@@ -148,6 +148,49 @@ html.is-harmony-keyboard {
   }
 }
 
+html.is-ios-device {
+  body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+  }
+
+  .el-overlay,
+  .el-drawer,
+  .el-dialog,
+  .inner-page__modal,
+  .mobile-overlay {
+    will-change: transform;
+  }
+
+  .sticky-header {
+    top: max(0px, var(--safe-area-inset-top));
+  }
+}
+
+html.is-ios-keyboard {
+  .fixed-bottom,
+  .el-message-box,
+  .inner-page__modal {
+    margin-bottom: var(--keyboard-inset);
+  }
+}
+
+html.is-standalone-pwa.is-ios-device {
+  body,
+  #app,
+  .full-screen,
+  .app-screen,
+  .mobile-screen {
+    min-height: var(--app-height, 100dvh);
+  }
+}
+
+html.is-standalone-pwa.is-ipad-device {
+  .el-dialog {
+    max-height: calc(var(--visual-height, 100dvh) - 32px);
+  }
+}
+
 // 超小屏幕 (360px以下)
 @include respond-to(xs) {
   html {
