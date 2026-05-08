@@ -1360,6 +1360,7 @@ const exportImage = () => {
             @change="syncPartnerSelection"
             @blur="syncPartnerSelection"
           />
+          <small class="field-tip partner-tip">新客户保存单据后会自动加入客户管理并修改单价后会自动修改价格专属</small>
           <datalist id="partner-options">
             <option v-for="item in partners" :key="item.id" :value="item.name">
               {{ item.contact || item.contactPerson || '' }} {{ item.phone || '' }}
@@ -1882,6 +1883,9 @@ const exportImage = () => {
 .field-tip {
   font-size: 12px;
   color: var(--text-muted);
+}
+.partner-tip {
+  line-height: 1.5;
 }
 .field input,
 .field select,
