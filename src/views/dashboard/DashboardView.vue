@@ -378,7 +378,7 @@ onUnmounted(() => {
   min-height: var(--app-height, 100dvh);
   background: linear-gradient(180deg, #fffaf3 0%, #f5ebde 100%);
   padding: 16px;
-  padding-bottom: 32px;
+  padding-bottom: 24px;
 }
 
 /* 欢迎区域 */

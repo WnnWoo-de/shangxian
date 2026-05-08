@@ -552,12 +552,14 @@ onBeforeUnmount(() => {
   overflow:hidden;
   margin-left:var(--sidebar-width);
   padding:18px;
+  padding-bottom:max(18px, var(--safe-area-inset-bottom));
   @include respond-to(md){padding:16px}
   @include respond-to(sm){
     padding:10px;
     padding-top:calc(10px + var(--safe-area-inset-top));
     padding-left:calc(10px + var(--safe-area-inset-left));
     padding-right:calc(10px + var(--safe-area-inset-right));
+    padding-bottom:max(10px, var(--safe-area-inset-bottom));
   }
 }
 .top-bar{
@@ -715,7 +717,7 @@ onBeforeUnmount(() => {
   @include respond-to(md){margin-top:12px}
   @include respond-to(sm){
     margin-top:10px;
-    padding-bottom:var(--safe-area-inset-bottom)
+    padding-bottom:0
   }
 }
 .page-content.without-top-bar{
@@ -955,6 +957,7 @@ onBeforeUnmount(() => {
     padding-top: calc(8px + var(--safe-area-inset-top));
     padding-left: calc(8px + var(--safe-area-inset-left));
     padding-right: calc(8px + var(--safe-area-inset-right));
+    padding-bottom: max(8px, var(--safe-area-inset-bottom));
   }
 
   .sidebar {

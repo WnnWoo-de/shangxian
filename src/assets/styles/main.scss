@@ -426,6 +426,17 @@ textarea {
   line-height: inherit;
 }
 
+.main-layout .page-content > .page-container,
+.main-layout .page-content > .dashboard-page,
+.main-layout .page-content > .order-list-page,
+.main-layout .page-content > .not-found-page,
+.main-layout .page-content > .weight-page,
+.main-layout .page-content > .full-screen,
+.main-layout .page-content > .app-screen,
+.main-layout .page-content > .mobile-screen {
+  min-height: auto;
+}
+
 :root[data-theme='dark'] {
   .page-container,
   .order-list-page,
