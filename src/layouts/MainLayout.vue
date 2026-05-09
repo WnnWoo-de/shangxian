@@ -552,14 +552,14 @@ onBeforeUnmount(() => {
   overflow:hidden;
   margin-left:var(--sidebar-width);
   padding:18px;
-  padding-bottom:max(18px, var(--safe-area-inset-bottom));
+  padding-bottom:18px;
   @include respond-to(md){padding:16px}
   @include respond-to(sm){
     padding:10px;
     padding-top:calc(10px + var(--safe-area-inset-top));
     padding-left:calc(10px + var(--safe-area-inset-left));
     padding-right:calc(10px + var(--safe-area-inset-right));
-    padding-bottom:max(10px, var(--safe-area-inset-bottom));
+    padding-bottom:10px;
   }
 }
 .top-bar{
@@ -712,12 +712,13 @@ onBeforeUnmount(() => {
   min-height:0;
   margin-top:16px;
   overflow-y:auto;
+  padding-bottom:max(18px, var(--safe-area-inset-bottom));
   overscroll-behavior:contain;
   @include scrollbar-beautiful;
   @include respond-to(md){margin-top:12px}
   @include respond-to(sm){
     margin-top:10px;
-    padding-bottom:0
+    padding-bottom:max(10px, var(--safe-area-inset-bottom))
   }
 }
 .page-content.without-top-bar{

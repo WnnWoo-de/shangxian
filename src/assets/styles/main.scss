@@ -433,8 +433,14 @@ textarea {
 .main-layout .page-content > .weight-page,
 .main-layout .page-content > .full-screen,
 .main-layout .page-content > .app-screen,
-.main-layout .page-content > .mobile-screen {
-  min-height: auto;
+.main-layout .page-content > .mobile-screen,
+.main-layout .page-content > .order-editor,
+.main-layout .page-content > .income-expense-page,
+.main-layout .page-content > .settlement-page,
+.main-layout .page-content > .stats-page,
+.main-layout .page-content > .settings-container,
+.main-layout .page-content > .data-management-container {
+  min-height: 100%;
 }
 
 :root[data-theme='dark'] {

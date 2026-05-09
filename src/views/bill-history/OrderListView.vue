@@ -1114,7 +1114,7 @@ const recentPartners = computed(() => {
 
 @media (max-width: 768px) {
   .order-list-page {
-    min-height: auto;
+    min-height: 100%;
     padding: 0;
     background: transparent;
   }

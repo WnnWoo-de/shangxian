@@ -807,7 +807,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .dashboard-page {
-    min-height: auto;
+    min-height: 100%;
     padding: 0;
     padding-bottom: 20px;
     background: transparent;
