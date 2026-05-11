@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { showToast } from '@/utils/toast'
-import { getExportImageBrandName, setExportImageBrandName } from '@/utils/app-config'
+import { getExportImageBrandName, requestOnboardingTutorial, setExportImageBrandName } from '@/utils/app-config'
 import { getPreferredTheme, getResolvedTheme, setTheme } from '@/utils/theme'
 // UUID is not necessary, just standard icons or simple css shapes
 
@@ -76,6 +76,11 @@ const saveBrandName = async () => {
   }
 }
 
+const reopenOnboardingTutorial = () => {
+  requestOnboardingTutorial()
+  showToast('已重新打开新手教程', 'success')
+}
+
 onMounted(() => {
   loadBrandName()
   loadTheme()
@@ -105,6 +110,20 @@ onMounted(() => {
           />
           <button class="action-btn" :disabled="savingBrandName" @click="saveBrandName">
             {{ savingBrandName ? '保存中...' : '保存' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel settings-panel">
+      <div class="setting-item">
+        <div class="item-info">
+          <h3>新手教程</h3>
+          <p>首次打开会自动展示网站使用教程；如果之后还想再看一次，可以从这里重新打开。</p>
+        </div>
+        <div class="item-action">
+          <button class="action-btn" @click="reopenOnboardingTutorial">
+            重新查看教程
           </button>
         </div>
       </div>
