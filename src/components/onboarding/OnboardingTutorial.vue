@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   APP_ONBOARDING_REQUEST_EVENT,
@@ -22,6 +22,11 @@ const open = ref(false)
 const activeStepIndex = ref(0)
 const lastRequestAt = ref(0)
 const lastAutoOpenAt = ref(0)
+const tutorialShellRef = ref(null)
+const tutorialCardRef = ref(null)
+const stepButtonRefs = ref([])
+const bodyOverflowBeforeLock = ref('')
+const htmlOverflowBeforeLock = ref('')
 
 const steps = [
   {
@@ -125,11 +130,34 @@ const isFirstStep = computed(() => activeStepIndex.value === 0)
 const isLastStep = computed(() => activeStepIndex.value >= totalSteps.value - 1)
 
 const lockBodyScroll = () => {
+  bodyOverflowBeforeLock.value = document.body.style.overflow
+  htmlOverflowBeforeLock.value = document.documentElement.style.overflow
   document.body.style.overflow = 'hidden'
+  document.documentElement.style.overflow = 'hidden'
 }
 
 const unlockBodyScroll = () => {
-  document.body.style.overflow = ''
+  document.body.style.overflow = bodyOverflowBeforeLock.value
+  document.documentElement.style.overflow = htmlOverflowBeforeLock.value
+}
+
+const setStepButtonRef = (element, index) => {
+  stepButtonRefs.value[index] = element || null
+}
+
+const syncStepViewport = async ({ focusShell = false } = {}) => {
+  await nextTick()
+
+  if (focusShell) {
+    tutorialShellRef.value?.focus()
+  }
+
+  tutorialCardRef.value?.scrollTo?.({ top: 0, behavior: 'auto' })
+  stepButtonRefs.value[activeStepIndex.value]?.scrollIntoView?.({
+    block: 'nearest',
+    inline: 'center',
+    behavior: 'smooth',
+  })
 }
 
 const openTutorial = ({ force = false } = {}) => {
@@ -138,6 +166,7 @@ const openTutorial = ({ force = false } = {}) => {
   open.value = true
   activeStepIndex.value = 0
   lockBodyScroll()
+  void syncStepViewport({ focusShell: true })
 }
 
 const closeTutorial = ({ markSeen = false } = {}) => {
@@ -187,6 +216,24 @@ const handleMaskClick = (event) => {
   closeTutorial({ markSeen: true })
 }
 
+const handleKeydown = (event) => {
+  if (!open.value) return
+
+  if (event.key === 'Escape') {
+    closeTutorial({ markSeen: true })
+    return
+  }
+
+  if (event.key === 'ArrowLeft') {
+    prevStep()
+    return
+  }
+
+  if (event.key === 'ArrowRight') {
+    nextStep()
+  }
+}
+
 const handleRequestEvent = (event) => {
   const requestedAt = Number(event?.detail?.requestedAt || 0)
   if (!requestedAt || requestedAt <= lastRequestAt.value) return
@@ -220,14 +267,21 @@ watch(() => props.enabled, (enabled) => {
   maybeAutoOpenTutorial()
 }, { immediate: true })
 
+watch(activeStepIndex, () => {
+  if (!open.value) return
+  void syncStepViewport()
+})
+
 onMounted(() => {
   tryConsumeManualRequest()
   maybeAutoOpenTutorial()
   window.addEventListener(APP_ONBOARDING_REQUEST_EVENT, handleRequestEvent)
+  window.addEventListener('keydown', handleKeydown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener(APP_ONBOARDING_REQUEST_EVENT, handleRequestEvent)
+  window.removeEventListener('keydown', handleKeydown)
   unlockBodyScroll()
 })
 </script>
@@ -243,7 +297,7 @@ onBeforeUnmount(() => {
         aria-labelledby="onboarding-title"
         @click="handleMaskClick"
       >
-        <div class="onboarding-shell">
+        <div ref="tutorialShellRef" class="onboarding-shell" tabindex="-1">
           <button type="button" class="onboarding-close" aria-label="关闭教程" @click="closeTutorial({ markSeen: true })">
             ×
           </button>
@@ -261,6 +315,7 @@ onBeforeUnmount(() => {
               <button
                 v-for="(step, index) in steps"
                 :key="step.id"
+                :ref="(element) => setStepButtonRef(element, index)"
                 type="button"
                 :class="['onboarding-step-chip', { active: index === activeStepIndex }]"
                 @click="jumpToStep(index)"
@@ -277,7 +332,7 @@ onBeforeUnmount(() => {
               <strong>{{ progressText }}</strong>
             </div>
 
-            <div class="onboarding-card">
+            <div ref="tutorialCardRef" class="onboarding-card">
               <div class="onboarding-card-head">
                 <h3>{{ currentStep.title }}</h3>
                 <p>{{ currentStep.summary }}</p>
@@ -316,13 +371,26 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .onboarding-overlay {
+  --onboarding-gutter-top: max(16px, var(--safe-area-inset-top));
+  --onboarding-gutter-right: max(12px, var(--safe-area-inset-right));
+  --onboarding-gutter-bottom: max(16px, calc(var(--safe-area-inset-bottom) + var(--keyboard-inset, 0px)));
+  --onboarding-gutter-left: max(12px, var(--safe-area-inset-left));
+  --onboarding-shell-max-width: 1080px;
+  --onboarding-shell-ideal-height: 720px;
+  --onboarding-shell-max-height: calc(var(--visual-height, 100dvh) - var(--onboarding-gutter-top) - var(--onboarding-gutter-bottom));
   position: fixed;
   inset: 0;
   z-index: 4000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  min-height: var(--visual-height, 100dvh);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-top: var(--onboarding-gutter-top);
+  padding-right: var(--onboarding-gutter-right);
+  padding-bottom: var(--onboarding-gutter-bottom);
+  padding-left: var(--onboarding-gutter-left);
   background:
     radial-gradient(circle at top left, rgba(158, 207, 194, 0.18), transparent 28%),
     radial-gradient(circle at top right, rgba(227, 187, 122, 0.2), transparent 30%),
@@ -333,9 +401,10 @@ onBeforeUnmount(() => {
 
 .onboarding-shell {
   position: relative;
-  width: min(1080px, 100%);
-  min-height: min(720px, calc(100vh - 40px));
-  max-height: calc(100vh - 40px);
+  width: min(var(--onboarding-shell-max-width), 100%);
+  height: min(var(--onboarding-shell-ideal-height), var(--onboarding-shell-max-height));
+  max-height: var(--onboarding-shell-max-height);
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
   overflow: hidden;
@@ -343,6 +412,8 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, rgba(255, 250, 243, 0.98) 0%, rgba(247, 238, 226, 0.97) 100%);
   border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 40px 90px rgba(38, 30, 22, 0.24);
+  isolation: isolate;
+  outline: none;
 }
 
 .onboarding-close {
@@ -369,11 +440,15 @@ onBeforeUnmount(() => {
 
 .onboarding-sidebar {
   position: relative;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 38px 28px 28px;
   background:
     radial-gradient(circle at left top, rgba(227, 187, 122, 0.22), transparent 34%),
     linear-gradient(180deg, rgba(255, 248, 238, 0.96) 0%, rgba(244, 232, 214, 0.94) 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.7);
+  overflow: hidden;
 }
 
 .onboarding-sidebar::after {
@@ -431,8 +506,18 @@ onBeforeUnmount(() => {
   z-index: 1;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: 10px;
   margin-top: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+  scroll-snap-type: y proximity;
+  @include scrollbar-beautiful;
 }
 
 .onboarding-step-chip {
@@ -447,6 +532,7 @@ onBeforeUnmount(() => {
   color: $text-primary;
   text-align: left;
   cursor: pointer;
+  scroll-snap-align: start;
   transition: transform $transition-fast, background $transition-normal, border-color $transition-normal;
 }
 
@@ -477,11 +563,13 @@ onBeforeUnmount(() => {
 }
 
 .onboarding-main {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 38px 34px 30px;
   min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 38px 34px max(26px, calc(18px + var(--safe-area-inset-bottom)));
+  min-height: 0;
+  overflow: hidden;
 }
 
 .onboarding-topline {
@@ -499,7 +587,6 @@ onBeforeUnmount(() => {
 }
 
 .onboarding-card {
-  flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -510,6 +597,9 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(255, 255, 255, 0.72);
   box-shadow: 0 20px 44px rgba(179, 153, 123, 0.1);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: 20px;
   @include scrollbar-beautiful;
 }
 
@@ -599,6 +689,12 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+  padding-top: 16px;
+  padding-bottom: 2px;
+  border-top: 1px solid rgba(227, 187, 122, 0.16);
+  background: linear-gradient(180deg, rgba(247, 238, 226, 0) 0%, rgba(247, 238, 226, 0.76) 26%, rgba(247, 238, 226, 0.98) 100%);
 }
 
 .actions-left,
@@ -680,32 +776,117 @@ onBeforeUnmount(() => {
   transform: translateY(16px) scale(0.98);
 }
 
-@media (max-width: 900px) {
+@media (min-width: 769px) and (max-width: 1180px) {
+  .onboarding-overlay {
+    --onboarding-gutter-top: max(20px, calc(var(--safe-area-inset-top) + 4px));
+    --onboarding-gutter-right: max(18px, calc(var(--safe-area-inset-right) + 4px));
+    --onboarding-gutter-bottom: max(20px, calc(var(--safe-area-inset-bottom) + var(--keyboard-inset, 0px) + 4px));
+    --onboarding-gutter-left: max(18px, calc(var(--safe-area-inset-left) + 4px));
+    --onboarding-shell-max-width: 1040px;
+    --onboarding-shell-ideal-height: 760px;
+  }
+
   .onboarding-shell {
-    grid-template-columns: 1fr;
-    min-height: auto;
+    grid-template-columns: minmax(252px, 304px) minmax(0, 1fr);
+    border-radius: 28px;
   }
 
   .onboarding-sidebar {
-    padding: 28px 22px 18px;
+    padding: 32px 24px 24px;
+  }
+
+  .onboarding-sidebar h2 {
+    font-size: 28px;
+  }
+
+  .onboarding-main {
+    gap: 16px;
+    padding: 32px 28px max(24px, calc(16px + var(--safe-area-inset-bottom)));
+  }
+
+  .onboarding-card {
+    gap: 18px;
+    padding: 24px;
+    border-radius: 24px;
+  }
+
+  .onboarding-card-head h3 {
+    font-size: 30px;
+  }
+
+  .onboarding-card-head p,
+  .onboarding-tip-list li {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) and (max-height: 900px) {
+  .onboarding-overlay {
+    --onboarding-shell-ideal-height: 680px;
+  }
+
+  .onboarding-sidebar {
+    padding: 28px 22px 22px;
+  }
+
+  .onboarding-intro {
+    margin-top: 12px;
+    line-height: 1.7;
+  }
+
+  .onboarding-step-chip {
+    padding: 12px 14px;
+  }
+
+  .onboarding-main {
+    padding: 28px 24px max(20px, calc(14px + var(--safe-area-inset-bottom)));
+  }
+
+  .onboarding-card-head h3 {
+    font-size: 28px;
+  }
+
+  .onboarding-tip-list li {
+    padding: 14px 16px 14px 44px;
+  }
+}
+
+@media (max-width: 900px) {
+  .onboarding-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .onboarding-sidebar {
+    gap: 0;
+    padding: 24px 22px 16px;
     border-right: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.7);
   }
 
+  .onboarding-sidebar h2 {
+    font-size: 27px;
+  }
+
   .onboarding-step-list {
-    margin-top: 20px;
+    flex: 0 0 auto;
+    min-height: auto;
+    margin-top: 18px;
     overflow-x: auto;
     overflow-y: hidden;
     flex-direction: row;
     padding-bottom: 4px;
+    padding-right: 0;
+    scroll-snap-type: x proximity;
   }
 
   .onboarding-step-chip {
-    min-width: 220px;
+    min-width: 208px;
   }
 
   .onboarding-main {
-    padding: 24px 22px 22px;
+    gap: 16px;
+    padding: 20px 22px max(22px, calc(14px + var(--safe-area-inset-bottom)));
   }
 
   .onboarding-card-head h3 {
@@ -713,15 +894,57 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (min-width: 641px) and (max-width: 900px) {
+  .onboarding-overlay {
+    --onboarding-gutter-top: max(20px, calc(var(--safe-area-inset-top) + 4px));
+    --onboarding-gutter-right: max(16px, calc(var(--safe-area-inset-right) + 4px));
+    --onboarding-gutter-bottom: max(20px, calc(var(--safe-area-inset-bottom) + var(--keyboard-inset, 0px) + 4px));
+    --onboarding-gutter-left: max(16px, calc(var(--safe-area-inset-left) + 4px));
+    --onboarding-shell-ideal-height: 860px;
+  }
+
+  .onboarding-shell {
+    border-radius: 28px;
+  }
+
+  .onboarding-sidebar {
+    padding: 26px 24px 18px;
+  }
+
+  .onboarding-intro {
+    max-width: 620px;
+  }
+
+  .onboarding-step-chip {
+    min-width: 214px;
+  }
+
+  .onboarding-main {
+    padding: 22px 24px max(24px, calc(14px + var(--safe-area-inset-bottom)));
+  }
+
+  .actions-left,
+  .actions-right {
+    flex: 1 1 0;
+  }
+
+  .actions-right {
+    justify-content: flex-end;
+  }
+}
+
 @media (max-width: 640px) {
   .onboarding-overlay {
-    padding: 10px;
     align-items: stretch;
+    padding-top: max(10px, var(--safe-area-inset-top));
+    padding-right: max(8px, var(--safe-area-inset-right));
+    padding-bottom: max(10px, calc(var(--safe-area-inset-bottom) + var(--keyboard-inset, 0px)));
+    padding-left: max(8px, var(--safe-area-inset-left));
   }
 
   .onboarding-shell {
     width: 100%;
-    max-height: none;
+    height: 100%;
     border-radius: 24px;
   }
 
@@ -733,30 +956,52 @@ onBeforeUnmount(() => {
   }
 
   .onboarding-sidebar {
-    padding: 22px 16px 16px;
+    padding: 18px 16px 14px;
   }
 
   .onboarding-sidebar h2 {
     padding-right: 38px;
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .onboarding-intro {
+    margin-top: 12px;
     font-size: 13px;
+    line-height: 1.65;
   }
 
   .onboarding-step-chip {
-    min-width: 186px;
-    padding: 12px 14px;
+    min-width: 178px;
+    padding: 11px 13px;
+    border-radius: 16px;
+  }
+
+  .chip-index {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .chip-title {
+    font-size: 13px;
   }
 
   .onboarding-main {
-    gap: 14px;
-    padding: 16px;
+    gap: 12px;
+    padding: 14px 14px max(16px, calc(10px + var(--safe-area-inset-bottom)));
+  }
+
+  .onboarding-topline {
+    font-size: 12px;
+  }
+
+  .onboarding-topline strong {
+    font-size: 14px;
   }
 
   .onboarding-card {
-    padding: 18px;
+    gap: 16px;
+    padding: 16px;
     border-radius: 20px;
   }
 
@@ -770,8 +1015,37 @@ onBeforeUnmount(() => {
     font-size: 14px;
   }
 
+  .onboarding-card-head p {
+    margin-top: 10px;
+    line-height: 1.7;
+  }
+
+  .onboarding-tip-list {
+    gap: 10px;
+  }
+
+  .onboarding-tip-list li {
+    padding: 14px 14px 14px 42px;
+    border-radius: 18px;
+    line-height: 1.6;
+  }
+
+  .onboarding-tip-list li::before {
+    left: 14px;
+    top: 14px;
+  }
+
   .onboarding-highlight strong {
     font-size: 20px;
+  }
+
+  .onboarding-highlight {
+    padding: 16px 16px 18px;
+    border-radius: 18px;
+  }
+
+  .highlight-label {
+    margin-bottom: 8px;
   }
 
   .onboarding-actions,
@@ -780,16 +1054,132 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
+  .onboarding-actions {
+    gap: 10px;
+    padding-top: 12px;
+  }
+
   .actions-left,
   .actions-right {
-    justify-content: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
   .ghost-btn,
   .secondary-btn,
   .primary-btn {
-    flex: 1 1 calc(50% - 5px);
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
   }
+}
+
+@media (max-width: 420px) {
+  .onboarding-shell {
+    border-radius: 20px;
+  }
+
+  .onboarding-close {
+    top: 10px;
+    right: 10px;
+  }
+
+  .onboarding-sidebar {
+    padding: 16px 14px 12px;
+  }
+
+  .onboarding-kicker {
+    margin-bottom: 8px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
+
+  .onboarding-sidebar h2 {
+    font-size: 20px;
+    line-height: 1.18;
+  }
+
+  .onboarding-intro {
+    display: none;
+  }
+
+  .onboarding-progress-bar {
+    margin-top: 14px;
+  }
+
+  .onboarding-step-list {
+    margin-top: 14px;
+    padding-bottom: 2px;
+  }
+
+  .onboarding-step-chip {
+    min-width: 154px;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .onboarding-main {
+    gap: 10px;
+    padding: 12px 12px max(14px, calc(8px + var(--safe-area-inset-bottom)));
+  }
+
+  .onboarding-card {
+    gap: 14px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .onboarding-card-head h3 {
+    font-size: 20px;
+  }
+
+  .onboarding-card-head p,
+  .onboarding-tip-list li,
+  .onboarding-highlight p {
+    font-size: 13px;
+  }
+
+  .onboarding-highlight strong {
+    font-size: 18px;
+  }
+
+  .actions-left,
+  .actions-right {
+    grid-template-columns: 1fr;
+  }
+}
+
+:global(html.is-harmony-browser) .onboarding-overlay {
+  --onboarding-gutter-top: max(18px, calc(var(--safe-area-inset-top) + 6px));
+  --onboarding-gutter-right: max(14px, calc(var(--safe-area-inset-right) + 6px));
+  --onboarding-gutter-bottom: max(20px, calc(var(--safe-area-inset-bottom) + var(--keyboard-inset, 0px) + 6px));
+  --onboarding-gutter-left: max(14px, calc(var(--safe-area-inset-left) + 6px));
+  --onboarding-shell-ideal-height: 744px;
+}
+
+:global(html.is-harmony-browser) .onboarding-shell,
+:global(html.is-harmony-browser) .onboarding-card,
+:global(html.is-harmony-browser) .onboarding-actions {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+:global(html.is-ipad-device) .onboarding-overlay {
+  --onboarding-gutter-top: max(24px, calc(var(--safe-area-inset-top) + 8px));
+  --onboarding-gutter-right: max(22px, calc(var(--safe-area-inset-right) + 8px));
+  --onboarding-gutter-bottom: max(24px, calc(var(--safe-area-inset-bottom) + var(--keyboard-inset, 0px) + 8px));
+  --onboarding-gutter-left: max(22px, calc(var(--safe-area-inset-left) + 8px));
+  --onboarding-shell-ideal-height: 780px;
+}
+
+:global(html.is-ipad-device) .onboarding-shell {
+  box-shadow: 0 34px 72px rgba(38, 30, 22, 0.22);
+}
+
+:global(html.is-standalone-pwa.is-ipad-device) .onboarding-overlay {
+  --onboarding-gutter-top: max(28px, calc(var(--safe-area-inset-top) + 10px));
+  --onboarding-gutter-bottom: max(28px, calc(var(--safe-area-inset-bottom) + 10px));
 }
 
 :global(html[data-theme='dark']) .onboarding-shell {
@@ -836,6 +1226,11 @@ onBeforeUnmount(() => {
 :global(html[data-theme='dark']) .onboarding-highlight {
   background: linear-gradient(135deg, rgba(227, 187, 122, 0.12), rgba(125, 183, 173, 0.12));
   border-color: rgba(227, 187, 122, 0.16);
+}
+
+:global(html[data-theme='dark']) .onboarding-actions {
+  border-top-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(18, 21, 20, 0) 0%, rgba(18, 21, 20, 0.76) 26%, rgba(18, 21, 20, 0.98) 100%);
 }
 
 :global(html[data-theme='dark']) .secondary-btn {
