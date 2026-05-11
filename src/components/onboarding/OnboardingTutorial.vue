@@ -872,15 +872,24 @@ onBeforeUnmount(() => {
     flex: 0 0 auto;
     min-height: auto;
     margin-top: 18px;
+    width: calc(100% + 4px);
+    margin-right: -4px;
     overflow-x: auto;
     overflow-y: hidden;
     flex-direction: row;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
     padding-bottom: 4px;
     padding-right: 0;
+    padding-left: 2px;
     scroll-snap-type: x proximity;
+    scroll-padding-inline: 2px;
   }
 
   .onboarding-step-chip {
+    width: auto;
+    flex: 0 0 auto;
     min-width: 208px;
   }
 
@@ -972,6 +981,7 @@ onBeforeUnmount(() => {
 
   .onboarding-step-chip {
     min-width: 178px;
+    max-width: 82vw;
     padding: 11px 13px;
     border-radius: 16px;
   }
@@ -1115,6 +1125,7 @@ onBeforeUnmount(() => {
 
   .onboarding-step-chip {
     min-width: 154px;
+    max-width: 84vw;
     gap: 10px;
     padding: 10px 12px;
   }
