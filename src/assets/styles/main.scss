@@ -623,6 +623,11 @@ textarea {
   .dashboard-page .shortcut-card,
   .dashboard-page .recent-row,
   .dashboard-page .recent-item,
+  .inner-page__hero,
+  .inner-page__toolbar,
+  .inner-page__panel,
+  .inner-page__modal,
+  .inner-page__stat-card,
   .inner-page__table-wrap,
   .price-table-wrap,
   .inner-page__card {
@@ -649,7 +654,13 @@ textarea {
   .dashboard-page .recent-partner,
   .dashboard-page .recent-amount,
   .empty-card h3,
+  .inner-page__title,
+  .inner-page__panel-title h2,
+  .inner-page__panel-title h3,
+  .inner-page__stat-card strong,
+  .hero-stat strong,
   .inner-page__table td,
+  .inner-page__modal h3,
   .price-table td {
     color: var(--text-normal) !important;
   }
@@ -680,6 +691,14 @@ textarea {
   .dashboard-page .recent-page-size,
   .dashboard-page .recent-page-summary,
   .empty-card p,
+  .inner-page__eyebrow,
+  .inner-page__desc,
+  .inner-page__panel-tip,
+  .inner-page__stat-card span,
+  .hero-stat span,
+  .hero-stat small,
+  .inner-page__field label,
+  .inner-page__field span,
   .inner-page__table th,
   .price-table th {
     color: var(--text-soft) !important;
@@ -693,6 +712,15 @@ textarea {
   .dashboard-page .filter-select,
   .dashboard-page .recent-page-size select,
   .dashboard-page .recent-page-actions button,
+  .inner-page__search input,
+  .inner-page__toolbar input,
+  .inner-page__toolbar select,
+  .inner-page__panel input,
+  .inner-page__panel select,
+  .inner-page__panel textarea,
+  .inner-page__modal input,
+  .inner-page__modal select,
+  .inner-page__modal textarea,
   .price-table input {
     background: var(--input-bg) !important;
     border-color: var(--input-border) !important;
@@ -703,6 +731,169 @@ textarea {
   .inner-page__table th,
   .price-table th {
     background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .inner-page__hero,
+  .inner-page__toolbar,
+  .inner-page__panel,
+  .inner-page__modal {
+    box-shadow: var(--shadow-card) !important;
+  }
+
+  .inner-page__hero {
+    background:
+      linear-gradient(135deg, rgba(125, 183, 173, 0.12), rgba(227, 187, 122, 0.08)),
+      var(--panel-bg) !important;
+  }
+
+  .hero-stat,
+  .inner-page__table,
+  .inner-page table,
+  .price-table,
+  .order-list-page .table-wrap,
+  .order-list-page .data-table,
+  .stats-page table,
+  .stats-page .table-wrap,
+  .stats-page .table-scroll-wrap,
+  .stats-page .ranking-wrap,
+  .stats-page .trend-chart-shell,
+  .stats-page .month-title-card {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: var(--panel-line) !important;
+    color: var(--text-normal) !important;
+  }
+
+  .inner-page__table td,
+  .inner-page__table th,
+  .price-table td,
+  .price-table th,
+  .stats-page th,
+  .stats-page td {
+    border-color: var(--panel-line) !important;
+  }
+
+  .stats-page th {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-soft) !important;
+  }
+
+  .stats-page td,
+  .stats-page .month-title-card strong {
+    color: var(--text-normal) !important;
+  }
+
+  .stats-page .stats-cards,
+  .settlement-page .settlement-hero,
+  .settlement-page .toolbar,
+  .settlement-page .ledger-panel,
+  .settlement-page .summary-card,
+  .settlement-page .mode-tab,
+  .income-expense-page .metric,
+  .income-expense-page .trend-section,
+  .income-expense-page .ledger-panel,
+  .income-expense-page .summary-panel,
+  .income-expense-page .fabric-panel,
+  .income-expense-page .table-wrap,
+  .income-expense-page .fabric-table,
+  .settlement-summary div,
+  .detail-item,
+  .weighing-detail-row,
+  .empty-state,
+  .customer-pagination__actions button,
+  .customer-pagination__size select,
+  .page-size-select,
+  .page-btn {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--panel-line) !important;
+    color: var(--text-normal) !important;
+  }
+
+  .settlement-input,
+  .field input,
+  .field select,
+  .field textarea {
+    background: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--text-normal) !important;
+  }
+
+  .balance-adjustment-card {
+    background: rgba(224, 165, 95, 0.1) !important;
+    border-color: rgba(224, 165, 95, 0.22) !important;
+  }
+
+  .settlement-page .settlement-hero,
+  .income-expense-page .income-card,
+  .income-expense-page .net-card {
+    background:
+      linear-gradient(135deg, rgba(125, 183, 173, 0.12), rgba(255, 255, 255, 0.03)),
+      var(--panel-bg) !important;
+  }
+
+  .income-expense-page .expense-card {
+    background:
+      linear-gradient(135deg, rgba(217, 124, 112, 0.14), rgba(255, 255, 255, 0.03)),
+      var(--panel-bg) !important;
+  }
+
+  .income-expense-page .side-card,
+  .income-expense-page .trend-section {
+    background:
+      linear-gradient(135deg, rgba(227, 187, 122, 0.1), rgba(255, 255, 255, 0.03)),
+      var(--panel-bg) !important;
+  }
+
+  .settlement-page .hero-total,
+  .income-expense-page .insight-item,
+  .income-expense-page .ledger-values span,
+  .income-expense-page .customer-row,
+  .income-expense-page .fabric-row,
+  .order-list-page .empty-state {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--panel-line) !important;
+    color: var(--text-normal) !important;
+  }
+
+  .income-expense-page .insight-item:hover,
+  .income-expense-page .customer-row:hover,
+  .income-expense-page .fabric-row:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(125, 183, 173, 0.28) !important;
+  }
+
+  .income-expense-page .fabric-table th,
+  .settlement-page th,
+  .order-list-page .data-table .empty-row td {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .income-expense-page .bar-track,
+  .income-expense-page .fabric-bar-track {
+    background: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .settlement-page .hero-desc,
+  .settlement-page .hero-total span,
+  .settlement-page .hero-total small,
+  .settlement-page .summary-card span,
+  .settlement-page .field span,
+  .settlement-page .panel-title p,
+  .settlement-page .mode-tab small,
+  .income-expense-page .insight-content span,
+  .income-expense-page .insight-content small,
+  .income-expense-page .ledger-footnote,
+  .order-list-page .empty-state .empty-desc {
+    color: var(--text-soft) !important;
+  }
+
+  .settlement-page h1,
+  .settlement-page h2,
+  .settlement-page .hero-total strong,
+  .settlement-page .summary-card strong,
+  .settlement-page .date-summary strong,
+  .income-expense-page .insight-content strong,
+  .order-list-page .empty-state .empty-text {
+    color: var(--text-normal) !important;
   }
 
   .order-list-page .data-table tbody .table-row:hover,
