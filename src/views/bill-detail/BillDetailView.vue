@@ -1516,4 +1516,145 @@ tbody tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+:global(html[data-theme='dark']) {
+  .weight-page {
+    color: var(--text-normal);
+  }
+
+  .weight-page .topbar,
+  .weight-page .workbench,
+  .weight-page .table-box,
+  .weight-page .mobile-detail-card,
+  .weight-page .summary {
+    background: var(--panel-bg);
+    border-color: var(--panel-line);
+    box-shadow: var(--shadow-card);
+  }
+
+  .weight-page .title-wrap h2,
+  .weight-page .overview-card strong,
+  .weight-page .sum-block strong,
+  .weight-page .mobile-metric strong,
+  .weight-page .num {
+    color: var(--text-normal);
+  }
+
+  .weight-page .title-wrap p,
+  .weight-page .overview-label,
+  .weight-page .overview-card small,
+  .weight-page .row-index,
+  .weight-page .sum-block span,
+  .weight-page .mobile-field > span,
+  .weight-page .mobile-metric span {
+    color: var(--text-soft);
+  }
+
+  .weight-page .overview-card {
+    border-color: var(--panel-line);
+    background: linear-gradient(135deg, rgba(40, 44, 42, 0.9), rgba(31, 33, 31, 0.82));
+    box-shadow: var(--shadow-card);
+  }
+
+  .weight-page .meta-grid > label > span,
+  .weight-page .weight-inputs label,
+  .weight-page .page-tipbar strong {
+    color: var(--text-normal);
+  }
+
+  .weight-page .meta-grid > label > input,
+  .weight-page .cell-input,
+  .weight-page .custom-select input,
+  .weight-page .weight-inputs input {
+    background: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--text-normal);
+  }
+
+  .weight-page .weight-inputs input:read-only {
+    background: rgba(125, 183, 173, 0.12);
+    border-color: rgba(125, 183, 173, 0.38);
+    color: #b7e1d8;
+  }
+
+  .weight-page .page-tipbar {
+    border-color: rgba(125, 183, 173, 0.3);
+    background: linear-gradient(90deg, rgba(39, 48, 45, 0.88), rgba(47, 41, 34, 0.78));
+  }
+
+  .weight-page .page-tipbar span,
+  .weight-page .tip-tag {
+    color: var(--text-soft);
+  }
+
+  .weight-page th {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-normal);
+    border-bottom-color: var(--panel-line);
+  }
+
+  .weight-page td {
+    border-bottom-color: var(--panel-line);
+  }
+
+  .weight-page tbody tr:hover {
+    background: rgba(125, 183, 173, 0.08);
+  }
+
+  .weight-page .dropdown-list {
+    background: rgba(36, 39, 37, 0.96);
+    border-color: var(--input-border);
+  }
+
+  .weight-page .dropdown-list li {
+    color: var(--text-normal);
+  }
+
+  .weight-page .dropdown-list li:hover {
+    background: rgba(125, 183, 173, 0.1);
+  }
+
+  .weight-page .dropdown-list.no-res {
+    color: var(--text-soft);
+  }
+
+  .weight-page .summary {
+    background: linear-gradient(135deg, rgba(32, 35, 33, 0.9), rgba(27, 29, 28, 0.82));
+  }
+
+  .weight-page .sum-block.emphasis {
+    background: rgba(125, 183, 173, 0.1);
+    border-color: rgba(125, 183, 173, 0.28);
+  }
+
+  .weight-page .btn-ghost {
+    background: var(--input-bg);
+    color: var(--text-normal);
+    border-color: var(--input-border);
+  }
+
+  .weight-page .btn-ghost:hover {
+    background: rgba(125, 183, 173, 0.16);
+    border-color: rgba(125, 183, 173, 0.4);
+  }
+
+  .weight-page .weight-panel {
+    background: linear-gradient(135deg, rgba(31, 37, 35, 0.9), rgba(37, 32, 28, 0.84));
+    border-color: var(--panel-line);
+  }
+
+  .weight-page .mobile-row-index {
+    background: rgba(125, 183, 173, 0.14);
+    color: var(--text-normal);
+  }
+
+  .weight-page .mobile-metric {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--panel-line);
+  }
+
+  .weight-page .mobile-amount {
+    background: linear-gradient(135deg, rgba(62, 52, 38, 0.5), rgba(35, 40, 38, 0.8));
+  }
+}
 </style>
