@@ -692,9 +692,20 @@ const exportImage = () => {
         <article class="overview-card accent-gold">
           <span class="overview-label">结算金额</span>
           <strong>{{ formatMoney(totalAmount) }}</strong>
-          <small>明细合计 {{ formatMoney(itemSubtotalAmount) }}</small>
-          <small>取整差额 {{ formatMoney(roundingDifferenceAmount) }}</small>
-          <small v-if="form.balanceAdjustmentAmount > 0">平账抹零 {{ formatMoney(form.balanceAdjustmentAmount) }}</small>
+          <div class="amount-breakdown">
+            <div class="amount-breakdown-item">
+              <span>明细合计</span>
+              <b>{{ formatMoney(itemSubtotalAmount) }}</b>
+            </div>
+            <div class="amount-breakdown-item accent">
+              <span>取整差额</span>
+              <b>{{ formatMoney(roundingDifferenceAmount) }}</b>
+            </div>
+            <div v-if="form.balanceAdjustmentAmount > 0" class="amount-breakdown-item muted">
+              <span>平账抹零</span>
+              <b>{{ formatMoney(form.balanceAdjustmentAmount) }}</b>
+            </div>
+          </div>
         </article>
       </section>
 
@@ -880,9 +891,20 @@ const exportImage = () => {
           <div class="sum-block">
             <span>结算金额</span>
             <strong>{{ formatMoney(totalAmount) }}</strong>
-            <small>明细合计 {{ formatMoney(itemSubtotalAmount) }}</small>
-            <small>取整差额 {{ formatMoney(roundingDifferenceAmount) }}</small>
-            <small v-if="form.balanceAdjustmentAmount > 0">平账抹零 {{ formatMoney(form.balanceAdjustmentAmount) }}</small>
+            <div class="amount-breakdown compact">
+              <div class="amount-breakdown-item">
+                <span>明细合计</span>
+                <b>{{ formatMoney(itemSubtotalAmount) }}</b>
+              </div>
+              <div class="amount-breakdown-item accent">
+                <span>取整差额</span>
+                <b>{{ formatMoney(roundingDifferenceAmount) }}</b>
+              </div>
+              <div v-if="form.balanceAdjustmentAmount > 0" class="amount-breakdown-item muted">
+                <span>平账抹零</span>
+                <b>{{ formatMoney(form.balanceAdjustmentAmount) }}</b>
+              </div>
+            </div>
           </div>
         </div>
         <div class="summary-actions">
@@ -1005,6 +1027,53 @@ const exportImage = () => {
 .overview-card small {
   font-size: 13px;
   color: #62809e;
+}
+
+.amount-breakdown {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.amount-breakdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(123, 154, 185, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.amount-breakdown-item span {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #7188a2;
+}
+
+.amount-breakdown-item b {
+  font-size: 14px;
+  line-height: 1;
+  color: #234462;
+}
+
+.amount-breakdown-item.accent {
+  background: linear-gradient(135deg, rgba(255, 244, 221, 0.9), rgba(255, 249, 238, 0.82));
+  border-color: rgba(229, 171, 56, 0.22);
+}
+
+.amount-breakdown-item.accent b {
+  color: #b7791f;
+}
+
+.amount-breakdown-item.muted {
+  background: rgba(245, 248, 251, 0.88);
+}
+
+.amount-breakdown.compact {
+  min-width: min(320px, 100%);
 }
 
 .accent-teal::after {
@@ -1224,6 +1293,14 @@ tbody tr:hover {
   font-size: 20px;
   color: #1e293b;
   font-weight: 700;
+}
+
+.sum-block .amount-breakdown {
+  margin-top: 6px;
+}
+
+.sum-block .amount-breakdown-item {
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .sum-block.emphasis {
@@ -1502,6 +1579,14 @@ tbody tr:hover {
     overflow-wrap: anywhere;
   }
 
+  .amount-breakdown-item {
+    padding: 8px 10px;
+  }
+
+  .amount-breakdown-item b {
+    font-size: 13px;
+  }
+
   .summary-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1559,9 +1644,29 @@ tbody tr:hover {
   .weight-page .overview-card small,
   .weight-page .row-index,
   .weight-page .sum-block span,
+  .weight-page .amount-breakdown-item span,
   .weight-page .mobile-field > span,
   .weight-page .mobile-metric span {
     color: var(--text-soft);
+  }
+
+  .weight-page .amount-breakdown-item,
+  .weight-page .sum-block .amount-breakdown-item {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--panel-line);
+  }
+
+  .weight-page .amount-breakdown-item b {
+    color: var(--text-normal);
+  }
+
+  .weight-page .amount-breakdown-item.accent {
+    background: rgba(229, 171, 56, 0.12);
+    border-color: rgba(229, 171, 56, 0.24);
+  }
+
+  .weight-page .amount-breakdown-item.accent b {
+    color: #f0c36c;
   }
 
   .weight-page .overview-card {
