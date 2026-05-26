@@ -173,6 +173,21 @@ const rowViews = computed(() => {
   })
 })
 
+const itemSubtotalAmount = computed(() => {
+  return rowViews.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+})
+
+const roundedGrossAmount = computed(() => {
+  const savedGross = Number(form.grossTotalAmount || 0)
+  if (savedGross > 0) return savedGross
+  if (currentRecord.value && currentRecord.value.grossTotalAmount != null) return savedGross
+  return Math.round(itemSubtotalAmount.value)
+})
+
+const roundingDifferenceAmount = computed(() => {
+  return roundedGrossAmount.value - itemSubtotalAmount.value
+})
+
 // 导出为 Excel
 const exportToExcel = async () => {
   const exportRows = buildExportRows()
@@ -332,15 +347,13 @@ const totalWeight = computed(() => {
 })
 
 const totalAmount = computed(() => {
-  const rowTotal = rowViews.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
   const savedTotal = Number(currentRecord.value?.totalAmount || 0)
-  if (Number(form.balanceAdjustmentAmount || 0) > 0 && savedTotal >= 0) return savedTotal
-  return rowTotal
+  if (savedTotal > 0) return savedTotal
+  if (currentRecord.value && currentRecord.value.totalAmount != null) return savedTotal
+  return Math.max(roundedGrossAmount.value - Number(form.balanceAdjustmentAmount || 0), 0)
 })
 const grossTotalAmount = computed(() => {
-  const savedGross = Number(form.grossTotalAmount || 0)
-  if (savedGross > 0) return savedGross
-  return rowViews.value.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+  return roundedGrossAmount.value
 })
 
 const toggleFabricOptions = (rowId) => {
@@ -677,12 +690,11 @@ const exportImage = () => {
           <small>支持 `10+10+10`、`10 10 10`、`10×3`、`10×8 60` 快速计算</small>
         </article>
         <article class="overview-card accent-gold">
-          <span class="overview-label">{{ form.balanceAdjustmentAmount > 0 ? '平账后金额' : '总金额' }}</span>
+          <span class="overview-label">结算金额</span>
           <strong>{{ formatMoney(totalAmount) }}</strong>
-          <small v-if="form.balanceAdjustmentAmount > 0">
-            明细 {{ formatMoney(grossTotalAmount) }}，平账 {{ formatMoney(form.balanceAdjustmentAmount) }}
-          </small>
-          <small v-else>累计金额 {{ formatMoney(totalAmount) }}</small>
+          <small>明细合计 {{ formatMoney(itemSubtotalAmount) }}</small>
+          <small>取整差额 {{ formatMoney(roundingDifferenceAmount) }}</small>
+          <small v-if="form.balanceAdjustmentAmount > 0">平账抹零 {{ formatMoney(form.balanceAdjustmentAmount) }}</small>
         </article>
       </section>
 
@@ -866,9 +878,11 @@ const exportImage = () => {
             <strong>{{ totalWeight.toFixed(2) }} 斤</strong>
           </div>
           <div class="sum-block">
-            <span>{{ form.balanceAdjustmentAmount > 0 ? '平账后金额' : '总金额' }}</span>
+            <span>结算金额</span>
             <strong>{{ formatMoney(totalAmount) }}</strong>
-            <small v-if="form.balanceAdjustmentAmount > 0">已平账 {{ formatMoney(form.balanceAdjustmentAmount) }}</small>
+            <small>明细合计 {{ formatMoney(itemSubtotalAmount) }}</small>
+            <small>取整差额 {{ formatMoney(roundingDifferenceAmount) }}</small>
+            <small v-if="form.balanceAdjustmentAmount > 0">平账抹零 {{ formatMoney(form.balanceAdjustmentAmount) }}</small>
           </div>
         </div>
         <div class="summary-actions">

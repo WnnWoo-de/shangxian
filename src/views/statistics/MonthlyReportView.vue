@@ -60,6 +60,8 @@ const toNumber = (value) => {
 }
 
 const roundMoney = (value) => Math.round(toNumber(value))
+const roundWeight = (value) => Math.round(toNumber(value) * 100) / 100
+const roundPrice = (value) => Math.round(toNumber(value) * 100) / 100
 
 const formatPercent = (value) => {
   const number = Number(value)
@@ -194,9 +196,9 @@ const purchaseOutboundStats = computed(() => {
     return summaryData.value.purchaseOutboundStats.map((item) => ({
       ...item,
       orderCount: toNumber(item.orderCount),
-      totalWeight: roundMoney(item.totalWeight),
+      totalWeight: roundWeight(item.totalWeight),
       totalAmount: roundMoney(item.totalAmount),
-      averagePrice: roundMoney(item.averagePrice),
+      averagePrice: roundPrice(item.averagePrice),
       amountRatio: toNumber(item.amountRatio),
     }))
   }
@@ -207,14 +209,14 @@ const purchaseOutboundStats = computed(() => {
     { type: 'sale', typeName: '出货' },
   ].map((item) => {
     const records = filteredRecords.value.filter((record) => record.type === item.type)
-    const totalWeight = roundMoney(records.reduce((sum, record) => sum + toNumber(record.totalWeight), 0))
+    const totalWeight = roundWeight(records.reduce((sum, record) => sum + toNumber(record.totalWeight), 0))
     const totalAmount = roundMoney(records.reduce((sum, record) => sum + toNumber(record.totalAmount), 0))
     return {
       ...item,
       orderCount: records.length,
       totalWeight,
       totalAmount,
-      averagePrice: totalWeight > 0 ? roundMoney(totalAmount / totalWeight) : 0,
+      averagePrice: totalWeight > 0 ? roundPrice(totalAmount / totalWeight) : 0,
       amountRatio: totalTransactionAmount > 0 ? totalAmount / totalTransactionAmount : 0,
     }
   })
@@ -280,7 +282,7 @@ const customerRanking = computed(() => {
       ...item,
       rank: toNumber(item.rank) || index + 1,
       transactionCount: toNumber(item.transactionCount ?? item.billCount),
-      totalWeight: roundMoney(item.totalWeight),
+      totalWeight: roundWeight(item.totalWeight),
       totalAmount: roundMoney(item.totalAmount),
       unpaidAmount: roundMoney(item.unpaidAmount),
       amountRatio: toNumber(item.amountRatio),
@@ -317,7 +319,7 @@ const customerRanking = computed(() => {
     .map((item, index) => ({
       ...item,
       rank: index + 1,
-      totalWeight: roundMoney(item.totalWeight),
+      totalWeight: roundWeight(item.totalWeight),
       totalAmount: roundMoney(item.totalAmount),
       unpaidAmount: roundMoney(item.unpaidAmount),
       amountRatio: totalAmount > 0 ? item.totalAmount / totalAmount : 0,

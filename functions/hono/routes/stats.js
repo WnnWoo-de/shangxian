@@ -39,7 +39,6 @@ const getItemAmount = (item = {}) => {
 const getAdjustedItemAmounts = (bill = {}) => {
   const items = getItems(bill)
   const rawAmounts = items.map((item) => getItemAmount(item))
-  if (bill.type !== 'sale') return rawAmounts
 
   const grossItemTotal = rawAmounts.reduce((sum, amount) => sum + amount, 0)
   const finalBillAmount = Math.round(toNumber(bill.totalAmount))
@@ -269,8 +268,8 @@ const buildMonthlyReport = (bills, filters) => {
         current.outboundAmount += adjustedItemAmounts[index] ?? getItemAmount(item)
       } else {
         current.purchaseWeight += getItemWeight(item)
-        current.purchaseAmount += getItemAmount(item)
-        current.purchaseCost += getItemAmount(item)
+        current.purchaseAmount += adjustedItemAmounts[index] ?? getItemAmount(item)
+        current.purchaseCost += adjustedItemAmounts[index] ?? getItemAmount(item)
       }
       productMap.set(productId, current)
     })
